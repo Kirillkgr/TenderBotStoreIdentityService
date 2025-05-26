@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BotRegistrationRequest {
-    @NotBlank(message = "Bot token is required")
-    private String botToken;
+
+	@NotBlank(message = "Bot token is required")
+	private String botToken;
 }

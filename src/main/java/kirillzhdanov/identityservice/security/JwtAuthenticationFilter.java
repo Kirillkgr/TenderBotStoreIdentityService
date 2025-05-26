@@ -1,58 +1,66 @@
 package kirillzhdanov.identityservice.security;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Фильтр для аутентификации пользователя с использованием JWT токена
+ */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private UserDetailsService userDetailsService;
+    private final JwtTokenExtractor tokenExtractor;
+    private final JwtAuthenticator authenticator;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
-        
-        final String authorizationHeader = request.getHeader("Authorization");
 
-        String username = null;
-        String jwt = null;
+        try {
+            // Извлекаем JWT токен из заголовка
+            String jwt = tokenExtractor.extractJwtFromRequest(request);
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            try {
-                username = jwtUtils.extractUsername(jwt);
-            } catch (Exception e) {
-                logger.error("Error extracting username from token", e);
+            // Если токен найден, обрабатываем его
+            if (jwt != null) {
+                authenticator.processJwtToken(request, jwt);
             }
+        } catch (ExpiredJwtException e) {
+            log.warn("JWT токен истек");
+            authenticator.clearSecurityContext();
+        } catch (SignatureException e) {
+            log.warn("Неверная подпись JWT");
+            authenticator.clearSecurityContext();
+        } catch (MalformedJwtException e) {
+            log.warn("Неверный формат JWT");
+            authenticator.clearSecurityContext();
+        } catch (UnsupportedJwtException e) {
+            log.warn("Неподдерживаемый JWT");
+            authenticator.clearSecurityContext();
+        } catch (IllegalArgumentException e) {
+            log.warn("Пустые утверждения JWT");
+            authenticator.clearSecurityContext();
+        } catch (Exception e) {
+            // Логируем только тип исключения, без деталей
+            log.error("Ошибка при аутентификации: {}", e.getClass().getSimpleName());
+            authenticator.clearSecurityContext();
+        } finally {
+            // Продолжаем цепочку фильтров
+            filterChain.doFilter(request, response);
         }
-
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-            
-            if (jwtUtils.validateToken(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-        }
-        
-        filterChain.doFilter(request, response);
     }
 }
