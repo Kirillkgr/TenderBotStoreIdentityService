@@ -12,7 +12,6 @@ import kirillzhdanov.identityservice.dto.LoginResponse;
 import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
 import kirillzhdanov.identityservice.service.AuthService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,8 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Аутентификация", description = "API для регистрации и входа пользователей")
 public class AuthController {
 
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
+
+    public AuthController(AuthService authService){
+
+        this.authService = authService;
+    }
 
     @Operation(summary = "Регистрация нового пользователя", description = "Создает нового пользователя в системе")
     @ApiResponses(value = {

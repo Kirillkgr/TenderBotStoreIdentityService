@@ -43,7 +43,7 @@ public class SwaggerConfig {
     public GroupedOpenApi authApi() {
         return GroupedOpenApi.builder()
                 .group("auth-api")
-                .pathsToMatch("/auth/**")
+                .pathsToMatch("/auth")
                 .displayName("Аутентификация")
                 .build();
     }
@@ -52,7 +52,7 @@ public class SwaggerConfig {
     public GroupedOpenApi botApi() {
         return GroupedOpenApi.builder()
                 .group("bot-api")
-                .pathsToMatch("/bot/**")
+                .pathsToMatch("/bot")
                 .displayName("Telegram-боты")
                 .build();
     }
@@ -61,7 +61,7 @@ public class SwaggerConfig {
     public GroupedOpenApi allApi() {
         return GroupedOpenApi.builder()
                 .group("all-api")
-                .pathsToMatch("/**")
+                .pathsToMatch("/")
                 .displayName("Все API")
                 .build();
     }
