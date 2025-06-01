@@ -1,5 +1,9 @@
-#### 🐳 Dockerfile (базовый)
+FROM eclipse-temurin:21-jre-alpine
 
-FROM openjdk:17-jdk-slim
-COPY target/identity-service.jar app.jar
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+WORKDIR /app
+
+COPY target/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
