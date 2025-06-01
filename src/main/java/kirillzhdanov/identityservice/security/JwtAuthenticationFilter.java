@@ -24,43 +24,44 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenExtractor tokenExtractor;
-    private final JwtAuthenticator authenticator;
+	private final JwtTokenExtractor tokenExtractor;
 
-    @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
-            throws ServletException, IOException {
+	private final JwtAuthenticator authenticator;
 
-        try {
-            // Извлекаем JWT токен из заголовка
-            String jwt = tokenExtractor.extractJwtFromRequest(request);
+	@Override
+	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
+			throws ServletException, IOException{
 
-            // Если токен найден, обрабатываем его
-            if (jwt != null) {
-                authenticator.processJwtToken(request, jwt);
-            }
-        } catch (ExpiredJwtException e) {
-            log.warn("JWT токен истек");
-            authenticator.clearSecurityContext();
-        } catch (SignatureException e) {
-            log.warn("Неверная подпись JWT");
-            authenticator.clearSecurityContext();
-        } catch (MalformedJwtException e) {
-            log.warn("Неверный формат JWT");
-            authenticator.clearSecurityContext();
-        } catch (UnsupportedJwtException e) {
-            log.warn("Неподдерживаемый JWT");
-            authenticator.clearSecurityContext();
-        } catch (IllegalArgumentException e) {
-            log.warn("Пустые утверждения JWT");
-            authenticator.clearSecurityContext();
-        } catch (Exception e) {
-            // Логируем только тип исключения, без деталей
-            log.error("Ошибка при аутентификации: {}", e.getClass().getSimpleName());
-            authenticator.clearSecurityContext();
-        } finally {
-            // Продолжаем цепочку фильтров
-            filterChain.doFilter(request, response);
-        }
-    }
+		try {
+			// Извлекаем JWT токен из заголовка
+			String jwt = tokenExtractor.extractJwtFromRequest(request);
+
+			// Если токен найден, обрабатываем его
+			if(jwt != null) {
+				authenticator.processJwtToken(request, jwt);
+			}
+		} catch(ExpiredJwtException e) {
+			log.warn("JWT токен истек");
+			authenticator.clearSecurityContext();
+		} catch(SignatureException e) {
+			log.warn("Неверная подпись JWT");
+			authenticator.clearSecurityContext();
+		} catch(MalformedJwtException e) {
+			log.warn("Неверный формат JWT");
+			authenticator.clearSecurityContext();
+		} catch(UnsupportedJwtException e) {
+			log.warn("Неподдерживаемый JWT");
+			authenticator.clearSecurityContext();
+		} catch(IllegalArgumentException e) {
+			log.warn("Пустые утверждения JWT");
+			authenticator.clearSecurityContext();
+		} catch(Exception e) {
+			// Логируем только тип исключения, без деталей
+			log.error("Ошибка при аутентификации: {}", e.getClass().getSimpleName());
+			authenticator.clearSecurityContext();
+		} finally {
+			// Продолжаем цепочку фильтров
+			filterChain.doFilter(request, response);
+		}
+	}
 }

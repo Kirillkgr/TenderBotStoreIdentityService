@@ -8,7 +8,7 @@ spring:
     password: postgres
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     open-in-view: false
 
     show-sql: true
@@ -18,7 +18,10 @@ spring:
 # JWT Configuration
 jwt:
   secret: your_jwt_secret_key_please_change_in_production_environment
-  expiration: 86400000  # 24 часа в миллисекундах
+  access:
+    expiration: 3600000  # 1 час в миллисекундах
+  refresh:
+    expiration: 2592000000  # 30 дней в миллисекундах
 
 # Swagger Configuration
 springdoc:

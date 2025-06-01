@@ -25,27 +25,27 @@ public class BotService {
 
 		// Ищем пользователя в базе
 		User user = userRepository.findByUsername(username)
-				.orElseThrow(()->new ResourceNotFoundException("Пользователь не найден"));
+							.orElseThrow(()->new ResourceNotFoundException("Пользователь не найден"));
 
 		// Обновляем токен бота
 		user.setTelegramBotToken(request.getBotToken());
 		userRepository.save(user);
 
 		return MessageResponse.builder()
-				.message("Бот успешно зарегистрирован")
-				.build();
+					   .message("Бот успешно зарегистрирован")
+					   .build();
 	}
 
 	public MessageResponse startBot(BotRegistrationRequest request){
 		// Проверяем, что бот с таким токеном существует
 		User user = userRepository.findByTelegramBotToken(request.getBotToken())
-				.orElseThrow(()->new ResourceNotFoundException("Бот с таким токеном не найден"));
+							.orElseThrow(()->new ResourceNotFoundException("Бот с таким токеном не найден"));
 		//TODO: Start botServise
 		// Здесь будет логика запуска бота
 		// В реальном приложении здесь может быть вызов другого сервиса или отправка события в Kafka
 
 		return MessageResponse.builder()
-				.message("Бот запущен")
-				.build();
+					   .message("Бот запущен")
+					   .build();
 	}
 }
