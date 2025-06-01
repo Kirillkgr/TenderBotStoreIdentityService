@@ -154,4 +154,18 @@ public class JwtUtils {
 			return roles != null ? (List<String>) roles : Collections.emptyList();
 		});
 	}
+
+	/**
+	 * Проверяет только валидность подписи и срока действия токена, без проверки пользователя
+	 * @param token JWT токен для проверки
+	 * @return true если токен имеет валидную подпись и не истек, иначе false
+	 */
+	public boolean validateTokenSignature(String token) {
+		try {
+			Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
+			return !isTokenExpired(token);
+		} catch (Exception e) {
+			return false;
+		}
+	}
 }
