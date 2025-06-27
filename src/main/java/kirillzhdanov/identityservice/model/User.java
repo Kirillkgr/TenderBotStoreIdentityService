@@ -36,8 +36,6 @@ public class User {
 
 	private String password;
 
-	private String telegramBotToken;
-
 	@ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
 	@JoinTable(
 			name = "user_roles",

@@ -41,32 +41,29 @@ public class SwaggerConfig {
 	}
 
 	@Bean
-	public GroupedOpenApi authApi(){
-
+	public GroupedOpenApi authApi() {
 		return GroupedOpenApi.builder()
-					   .group("auth-api")
-					   .pathsToMatch("/auth")
-					   .displayName("Аутентификация")
-					   .build();
+				       .group("auth")
+				       .pathsToMatch("/auth/**") // <-- исправлено!
+				       .displayName("Аутентификация")
+				       .build();
 	}
-
 	@Bean
 	public GroupedOpenApi botApi(){
 
 		return GroupedOpenApi.builder()
-					   .group("bot-api")
+					   .group("bot")
 					   .pathsToMatch("/bot")
 					   .displayName("Telegram-боты")
 					   .build();
 	}
 
 	@Bean
-	public GroupedOpenApi allApi(){
-
+	public GroupedOpenApi allApi() {
 		return GroupedOpenApi.builder()
-					   .group("all-api")
-					   .pathsToMatch("/")
-					   .displayName("Все API")
-					   .build();
+				       .group("/")
+				       .pathsToMatch("/") // или убрать фильтр, чтобы видеть все эндпоинты
+				       .displayName("Все API")
+				       .build();
 	}
 }

@@ -24,15 +24,12 @@ public class BrandService {
 
 	public List<BrandDto> getAllBrands(){
 
-		return brandRepository.findAll().stream()
-					   .map(this::convertToDto)
-					   .collect(Collectors.toList());
+		return brandRepository.findAll().stream().map(this::convertToDto).collect(Collectors.toList());
 	}
 
 	public BrandDto getBrandById(Long id){
 
-		Brand brand = brandRepository.findById(id)
-							  .orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + id));
+		Brand brand = brandRepository.findById(id).orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + id));
 		return convertToDto(brand);
 	}
 
@@ -43,9 +40,7 @@ public class BrandService {
 			throw new ResourceAlreadyExistsException("Brand already exists with name: " + brandDto.getName());
 		}
 
-		Brand brand = Brand.builder()
-							  .name(brandDto.getName())
-							  .build();
+		Brand brand = Brand.builder().name(brandDto.getName()).build();
 
 		Brand savedBrand = brandRepository.save(brand);
 		return convertToDto(savedBrand);
@@ -54,8 +49,7 @@ public class BrandService {
 	@Transactional
 	public BrandDto updateBrand(Long id, BrandDto brandDto){
 
-		Brand brand = brandRepository.findById(id)
-							  .orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + id));
+		Brand brand = brandRepository.findById(id).orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + id));
 
 		brand.setName(brandDto.getName());
 		Brand updatedBrand = brandRepository.save(brand);
@@ -74,11 +68,9 @@ public class BrandService {
 	@Transactional
 	public void assignUserToBrand(Long userId, Long brandId){
 
-		User user = userRepository.findById(userId)
-							.orElseThrow(()->new ResourceNotFoundException("User not found with id: " + userId));
+		User user = userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found with id: " + userId));
 
-		Brand brand = brandRepository.findById(brandId)
-							  .orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + brandId));
+		Brand brand = brandRepository.findById(brandId).orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + brandId));
 
 		user.getBrands().add(brand);
 		userRepository.save(user);
@@ -87,11 +79,9 @@ public class BrandService {
 	@Transactional
 	public void removeUserFromBrand(Long userId, Long brandId){
 
-		User user = userRepository.findById(userId)
-							.orElseThrow(()->new ResourceNotFoundException("User not found with id: " + userId));
+		User user = userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found with id: " + userId));
 
-		Brand brand = brandRepository.findById(brandId)
-							  .orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + brandId));
+		Brand brand = brandRepository.findById(brandId).orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + brandId));
 
 		user.getBrands().remove(brand);
 		userRepository.save(user);
@@ -99,9 +89,6 @@ public class BrandService {
 
 	private BrandDto convertToDto(Brand brand){
 
-		return BrandDto.builder()
-					   .id(brand.getId())
-					   .name(brand.getName())
-					   .build();
+		return BrandDto.builder().id(brand.getId()).name(brand.getName()).build();
 	}
 }
