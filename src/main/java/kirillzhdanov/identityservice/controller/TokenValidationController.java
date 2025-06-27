@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Контроллер для валидации JWT токенов.
+ *
+ * <p>Предоставляет эндпоинты для проверки валидности токенов и получения информации о пользователе.</p>
+ */
 @RestController
 @RequestMapping("/api/auth/validate")
 @RequiredArgsConstructor
@@ -23,7 +28,14 @@ public class TokenValidationController {
     private final UserService userService;
 
     /**
-     * Валидирует токен и возвращает пустой ответ с кодом 200, если токен действителен
+     * Валидирует JWT токен.
+     *
+     * <p>Проверяет наличие и корректность заголовка Authorization, подпись токена и отсутствие токена в списке отозванных.</p>
+     *
+     * @param authHeader заголовок Authorization, содержащий Bearer токен
+     * @return {@code ResponseEntity} с HTTP статусом:
+     *         {@code 200 OK} - токен валиден;
+     *         {@code 403 Forbidden} - токен невалиден (некорректный заголовок, неверная подпись, отозванный токен).
      */
     @PostMapping
     public ResponseEntity<Void> validateToken(@RequestHeader("Authorization") String authHeader) {
@@ -53,7 +65,15 @@ public class TokenValidationController {
     }
     
     /**
-     * Валидирует токен и возвращает информацию о пользователе, если токен действителен
+     * Валидирует JWT токен и возвращает информацию о пользователе.
+     *
+     * <p>Проверяет наличие и корректность заголовка Authorization, подпись токена и отсутствие токена в списке отозванных.
+     * При успешной валидации возвращает данные пользователя.</p>
+     *
+     * @param authHeader заголовок Authorization, содержащий Bearer токен
+     * @return {@code ResponseEntity} с HTTP статусом:
+     *         {@code 200 OK} - токен валиден, в теле ответа содержатся данные пользователя;
+     *         {@code 403 Forbidden} - токен невалиден (некорректный заголовок, неверная подпись, отозванный токен) или пользователь не найден.
      */
     @PostMapping("/user-details")
     public ResponseEntity<JwtUserDetailsResponse> validateTokenAndGetUserDetails(@RequestHeader("Authorization") String authHeader) {

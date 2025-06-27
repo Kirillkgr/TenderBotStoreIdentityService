@@ -1,10 +1,5 @@
 package kirillzhdanov.identityservice.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.LoginRequest;
 import kirillzhdanov.identityservice.dto.TokenRefreshRequest;
@@ -33,13 +28,7 @@ public class AuthController {
 
 	private final AuthService authService;
 
-	@Operation(summary = "Регистрация нового пользователя", description = "Создает нового пользователя в системе")
-	@ApiResponses(value = {
-			@ApiResponse(responseCode = "201", description = "Пользователь успешно зарегистрирован",
-					content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserResponse.class))),
-			@ApiResponse(responseCode = "400", description = "Некорректные данные запроса"),
-			@ApiResponse(responseCode = "409", description = "Пользователь с таким именем уже существует")
-	})
+	/* Registration endpoint */
 	@PostMapping("/register")
 	public ResponseEntity<UserResponse> registerUser(@Valid @RequestBody UserRegistrationRequest request){
 
@@ -47,13 +36,7 @@ public class AuthController {
 		return ResponseEntity.status(201).body(response);
 	}
 
-	@Operation(summary = "Вход пользователя", description = "Аутентификация пользователя и получение JWT токенов")
-	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Успешная аутентификация",
-					content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserResponse.class))),
-			@ApiResponse(responseCode = "400", description = "Некорректные данные запроса"),
-			@ApiResponse(responseCode = "401", description = "Неверные учетные данные")
-	})
+	/* Login endpoint */
 	@PostMapping("/login")
 	public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest request){
 
@@ -61,12 +44,7 @@ public class AuthController {
 		return ResponseEntity.ok(response);
 	}
 
-	@Operation(summary = "Обновление токена", description = "Обновление токена доступа с помощью токена обновления")
-	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Токен успешно обновлен",
-					content = @Content(mediaType = "application/json", schema = @Schema(implementation = TokenRefreshResponse.class))),
-			@ApiResponse(responseCode = "403", description = "Токен обновления недействителен или истек")
-	})
+	/* Refresh token endpoint */
 	@PostMapping("/refresh")
 	public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request){
 
@@ -74,11 +52,7 @@ public class AuthController {
 		return ResponseEntity.ok(response);
 	}
 
-	@Operation(summary = "Отзыв токена", description = "Отзыв указанного токена")
-	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Токен успешно отозван"),
-			@ApiResponse(responseCode = "401", description = "Не авторизован")
-	})
+	/* Revoke token endpoint */
 	@PostMapping("/revoke")
 	public ResponseEntity<Void> revokeToken(@RequestParam String token){
 		// Проверка аутентификации пользователя
@@ -92,12 +66,7 @@ public class AuthController {
 		return ResponseEntity.ok().build();
 	}
 
-	@Operation(summary = "Отзыв всех токенов пользователя", description = "Отзыв всех токенов указанного пользователя")
-	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Все токены пользователя успешно отозваны"),
-			@ApiResponse(responseCode = "403", description = "Доступ запрещен"),
-			@ApiResponse(responseCode = "404", description = "Пользователь не найден")
-	})
+	/* Revoke all tokens endpoint */
 	@PostMapping("/revoke-all")
 	public ResponseEntity<Void> revokeAllUserTokens(@RequestParam String username){
 		// Проверка роли ADMIN
