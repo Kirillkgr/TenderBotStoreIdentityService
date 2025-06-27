@@ -18,15 +18,7 @@ spring:
 # JWT Configuration
 jwt:
   secret: your_jwt_secret_key_please_change_in_production_environment
-  expiration: 86400000  # 24 часа в миллисекундах
-
-# Swagger Configuration
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    operationsSorter: method
-    tagsSorter: alpha
-    disable-swagger-default-url: true
-  show-actuator: true
+  access:
+    expiration: 3600000  # 1 час в миллисекундах
+  refresh:
+    expiration: 2592000000  # 30 дней в миллисекундах

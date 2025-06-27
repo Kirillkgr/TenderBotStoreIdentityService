@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,21 +21,20 @@ public class TokenService {
 	private final JwtUtils jwtUtils;
 
 	@Transactional
-	public void saveToken(String tokenString, Token.TokenType tokenType, User user){
+	public void saveToken(String tokenValue, Token.TokenType tokenType, User user){
 		// Проверяем входные параметры
-		if(tokenString == null || tokenType == null || user == null) {
+		if(tokenValue == null || tokenType == null || user == null) {
 			throw new IllegalArgumentException("Параметры токена не могут быть null");
 		}
 
 		// Проверяем, существует ли уже такой токен
-		Optional<Token> existingToken = tokenRepository.findByToken(tokenString);
+		Optional<Token> existingToken = tokenRepository.findByToken(tokenValue);
 		if(existingToken.isPresent()) {
 			// Если токен существует, но отозван или истек, обновляем его
 			Token token = existingToken.get();
-			if(token.isRevoked() || token.isExpired()) {
+			if(token.isRevoked() || token.getExpiryDate().isBefore(LocalDateTime.now())) {
 				token.setRevoked(false);
-				token.setExpired(false);
-				token.setExpiresAt(jwtUtils.extractExpirationAsLocalDateTime(tokenString));
+				token.setExpiryDate(jwtUtils.extractExpirationAsLocalDateTime(tokenValue));
 				tokenRepository.save(token);
 				return;
 			}
@@ -44,52 +44,59 @@ public class TokenService {
 
 		// Создаем новый токен
 		Token token = Token.builder()
-				.token(tokenString)
-				.tokenType(tokenType)
-				.revoked(false)
-				.expired(false)
-				.expiresAt(jwtUtils.extractExpirationAsLocalDateTime(tokenString))
-				.user(user)
-				.build();
+							  .token(tokenValue)
+							  .tokenType(tokenType)
+							  .revoked(false)
+							  .expiryDate(jwtUtils.extractExpirationAsLocalDateTime(tokenValue))
+							  .user(user)
+							  .build();
 
+		// Сохраняем токен
 		tokenRepository.save(token);
+	}
+
+	@Transactional(readOnly = true)
+	public Optional<Token> findByToken(String tokenValue){
+
+		return tokenRepository.findByToken(tokenValue);
+	}
+
+	@Transactional
+	public void revokeToken(String tokenValue){
+
+		Optional<Token> tokenOptional = tokenRepository.findByToken(tokenValue);
+		tokenOptional.ifPresent(token->{
+			token.setRevoked(true);
+			tokenRepository.save(token);
+		});
 	}
 
 	@Transactional
 	public void revokeAllUserTokens(User user){
-		// Получаем только валидные токены пользователя
-		List<Token> validTokens = tokenRepository.findAllValidTokensByUser(user.getId());
-		if(validTokens.isEmpty()) {
+
+		List<Token> validUserTokens = tokenRepository.findAllValidTokensByUser(user.getId());
+		if(validUserTokens.isEmpty()) {
 			return;
 		}
 
-		validTokens.forEach(token->{
+		validUserTokens.forEach(token->{
 			token.setRevoked(true);
-		});
-
-		tokenRepository.saveAll(validTokens);
-	}
-
-	@Transactional
-	public Optional<Token> findByToken(String token){
-
-		return tokenRepository.findByToken(token);
-	}
-
-	@Transactional
-	public void revokeToken(String token){
-
-		Optional<Token> tokenOptional = tokenRepository.findByToken(token);
-		tokenOptional.ifPresent(t->{
-			t.setRevoked(true);
-			tokenRepository.save(t);
+			tokenRepository.save(token);
 		});
 	}
 
-	@Transactional
-	public boolean isTokenValid(String token){
+	@Transactional(readOnly = true)
+	public boolean isTokenValid(String tokenValue){
 
-		Optional<Token> tokenOptional = tokenRepository.findByToken(token);
+		Optional<Token> tokenOptional = tokenRepository.findByToken(tokenValue);
 		return tokenOptional.map(Token::isValid).orElse(false);
+	}
+
+	@Transactional
+	public void cleanupExpiredTokens(){
+
+		LocalDateTime now = LocalDateTime.now();
+		List<Token> expiredTokens = tokenRepository.findAllByExpiryDateBefore(now);
+		tokenRepository.deleteAll(expiredTokens);
 	}
 }

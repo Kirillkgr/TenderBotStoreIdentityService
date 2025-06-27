@@ -1,17 +1,17 @@
 package kirillzhdanov.identityservice.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BotRegistrationRequest {
+public class BrandDto {
 
-	@NotBlank(message = "Bot token is required")
-	private String botToken;
+	private Long id;
 
-	private Long brandId;
+	private String name;
 }

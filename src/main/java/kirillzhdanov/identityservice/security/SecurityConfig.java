@@ -17,41 +17,41 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter){
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter){
 
-		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-	}
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
 
-		http
-				.csrf(AbstractHttpConfigurer::disable)
-				.authorizeHttpRequests(auth->auth
-						.requestMatchers("/auth/**").permitAll()
-						.requestMatchers("/swagger-ui/**").permitAll()
-						.requestMatchers("/v3/api-docs/**").permitAll()
-						.requestMatchers("/api-docs/**").permitAll()
-						.requestMatchers("/swagger-ui.html").permitAll()
-						.anyRequest().authenticated()
-				)
-				.sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth->auth
+                        .requestMatchers("/auth/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/api-docs/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-		return http.build();
-	}
+        return http.build();
+    }
 
-	@Bean
-	public PasswordEncoder passwordEncoder(){
+    @Bean
+    public PasswordEncoder passwordEncoder(){
 
-		return new BCryptPasswordEncoder();
-	}
+        return new BCryptPasswordEncoder();
+    }
 
-	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception{
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception{
 
-		return authenticationConfiguration.getAuthenticationManager();
-	}
+        return authenticationConfiguration.getAuthenticationManager();
+    }
 }

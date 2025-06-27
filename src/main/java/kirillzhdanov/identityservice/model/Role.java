@@ -7,49 +7,42 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
-@Table(name = "tokens")
+@Table(name = "roles")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Token {
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+public class Role {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@EqualsAndHashCode.Include
 	private Long id;
 
-	@Column(unique = true)
-	private String token;
-
 	@Enumerated(EnumType.STRING)
-	private TokenType tokenType;
+	@Column(unique = true)
+	@EqualsAndHashCode.Include
+	private RoleName name;
 
-	private boolean revoked;
+	@ManyToMany(mappedBy = "roles")
+	private Set<User> users = new HashSet<>();
 
-	private LocalDateTime expiryDate;
-
-	@ManyToOne
-	@JoinColumn(name = "user_id")
-	private User user;
-
-	public boolean isValid(){
-
-		return !revoked && expiryDate.isAfter(LocalDateTime.now());
-	}
-
-	public enum TokenType {
-		ACCESS,
-		REFRESH
+	public enum RoleName {
+		OWNER,
+		ADMIN,
+		USER
 	}
 }

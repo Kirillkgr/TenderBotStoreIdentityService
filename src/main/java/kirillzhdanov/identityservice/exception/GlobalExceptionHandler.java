@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(BadCredentialsException.class)
-	public ResponseEntity<Map<String, String>> handleBadCredentialsException(BadCredentialsException ex){
+	public ResponseEntity<Map<String, String>> handleBadCredentialsException(){
 
 		Map<String, String> error = new HashMap<>();
 		error.put("message", "Неверное имя пользователя или пароль");
@@ -42,12 +42,28 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
 	}
 
+	@ExceptionHandler(ResourceAlreadyExistsException.class)
+	public ResponseEntity<Map<String, String>> handleResourceAlreadyExistsException(ResourceAlreadyExistsException ex){
+
+		Map<String, String> error = new HashMap<>();
+		error.put("message", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+	}
+
 	@ExceptionHandler(BadRequestException.class)
 	public ResponseEntity<Map<String, String>> handleBadRequestException(BadRequestException ex){
 
 		Map<String, String> error = new HashMap<>();
 		error.put("message", ex.getMessage());
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+	}
+
+	@ExceptionHandler(TokenRefreshException.class)
+	public ResponseEntity<Map<String, String>> handleTokenRefreshException(TokenRefreshException ex){
+
+		Map<String, String> error = new HashMap<>();
+		error.put("message", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
 	}
 
 	@ExceptionHandler(RuntimeException.class)
