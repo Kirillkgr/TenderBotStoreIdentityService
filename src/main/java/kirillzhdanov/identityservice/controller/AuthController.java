@@ -57,8 +57,7 @@ public class AuthController {
 	public ResponseEntity<Void> revokeToken(@RequestParam String token){
 		// Проверка аутентификации пользователя
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if(authentication == null || !authentication.isAuthenticated() ||
-				   authentication instanceof AnonymousAuthenticationToken) {
+		if(authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 		}
 
@@ -71,9 +70,7 @@ public class AuthController {
 	public ResponseEntity<Void> revokeAllUserTokens(@RequestParam String username){
 		// Проверка роли ADMIN
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		boolean isAdmin = authentication != null &&
-								  authentication.getAuthorities().stream()
-										  .anyMatch(a->a.getAuthority().equals("ROLE_ADMIN"));
+		boolean isAdmin = authentication != null && authentication.getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_ADMIN"));
 
 		if(!isAdmin) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();

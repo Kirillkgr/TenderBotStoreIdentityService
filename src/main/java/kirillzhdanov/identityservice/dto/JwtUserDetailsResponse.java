@@ -12,8 +12,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JwtUserDetailsResponse {
-    private Long userId;
-    private String username;
-    private List<Long> brandIds;
-    private List<String> roles;
+
+	private Long userId;
+
+	private String username;
+
+	private List<Long> brandIds;
+
+	private List<String> roles;
 }

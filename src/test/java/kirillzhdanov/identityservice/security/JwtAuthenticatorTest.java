@@ -68,13 +68,7 @@ public class JwtAuthenticatorTest {
 		userRole.setId(1L);
 		userRole.setName(Role.RoleName.USER);
 
-		User testUser = User.builder()
-								.id(1L)
-								.username("testuser")
-								.password("encodedPassword")
-								.roles(new HashSet<>(Collections.singletonList(userRole)))
-								.brands(new HashSet<>())
-								.build();
+		User testUser = User.builder().id(1L).username("testuser").password("encodedPassword").roles(new HashSet<>(Collections.singletonList(userRole))).brands(new HashSet<>()).build();
 
 		userDetails = new CustomUserDetails(testUser);
 		validAccessToken = "valid-access-token";
@@ -279,9 +273,7 @@ public class JwtAuthenticatorTest {
 	@DisplayName("Очистка контекста безопасности")
 	void clearSecurityContext(){
 		// Подготовка
-		SecurityContextHolder.getContext().setAuthentication(
-				new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities())
-		);
+		SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
 
 		// Проверяем, что аутентификация установлена
 		assertNotNull(SecurityContextHolder.getContext().getAuthentication());

@@ -49,7 +49,6 @@ public class Token {
 	}
 
 	public enum TokenType {
-		ACCESS,
-		REFRESH
+		ACCESS, REFRESH
 	}
 }

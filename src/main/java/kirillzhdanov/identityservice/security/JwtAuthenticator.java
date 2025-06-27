@@ -128,11 +128,7 @@ public class JwtAuthenticator {
 	 */
 	private UsernamePasswordAuthenticationToken createAuthenticationToken(@NonNull UserDetails userDetails){
 
-		return new UsernamePasswordAuthenticationToken(
-				userDetails,
-				null,
-				userDetails.getAuthorities() != null ? userDetails.getAuthorities() : Collections.emptyList()
-		);
+		return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities() != null ? userDetails.getAuthorities() : Collections.emptyList());
 	}
 
 	/**

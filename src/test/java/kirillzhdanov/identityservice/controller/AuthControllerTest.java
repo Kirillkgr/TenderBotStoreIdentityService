@@ -82,19 +82,9 @@ public class AuthControllerTest {
 		roleStrings.add("USER");
 		Set<BrandDto> brands = new HashSet<>();
 
-		userResponse = UserResponse.builder()
-							   .id(1L)
-							   .username("testuser")
-							   .roles(roleStrings)
-							   .brands(brands)
-							   .accessToken("access-token-123")
-							   .refreshToken("refresh-token-123")
-							   .build();
+		userResponse = UserResponse.builder().id(1L).username("testuser").roles(roleStrings).brands(brands).accessToken("access-token-123").refreshToken("refresh-token-123").build();
 
-		refreshResponse = TokenRefreshResponse.builder()
-								  .accessToken("new-access-token-123")
-								  .refreshToken("refresh-token-123")
-								  .build();
+		refreshResponse = TokenRefreshResponse.builder().accessToken("new-access-token-123").refreshToken("refresh-token-123").build();
 	}
 
 	@Test
@@ -103,13 +93,7 @@ public class AuthControllerTest {
 
 		when(authService.registerUser(any(UserRegistrationRequest.class))).thenReturn(userResponse);
 
-		mockMvc.perform(post("/auth/register")
-								.contentType(MediaType.APPLICATION_JSON)
-								.content(objectMapper.writeValueAsString(registrationRequest)))
-				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.username", is("testuser")))
-				.andExpect(jsonPath("$.accessToken", is("access-token-123")))
-				.andExpect(jsonPath("$.refreshToken", is("refresh-token-123")));
+		mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(registrationRequest))).andExpect(status().isCreated()).andExpect(jsonPath("$.username", is("testuser"))).andExpect(jsonPath("$.accessToken", is("access-token-123"))).andExpect(jsonPath("$.refreshToken", is("refresh-token-123")));
 
 		verify(authService, times(1)).registerUser(any(UserRegistrationRequest.class));
 	}
@@ -118,14 +102,9 @@ public class AuthControllerTest {
 	@DisplayName("Регистрация пользователя - имя пользователя уже существует")
 	void registerUser_UsernameAlreadyExists() throws Exception{
 
-		when(authService.registerUser(any(UserRegistrationRequest.class)))
-				.thenThrow(new BadRequestException("Пользователь с таким именем уже существует"));
+		when(authService.registerUser(any(UserRegistrationRequest.class))).thenThrow(new BadRequestException("Пользователь с таким именем уже существует"));
 
-		mockMvc.perform(post("/auth/register")
-								.contentType(MediaType.APPLICATION_JSON)
-								.content(objectMapper.writeValueAsString(registrationRequest)))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.message", is("Пользователь с таким именем уже существует")));
+		mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(registrationRequest))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message", is("Пользователь с таким именем уже существует")));
 
 		verify(authService, times(1)).registerUser(any(UserRegistrationRequest.class));
 	}
@@ -138,10 +117,7 @@ public class AuthControllerTest {
 		invalidRequest.setUsername(""); // Пустое имя пользователя
 		invalidRequest.setPassword("123"); // Слишком короткий пароль
 
-		mockMvc.perform(post("/auth/register")
-								.contentType(MediaType.APPLICATION_JSON)
-								.content(objectMapper.writeValueAsString(invalidRequest)))
-				.andExpect(status().isBadRequest());
+		mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(invalidRequest))).andExpect(status().isBadRequest());
 
 		verify(authService, never()).registerUser(any(UserRegistrationRequest.class));
 	}
@@ -152,13 +128,7 @@ public class AuthControllerTest {
 
 		when(authService.login(any(LoginRequest.class))).thenReturn(userResponse);
 
-		mockMvc.perform(post("/auth/login")
-								.contentType(MediaType.APPLICATION_JSON)
-								.content(objectMapper.writeValueAsString(loginRequest)))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.username", is("testuser")))
-				.andExpect(jsonPath("$.accessToken", is("access-token-123")))
-				.andExpect(jsonPath("$.refreshToken", is("refresh-token-123")));
+		mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(loginRequest))).andExpect(status().isOk()).andExpect(jsonPath("$.username", is("testuser"))).andExpect(jsonPath("$.accessToken", is("access-token-123"))).andExpect(jsonPath("$.refreshToken", is("refresh-token-123")));
 
 		verify(authService, times(1)).login(any(LoginRequest.class));
 	}
@@ -167,14 +137,9 @@ public class AuthControllerTest {
 	@DisplayName("Вход пользователя - неверные учетные данные")
 	void login_InvalidCredentials() throws Exception{
 
-		when(authService.login(any(LoginRequest.class)))
-				.thenThrow(new BadRequestException("Неверные учетные данные"));
+		when(authService.login(any(LoginRequest.class))).thenThrow(new BadRequestException("Неверные учетные данные"));
 
-		mockMvc.perform(post("/auth/login")
-								.contentType(MediaType.APPLICATION_JSON)
-								.content(objectMapper.writeValueAsString(loginRequest)))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.message", is("Неверные учетные данные")));
+		mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(loginRequest))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message", is("Неверные учетные данные")));
 
 		verify(authService, times(1)).login(any(LoginRequest.class));
 	}
@@ -185,12 +150,7 @@ public class AuthControllerTest {
 
 		when(authService.refreshToken(any(TokenRefreshRequest.class))).thenReturn(refreshResponse);
 
-		mockMvc.perform(post("/auth/refresh")
-								.contentType(MediaType.APPLICATION_JSON)
-								.content(objectMapper.writeValueAsString(refreshRequest)))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.accessToken", is("new-access-token-123")))
-				.andExpect(jsonPath("$.refreshToken", is("refresh-token-123")));
+		mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(refreshRequest))).andExpect(status().isOk()).andExpect(jsonPath("$.accessToken", is("new-access-token-123"))).andExpect(jsonPath("$.refreshToken", is("refresh-token-123")));
 
 		verify(authService, times(1)).refreshToken(any(TokenRefreshRequest.class));
 	}
@@ -199,14 +159,9 @@ public class AuthControllerTest {
 	@DisplayName("Обновление токена - недействительный токен")
 	void refreshToken_InvalidToken() throws Exception{
 
-		when(authService.refreshToken(any(TokenRefreshRequest.class)))
-				.thenThrow(new TokenRefreshException("Токен обновления недействителен или истек"));
+		when(authService.refreshToken(any(TokenRefreshRequest.class))).thenThrow(new TokenRefreshException("Токен обновления недействителен или истек"));
 
-		mockMvc.perform(post("/auth/refresh")
-								.contentType(MediaType.APPLICATION_JSON)
-								.content(objectMapper.writeValueAsString(refreshRequest)))
-				.andExpect(status().isForbidden())
-				.andExpect(jsonPath("$.message", is("Токен обновления недействителен или истек")));
+		mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(refreshRequest))).andExpect(status().isForbidden()).andExpect(jsonPath("$.message", is("Токен обновления недействителен или истек")));
 
 		verify(authService, times(1)).refreshToken(any(TokenRefreshRequest.class));
 	}
@@ -218,9 +173,7 @@ public class AuthControllerTest {
 
 		doNothing().when(authService).revokeToken(anyString());
 
-		mockMvc.perform(post("/auth/revoke")
-								.param("token", "access-token-123"))
-				.andExpect(status().isOk());
+		mockMvc.perform(post("/auth/revoke").param("token", "access-token-123")).andExpect(status().isOk());
 
 		verify(authService, times(1)).revokeToken("access-token-123");
 	}
@@ -229,9 +182,7 @@ public class AuthControllerTest {
 	@DisplayName("Отзыв токена - без аутентификации")
 	void revokeToken_Unauthorized() throws Exception{
 
-		mockMvc.perform(post("/auth/revoke")
-								.param("token", "access-token-123"))
-				.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/auth/revoke").param("token", "access-token-123")).andExpect(status().isUnauthorized());
 
 		verify(authService, never()).revokeToken(anyString());
 	}
@@ -243,9 +194,7 @@ public class AuthControllerTest {
 
 		doNothing().when(authService).revokeAllUserTokens(anyString());
 
-		mockMvc.perform(post("/auth/revoke-all")
-								.param("username", "testuser"))
-				.andExpect(status().isOk());
+		mockMvc.perform(post("/auth/revoke-all").param("username", "testuser")).andExpect(status().isOk());
 
 		verify(authService, times(1)).revokeAllUserTokens("testuser");
 	}
@@ -255,9 +204,7 @@ public class AuthControllerTest {
 	@WithMockUser(roles = "USER")
 	void revokeAllUserTokens_Forbidden() throws Exception{
 
-		mockMvc.perform(post("/auth/revoke-all")
-								.param("username", "testuser"))
-				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/auth/revoke-all").param("username", "testuser")).andExpect(status().isForbidden());
 
 		verify(authService, never()).revokeAllUserTokens(anyString());
 	}
@@ -268,10 +215,7 @@ public class AuthControllerTest {
 
 		doNothing().when(authService).revokeToken(anyString());
 
-		mockMvc.perform(delete("/auth/logout")
-								.contentType(MediaType.TEXT_PLAIN)
-								.content("access-token-123"))
-				.andExpect(status().isOk());
+		mockMvc.perform(delete("/auth/logout").contentType(MediaType.TEXT_PLAIN).content("access-token-123")).andExpect(status().isOk());
 
 		verify(authService, times(1)).revokeToken("access-token-123");
 	}
@@ -282,8 +226,7 @@ public class AuthControllerTest {
 
 		doNothing().when(authService).revokeAllUserTokens(anyString());
 
-		mockMvc.perform(delete("/auth/logout/all/{username}", "testuser"))
-				.andExpect(status().isOk());
+		mockMvc.perform(delete("/auth/logout/all/{username}", "testuser")).andExpect(status().isOk());
 
 		verify(authService, times(1)).revokeAllUserTokens("testuser");
 	}

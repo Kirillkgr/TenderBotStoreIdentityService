@@ -100,13 +100,7 @@ public class AuthServiceTest {
 		adminRole.setId(2L);
 		adminRole.setName(Role.RoleName.ADMIN);
 
-		testUser = User.builder()
-						   .id(1L)
-						   .username("testuser")
-						   .password("encodedPassword")
-						   .roles(new HashSet<>(Collections.singletonList(userRole)))
-						   .brands(new HashSet<>())
-						   .build();
+		testUser = User.builder().id(1L).username("testuser").password("encodedPassword").roles(new HashSet<>(Collections.singletonList(userRole))).brands(new HashSet<>()).build();
 
 		registrationRequest = new UserRegistrationRequest();
 		registrationRequest.setUsername("newuser");
@@ -122,14 +116,7 @@ public class AuthServiceTest {
 		refreshRequest = new TokenRefreshRequest();
 		refreshRequest.setRefreshToken("refresh-token-123");
 
-		refreshToken = Token.builder()
-							   .id(1L)
-							   .token("refresh-token-123")
-							   .tokenType(Token.TokenType.REFRESH)
-							   .revoked(false)
-							   .expiryDate(LocalDateTime.now().plusDays(7))
-							   .user(testUser)
-							   .build();
+		refreshToken = Token.builder().id(1L).token("refresh-token-123").tokenType(Token.TokenType.REFRESH).revoked(false).expiryDate(LocalDateTime.now().plusDays(7)).user(testUser).build();
 	}
 
 	@Test
@@ -191,13 +178,7 @@ public class AuthServiceTest {
 		when(roleService.findByName(Role.RoleName.USER)).thenReturn(Optional.of(userRole));
 		when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
 
-		User userWithAdminRole = User.builder()
-										 .id(1L)
-										 .username("newuser")
-										 .password("encodedPassword")
-										 .roles(new HashSet<>(Arrays.asList(userRole, adminRole)))
-										 .brands(new HashSet<>())
-										 .build();
+		User userWithAdminRole = User.builder().id(1L).username("newuser").password("encodedPassword").roles(new HashSet<>(Arrays.asList(userRole, adminRole))).brands(new HashSet<>()).build();
 
 		when(userRepository.save(any(User.class))).thenReturn(userWithAdminRole);
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("access-token-123");
@@ -228,13 +209,7 @@ public class AuthServiceTest {
 		when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
 		when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
 
-		User userWithBrand = User.builder()
-									 .id(1L)
-									 .username("newuser")
-									 .password("encodedPassword")
-									 .roles(new HashSet<>(Collections.singletonList(userRole)))
-									 .brands(new HashSet<>(Collections.singletonList(brand)))
-									 .build();
+		User userWithBrand = User.builder().id(1L).username("newuser").password("encodedPassword").roles(new HashSet<>(Collections.singletonList(userRole))).brands(new HashSet<>(Collections.singletonList(brand))).build();
 
 		when(userRepository.save(any(User.class))).thenReturn(userWithBrand);
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("access-token-123");
@@ -360,14 +335,8 @@ public class AuthServiceTest {
 	@DisplayName("Обновление токена - недействительный токен")
 	void refreshToken_InvalidToken(){
 		// Подготовка
-		Token invalidToken = Token.builder()
-									 .id(1L)
-									 .token("refresh-token-123")
-									 .tokenType(Token.TokenType.REFRESH)
-									 .revoked(true) // Отозванный токен
-									 .expiryDate(LocalDateTime.now().plusDays(7))
-									 .user(testUser)
-									 .build();
+		Token invalidToken = Token.builder().id(1L).token("refresh-token-123").tokenType(Token.TokenType.REFRESH).revoked(true) // Отозванный токен
+				                     .expiryDate(LocalDateTime.now().plusDays(7)).user(testUser).build();
 
 		when(tokenService.findByToken("refresh-token-123")).thenReturn(Optional.of(invalidToken));
 
@@ -382,14 +351,8 @@ public class AuthServiceTest {
 	@DisplayName("Обновление токена - неверный тип токена")
 	void refreshToken_WrongTokenType(){
 		// Подготовка
-		Token accessToken = Token.builder()
-									.id(1L)
-									.token("refresh-token-123")
-									.tokenType(Token.TokenType.ACCESS) // Неверный тип токена
-									.revoked(false)
-									.expiryDate(LocalDateTime.now().plusDays(7))
-									.user(testUser)
-									.build();
+		Token accessToken = Token.builder().id(1L).token("refresh-token-123").tokenType(Token.TokenType.ACCESS) // Неверный тип токена
+				                    .revoked(false).expiryDate(LocalDateTime.now().plusDays(7)).user(testUser).build();
 
 		when(tokenService.findByToken("refresh-token-123")).thenReturn(Optional.of(accessToken));
 

@@ -78,14 +78,10 @@ public class JwtUtils {
 			claims.put("userId", user.getId());
 			claims.put("username", user.getUsername());
 
-			List<Long> brandIds = user.getBrands().stream()
-										  .map(Brand::getId)
-										  .collect(Collectors.toList());
+			List<Long> brandIds = user.getBrands().stream().map(Brand::getId).collect(Collectors.toList());
 			claims.put("brandIds", brandIds);
 
-			List<String> roles = user.getRoles().stream()
-										 .map(role->role.getName().name())
-										 .collect(Collectors.toList());
+			List<String> roles = user.getRoles().stream().map(role->role.getName().name()).collect(Collectors.toList());
 			claims.put("roles", roles);
 		}
 
@@ -101,13 +97,7 @@ public class JwtUtils {
 
 	private String createToken(Map<String, Object> claims, String subject, Long expiration){
 
-		return Jwts.builder()
-					   .setClaims(claims)
-					   .setSubject(subject)
-					   .setIssuedAt(new Date(System.currentTimeMillis()))
-					   .setExpiration(new Date(System.currentTimeMillis() + expiration))
-					   .signWith(SignatureAlgorithm.HS256, secret)
-					   .compact();
+		return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis())).setExpiration(new Date(System.currentTimeMillis() + expiration)).signWith(SignatureAlgorithm.HS256, secret).compact();
 	}
 
 	public Boolean validateToken(String token, UserDetails userDetails){
@@ -124,9 +114,7 @@ public class JwtUtils {
 	public LocalDateTime extractExpirationAsLocalDateTime(String token){
 
 		Date expirationDate = extractExpiration(token);
-		return expirationDate.toInstant()
-					   .atZone(ZoneId.systemDefault())
-					   .toLocalDateTime();
+		return expirationDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
 	}
 
 	public Long extractUserId(String token){
@@ -157,14 +145,17 @@ public class JwtUtils {
 
 	/**
 	 * Проверяет только валидность подписи и срока действия токена, без проверки пользователя
+	 *
 	 * @param token JWT токен для проверки
+	 *
 	 * @return true если токен имеет валидную подпись и не истек, иначе false
 	 */
-	public boolean validateTokenSignature(String token) {
+	public boolean validateTokenSignature(String token){
+
 		try {
 			Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
 			return !isTokenExpired(token);
-		} catch (Exception e) {
+		} catch(Exception e) {
 			return false;
 		}
 	}

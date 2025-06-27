@@ -63,52 +63,18 @@ public class TokenServiceTest {
 		userRole.setId(1L);
 		userRole.setName(Role.RoleName.USER);
 
-		testUser = User.builder()
-						   .id(1L)
-						   .username("testuser")
-						   .password("encodedPassword")
-						   .roles(new HashSet<>(Collections.singletonList(userRole)))
-						   .brands(new HashSet<>())
-						   .build();
+		testUser = User.builder().id(1L).username("testuser").password("encodedPassword").roles(new HashSet<>(Collections.singletonList(userRole))).brands(new HashSet<>()).build();
 
 		// Создаем тестовые токены
 		LocalDateTime now = LocalDateTime.now();
 
-		accessToken = Token.builder()
-							  .id(1L)
-							  .token("access-token-123")
-							  .tokenType(Token.TokenType.ACCESS)
-							  .revoked(false)
-							  .expiryDate(now.plusHours(1))
-							  .user(testUser)
-							  .build();
+		accessToken = Token.builder().id(1L).token("access-token-123").tokenType(Token.TokenType.ACCESS).revoked(false).expiryDate(now.plusHours(1)).user(testUser).build();
 
-		refreshToken = Token.builder()
-							   .id(2L)
-							   .token("refresh-token-123")
-							   .tokenType(Token.TokenType.REFRESH)
-							   .revoked(false)
-							   .expiryDate(now.plusDays(7))
-							   .user(testUser)
-							   .build();
+		refreshToken = Token.builder().id(2L).token("refresh-token-123").tokenType(Token.TokenType.REFRESH).revoked(false).expiryDate(now.plusDays(7)).user(testUser).build();
 
-		expiredToken = Token.builder()
-							   .id(3L)
-							   .token("expired-token-123")
-							   .tokenType(Token.TokenType.ACCESS)
-							   .revoked(false)
-							   .expiryDate(now.minusHours(1))
-							   .user(testUser)
-							   .build();
+		expiredToken = Token.builder().id(3L).token("expired-token-123").tokenType(Token.TokenType.ACCESS).revoked(false).expiryDate(now.minusHours(1)).user(testUser).build();
 
-		revokedToken = Token.builder()
-							   .id(4L)
-							   .token("revoked-token-123")
-							   .tokenType(Token.TokenType.ACCESS)
-							   .revoked(true)
-							   .expiryDate(now.plusHours(1))
-							   .user(testUser)
-							   .build();
+		revokedToken = Token.builder().id(4L).token("revoked-token-123").tokenType(Token.TokenType.ACCESS).revoked(true).expiryDate(now.plusHours(1)).user(testUser).build();
 	}
 
 	@Test
@@ -126,11 +92,7 @@ public class TokenServiceTest {
 		// Проверка
 		verify(tokenRepository).findByToken(tokenValue);
 		verify(jwtUtils).extractExpirationAsLocalDateTime(tokenValue);
-		verify(tokenRepository).save(argThat(token->
-													 token.getToken().equals(tokenValue) &&
-															 token.getTokenType() == Token.TokenType.ACCESS &&
-															 token.getUser() == testUser &&
-															 !token.isRevoked()));
+		verify(tokenRepository).save(argThat(token->token.getToken().equals(tokenValue) && token.getTokenType() == Token.TokenType.ACCESS && token.getUser() == testUser && !token.isRevoked()));
 	}
 
 	@Test
@@ -150,10 +112,7 @@ public class TokenServiceTest {
 		// Проверка
 		verify(tokenRepository).findByToken(tokenValue);
 		verify(jwtUtils).extractExpirationAsLocalDateTime(tokenValue);
-		verify(tokenRepository).save(argThat(token->
-													 token.getToken().equals(tokenValue) &&
-															 !token.isRevoked() &&
-															 token.getExpiryDate().equals(newExpiry)));
+		verify(tokenRepository).save(argThat(token->token.getToken().equals(tokenValue) && !token.isRevoked() && token.getExpiryDate().equals(newExpiry)));
 	}
 
 	@Test

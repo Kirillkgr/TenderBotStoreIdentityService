@@ -41,8 +41,6 @@ public class Role {
 	private Set<User> users = new HashSet<>();
 
 	public enum RoleName {
-		OWNER,
-		ADMIN,
-		USER
+		OWNER, ADMIN, USER
 	}
 }

@@ -43,13 +43,7 @@ public class TokenService {
 		}
 
 		// Создаем новый токен
-		Token token = Token.builder()
-							  .token(tokenValue)
-							  .tokenType(tokenType)
-							  .revoked(false)
-							  .expiryDate(jwtUtils.extractExpirationAsLocalDateTime(tokenValue))
-							  .user(user)
-							  .build();
+		Token token = Token.builder().token(tokenValue).tokenType(tokenType).revoked(false).expiryDate(jwtUtils.extractExpirationAsLocalDateTime(tokenValue)).user(user).build();
 
 		// Сохраняем токен
 		tokenRepository.save(token);

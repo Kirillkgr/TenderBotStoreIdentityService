@@ -79,13 +79,7 @@ public class JwtUtilsTest {
 		brand2.setId(2L);
 		brand2.setName("TestBrand2");
 
-		testUser = User.builder()
-						   .id(1L)
-						   .username("testuser")
-						   .password("encodedPassword")
-						   .roles(new HashSet<>(Arrays.asList(userRole, adminRole)))
-						   .brands(new HashSet<>(Arrays.asList(brand1, brand2)))
-						   .build();
+		testUser = User.builder().id(1L).username("testuser").password("encodedPassword").roles(new HashSet<>(Arrays.asList(userRole, adminRole))).brands(new HashSet<>(Arrays.asList(brand1, brand2))).build();
 
 		customUserDetails = new CustomUserDetails(testUser);
 
@@ -101,13 +95,8 @@ public class JwtUtilsTest {
 		claims.put("brandIds", testUser.getBrands().stream().map(Brand::getId).collect(Collectors.toList()));
 		claims.put("roles", testUser.getRoles().stream().map(role->role.getName().name()).collect(Collectors.toList()));
 
-		expiredToken = Jwts.builder()
-							   .setClaims(claims)
-							   .setSubject(customUserDetails.getUsername())
-							   .setIssuedAt(pastDate)
-							   .setExpiration(pastDate) // Устанавливаем дату истечения в прошлом
-							   .signWith(SignatureAlgorithm.HS256, "test_secret_key_for_jwt_token_that_is_long_enough")
-							   .compact();
+		expiredToken = Jwts.builder().setClaims(claims).setSubject(customUserDetails.getUsername()).setIssuedAt(pastDate).setExpiration(pastDate) // Устанавливаем дату истечения в прошлом
+				               .signWith(SignatureAlgorithm.HS256, "test_secret_key_for_jwt_token_that_is_long_enough").compact();
 
 		// Создаем токен с неверной подписью
 		invalidSignatureToken = accessToken.substring(0, accessToken.lastIndexOf('.') + 1) + "invalid_signature";
@@ -270,15 +259,7 @@ public class JwtUtilsTest {
 	@DisplayName("Валидация токена - неверное имя пользователя")
 	void validateToken_WrongUsername(){
 		// Подготовка
-		UserDetails wrongUser = new CustomUserDetails(
-				User.builder()
-						.id(2L)
-						.username("wronguser")
-						.password("encodedPassword")
-						.roles(new HashSet<>())
-						.brands(new HashSet<>())
-						.build()
-		);
+		UserDetails wrongUser = new CustomUserDetails(User.builder().id(2L).username("wronguser").password("encodedPassword").roles(new HashSet<>()).brands(new HashSet<>()).build());
 
 		// Выполнение
 		boolean isValid = jwtUtils.validateToken(accessToken, wrongUser);

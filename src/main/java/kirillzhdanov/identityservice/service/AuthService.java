@@ -57,12 +57,7 @@ public class AuthService {
 		}
 
 		// Создаем нового пользователя
-		User user = User.builder()
-							.username(request.getUsername())
-							.password(passwordEncoder.encode(request.getPassword()))
-							.brands(new HashSet<>())
-							.roles(new HashSet<>())
-							.build();
+		User user = User.builder().username(request.getUsername()).password(passwordEncoder.encode(request.getPassword())).brands(new HashSet<>()).roles(new HashSet<>()).build();
 
 		// Добавляем роль USER по умолчанию
 		Role userRole = roleService.getUserRole();
@@ -83,8 +78,7 @@ public class AuthService {
 		if(request.getBrandIds() != null && !request.getBrandIds().isEmpty()) {
 			Set<Brand> brands = new HashSet<>();
 			for(Long brandId : request.getBrandIds()) {
-				Brand brand = brandRepository.findById(brandId)
-									  .orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + brandId));
+				Brand brand = brandRepository.findById(brandId).orElseThrow(()->new ResourceNotFoundException("Brand not found with id: " + brandId));
 				brands.add(brand);
 			}
 			user.setBrands(brands);
@@ -105,34 +99,17 @@ public class AuthService {
 		tokenService.saveToken(refreshToken, Token.TokenType.REFRESH, savedUser);
 
 		// Возвращаем ответ
-		return UserResponse.builder()
-					   .id(savedUser.getId())
-					   .username(savedUser.getUsername())
-					   .roles(savedUser.getRoles().stream()
-									  .map(role->role.getName().name())
-									  .collect(Collectors.toSet()))
-					   .brands(savedUser.getBrands().stream()
-									   .map(brand->BrandDto.builder()
-														   .id(brand.getId())
-														   .name(brand.getName())
-														   .build())
-									   .collect(Collectors.toSet()))
-					   .accessToken(accessToken)
-					   .refreshToken(refreshToken)
-					   .build();
+		return UserResponse.builder().id(savedUser.getId()).username(savedUser.getUsername()).roles(savedUser.getRoles().stream().map(role->role.getName().name()).collect(Collectors.toSet())).brands(savedUser.getBrands().stream().map(brand->BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet())).accessToken(accessToken).refreshToken(refreshToken).build();
 	}
 
 	@Transactional
 	public UserResponse login(LoginRequest request){
 		// Аутентифицируем пользователя
-		Authentication authentication = authenticationManager.authenticate(
-				new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-		);
+		Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
 		// Получаем данные пользователя
 		UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-		User user = userRepository.findByUsername(userDetails.getUsername())
-							.orElseThrow(()->new BadRequestException("Пользователь не найден"));
+		User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow(()->new BadRequestException("Пользователь не найден"));
 
 		// Отзываем все существующие токены пользователя (опционально)
 		tokenService.revokeAllUserTokens(user);
@@ -149,21 +126,7 @@ public class AuthService {
 		tokenService.saveToken(refreshToken, Token.TokenType.REFRESH, user);
 
 		// Возвращаем UserResponse с данными пользователя и токенами
-		return UserResponse.builder()
-					   .id(user.getId())
-					   .username(user.getUsername())
-					   .roles(user.getRoles().stream()
-									  .map(role->role.getName().name())
-									  .collect(Collectors.toSet()))
-					   .brands(user.getBrands().stream()
-									   .map(brand->BrandDto.builder()
-														   .id(brand.getId())
-														   .name(brand.getName())
-														   .build())
-									   .collect(Collectors.toSet()))
-					   .accessToken(accessToken)
-					   .refreshToken(refreshToken)
-					   .build();
+		return UserResponse.builder().id(user.getId()).username(user.getUsername()).roles(user.getRoles().stream().map(role->role.getName().name()).collect(Collectors.toSet())).brands(user.getBrands().stream().map(brand->BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet())).accessToken(accessToken).refreshToken(refreshToken).build();
 	}
 
 	@Transactional
@@ -198,10 +161,7 @@ public class AuthService {
 		tokenService.saveToken(newAccessToken, Token.TokenType.ACCESS, user);
 
 		// Возвращаем новый токен доступа и тот же токен обновления
-		return TokenRefreshResponse.builder()
-					   .accessToken(newAccessToken)
-					   .refreshToken(requestRefreshToken)
-					   .build();
+		return TokenRefreshResponse.builder().accessToken(newAccessToken).refreshToken(requestRefreshToken).build();
 	}
 
 	@Transactional
@@ -213,8 +173,7 @@ public class AuthService {
 	@Transactional
 	public void revokeAllUserTokens(String username){
 
-		User user = userRepository.findByUsername(username)
-							.orElseThrow(()->new BadRequestException("Пользователь не найден"));
+		User user = userRepository.findByUsername(username).orElseThrow(()->new BadRequestException("Пользователь не найден"));
 		tokenService.revokeAllUserTokens(user);
 	}
 }
