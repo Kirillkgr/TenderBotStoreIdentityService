@@ -1,52 +1,25 @@
 package kirillzhdanov.identityservice.service;
 
-import kirillzhdanov.identityservice.dto.LoginRequest;
-import kirillzhdanov.identityservice.dto.TokenRefreshRequest;
-import kirillzhdanov.identityservice.dto.TokenRefreshResponse;
-import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
-import kirillzhdanov.identityservice.dto.UserResponse;
-import kirillzhdanov.identityservice.exception.BadRequestException;
-import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
-import kirillzhdanov.identityservice.exception.TokenRefreshException;
-import kirillzhdanov.identityservice.model.Brand;
-import kirillzhdanov.identityservice.model.Role;
-import kirillzhdanov.identityservice.model.Token;
-import kirillzhdanov.identityservice.model.User;
-import kirillzhdanov.identityservice.repository.BrandRepository;
-import kirillzhdanov.identityservice.repository.UserRepository;
-import kirillzhdanov.identityservice.security.CustomUserDetails;
-import kirillzhdanov.identityservice.security.JwtUtils;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import kirillzhdanov.identityservice.dto.*;
+import kirillzhdanov.identityservice.exception.*;
+import kirillzhdanov.identityservice.model.*;
+import kirillzhdanov.identityservice.repository.*;
+import kirillzhdanov.identityservice.security.*;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class AuthServiceTest {
@@ -90,7 +63,7 @@ public class AuthServiceTest {
 	private Token refreshToken;
 
 	@BeforeEach
-	void setUp(){
+	void setUp() {
 		// Подготовка тестовых данных
 		userRole = new Role();
 		userRole.setId(1L);
@@ -100,7 +73,13 @@ public class AuthServiceTest {
 		adminRole.setId(2L);
 		adminRole.setName(Role.RoleName.ADMIN);
 
-		testUser = User.builder().id(1L).username("testuser").password("encodedPassword").roles(new HashSet<>(Collections.singletonList(userRole))).brands(new HashSet<>()).build();
+		testUser = User.builder()
+					   .id(1L)
+					   .username("testuser")
+					   .password("encodedPassword")
+					   .roles(new HashSet<>(Collections.singletonList(userRole)))
+					   .brands(new HashSet<>())
+					   .build();
 
 		registrationRequest = new UserRegistrationRequest();
 		registrationRequest.setUsername("newuser");
@@ -116,12 +95,20 @@ public class AuthServiceTest {
 		refreshRequest = new TokenRefreshRequest();
 		refreshRequest.setRefreshToken("refresh-token-123");
 
-		refreshToken = Token.builder().id(1L).token("refresh-token-123").tokenType(Token.TokenType.REFRESH).revoked(false).expiryDate(LocalDateTime.now().plusDays(7)).user(testUser).build();
+		refreshToken = Token.builder()
+							.id(1L)
+							.token("refresh-token-123")
+							.tokenType(Token.TokenType.REFRESH)
+							.revoked(false)
+							.expiryDate(LocalDateTime.now()
+													 .plusDays(7))
+							.user(testUser)
+							.build();
 	}
 
 	@Test
 	@DisplayName("Регистрация пользователя - успешно")
-	void registerUser_Success(){
+	void registerUser_Success() {
 		// Подготовка
 		when(userRepository.existsByUsername(anyString())).thenReturn(false);
 		when(roleService.getUserRole()).thenReturn(userRole);
@@ -130,7 +117,8 @@ public class AuthServiceTest {
 		when(userRepository.save(any(User.class))).thenReturn(testUser);
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("access-token-123");
 		when(jwtUtils.generateRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh-token-123");
-		doNothing().when(tokenService).saveToken(anyString(), any(Token.TokenType.class), any(User.class));
+		doNothing().when(tokenService)
+				   .saveToken(anyString(), any(Token.TokenType.class), any(User.class));
 
 		// Выполнение
 		UserResponse response = authService.registerUser(registrationRequest);
@@ -155,12 +143,12 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Регистрация пользователя - имя пользователя уже существует")
-	void registerUser_UsernameAlreadyExists(){
+	void registerUser_UsernameAlreadyExists() {
 		// Подготовка
 		when(userRepository.existsByUsername(anyString())).thenReturn(true);
 
 		// Выполнение и проверка
-		assertThrows(BadRequestException.class, ()->authService.registerUser(registrationRequest));
+		assertThrows(BadRequestException.class, () -> authService.registerUser(registrationRequest));
 
 		verify(userRepository).existsByUsername(registrationRequest.getUsername());
 		verify(userRepository, never()).save(any(User.class));
@@ -168,9 +156,10 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Регистрация пользователя с дополнительными ролями - успешно")
-	void registerUser_WithAdditionalRoles_Success(){
+	void registerUser_WithAdditionalRoles_Success() {
 		// Подготовка
-		registrationRequest.getRoleNames().add(Role.RoleName.ADMIN);
+		registrationRequest.getRoleNames()
+						   .add(Role.RoleName.ADMIN);
 
 		when(userRepository.existsByUsername(anyString())).thenReturn(false);
 		when(roleService.getUserRole()).thenReturn(userRole);
@@ -178,12 +167,19 @@ public class AuthServiceTest {
 		when(roleService.findByName(Role.RoleName.USER)).thenReturn(Optional.of(userRole));
 		when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
 
-		User userWithAdminRole = User.builder().id(1L).username("newuser").password("encodedPassword").roles(new HashSet<>(Arrays.asList(userRole, adminRole))).brands(new HashSet<>()).build();
+		User userWithAdminRole = User.builder()
+									 .id(1L)
+									 .username("newuser")
+									 .password("encodedPassword")
+									 .roles(new HashSet<>(Arrays.asList(userRole, adminRole)))
+									 .brands(new HashSet<>())
+									 .build();
 
 		when(userRepository.save(any(User.class))).thenReturn(userWithAdminRole);
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("access-token-123");
 		when(jwtUtils.generateRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh-token-123");
-		doNothing().when(tokenService).saveToken(anyString(), any(Token.TokenType.class), any(User.class));
+		doNothing().when(tokenService)
+				   .saveToken(anyString(), any(Token.TokenType.class), any(User.class));
 
 		// Выполнение
 		UserResponse response = authService.registerUser(registrationRequest);
@@ -195,7 +191,7 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Регистрация пользователя с брендами - успешно")
-	void registerUser_WithBrands_Success(){
+	void registerUser_WithBrands_Success() {
 		// Подготовка
 		Brand brand = new Brand();
 		brand.setId(1L);
@@ -209,12 +205,19 @@ public class AuthServiceTest {
 		when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
 		when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
 
-		User userWithBrand = User.builder().id(1L).username("newuser").password("encodedPassword").roles(new HashSet<>(Collections.singletonList(userRole))).brands(new HashSet<>(Collections.singletonList(brand))).build();
+		User userWithBrand = User.builder()
+								 .id(1L)
+								 .username("newuser")
+								 .password("encodedPassword")
+								 .roles(new HashSet<>(Collections.singletonList(userRole)))
+								 .brands(new HashSet<>(Collections.singletonList(brand)))
+								 .build();
 
 		when(userRepository.save(any(User.class))).thenReturn(userWithBrand);
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("access-token-123");
 		when(jwtUtils.generateRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh-token-123");
-		doNothing().when(tokenService).saveToken(anyString(), any(Token.TokenType.class), any(User.class));
+		doNothing().when(tokenService)
+				   .saveToken(anyString(), any(Token.TokenType.class), any(User.class));
 
 		// Выполнение
 		UserResponse response = authService.registerUser(registrationRequest);
@@ -226,7 +229,7 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Регистрация пользователя - бренд не найден")
-	void registerUser_BrandNotFound(){
+	void registerUser_BrandNotFound() {
 		// Подготовка
 		registrationRequest.setBrandIds(Collections.singleton(999L));
 
@@ -236,7 +239,7 @@ public class AuthServiceTest {
 		when(brandRepository.findById(999L)).thenReturn(Optional.empty());
 
 		// Выполнение и проверка
-		assertThrows(ResourceNotFoundException.class, ()->authService.registerUser(registrationRequest));
+		assertThrows(ResourceNotFoundException.class, () -> authService.registerUser(registrationRequest));
 
 		verify(brandRepository).findById(999L);
 		verify(userRepository, never()).save(any(User.class));
@@ -244,7 +247,7 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Вход пользователя - успешно")
-	void login_Success(){
+	void login_Success() {
 		// Подготовка
 		Authentication authentication = mock(Authentication.class);
 		UserDetails userDetails = mock(UserDetails.class);
@@ -255,8 +258,10 @@ public class AuthServiceTest {
 		when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("access-token-123");
 		when(jwtUtils.generateRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh-token-123");
-		doNothing().when(tokenService).revokeAllUserTokens(any(User.class));
-		doNothing().when(tokenService).saveToken(anyString(), any(Token.TokenType.class), any(User.class));
+		doNothing().when(tokenService)
+				   .revokeAllUserTokens(any(User.class));
+		doNothing().when(tokenService)
+				   .saveToken(anyString(), any(Token.TokenType.class), any(User.class));
 
 		// Выполнение
 		UserResponse response = authService.login(loginRequest);
@@ -279,7 +284,7 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Вход пользователя - пользователь не найден")
-	void login_UserNotFound(){
+	void login_UserNotFound() {
 		// Подготовка
 		Authentication authentication = mock(Authentication.class);
 		UserDetails userDetails = mock(UserDetails.class);
@@ -290,7 +295,7 @@ public class AuthServiceTest {
 		when(userRepository.findByUsername("testuser")).thenReturn(Optional.empty());
 
 		// Выполнение и проверка
-		assertThrows(BadRequestException.class, ()->authService.login(loginRequest));
+		assertThrows(BadRequestException.class, () -> authService.login(loginRequest));
 
 		verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 		verify(userRepository).findByUsername("testuser");
@@ -299,11 +304,12 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Обновление токена - успешно")
-	void refreshToken_Success(){
+	void refreshToken_Success() {
 		// Подготовка
 		when(tokenService.findByToken("refresh-token-123")).thenReturn(Optional.of(refreshToken));
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("new-access-token-123");
-		doNothing().when(tokenService).saveToken(anyString(), any(Token.TokenType.class), any(User.class));
+		doNothing().when(tokenService)
+				   .saveToken(anyString(), any(Token.TokenType.class), any(User.class));
 
 		// Выполнение
 		TokenRefreshResponse response = authService.refreshToken(refreshRequest);
@@ -320,12 +326,12 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Обновление токена - токен не найден")
-	void refreshToken_TokenNotFound(){
+	void refreshToken_TokenNotFound() {
 		// Подготовка
 		when(tokenService.findByToken("refresh-token-123")).thenReturn(Optional.empty());
 
 		// Выполнение и проверка
-		assertThrows(TokenRefreshException.class, ()->authService.refreshToken(refreshRequest));
+		assertThrows(TokenRefreshException.class, () -> authService.refreshToken(refreshRequest));
 
 		verify(tokenService).findByToken("refresh-token-123");
 		verify(jwtUtils, never()).generateAccessToken(any(CustomUserDetails.class));
@@ -333,15 +339,22 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Обновление токена - недействительный токен")
-	void refreshToken_InvalidToken(){
+	void refreshToken_InvalidToken() {
 		// Подготовка
-		Token invalidToken = Token.builder().id(1L).token("refresh-token-123").tokenType(Token.TokenType.REFRESH).revoked(true) // Отозванный токен
-				                     .expiryDate(LocalDateTime.now().plusDays(7)).user(testUser).build();
+		Token invalidToken = Token.builder()
+								  .id(1L)
+								  .token("refresh-token-123")
+								  .tokenType(Token.TokenType.REFRESH)
+								  .revoked(true) // Отозванный токен
+								  .expiryDate(LocalDateTime.now()
+														   .plusDays(7))
+								  .user(testUser)
+								  .build();
 
 		when(tokenService.findByToken("refresh-token-123")).thenReturn(Optional.of(invalidToken));
 
 		// Выполнение и проверка
-		assertThrows(TokenRefreshException.class, ()->authService.refreshToken(refreshRequest));
+		assertThrows(TokenRefreshException.class, () -> authService.refreshToken(refreshRequest));
 
 		verify(tokenService).findByToken("refresh-token-123");
 		verify(jwtUtils, never()).generateAccessToken(any(CustomUserDetails.class));
@@ -349,15 +362,22 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Обновление токена - неверный тип токена")
-	void refreshToken_WrongTokenType(){
+	void refreshToken_WrongTokenType() {
 		// Подготовка
-		Token accessToken = Token.builder().id(1L).token("refresh-token-123").tokenType(Token.TokenType.ACCESS) // Неверный тип токена
-				                    .revoked(false).expiryDate(LocalDateTime.now().plusDays(7)).user(testUser).build();
+		Token accessToken = Token.builder()
+								 .id(1L)
+								 .token("refresh-token-123")
+								 .tokenType(Token.TokenType.ACCESS) // Неверный тип токена
+								 .revoked(false)
+								 .expiryDate(LocalDateTime.now()
+														  .plusDays(7))
+								 .user(testUser)
+								 .build();
 
 		when(tokenService.findByToken("refresh-token-123")).thenReturn(Optional.of(accessToken));
 
 		// Выполнение и проверка
-		assertThrows(TokenRefreshException.class, ()->authService.refreshToken(refreshRequest));
+		assertThrows(TokenRefreshException.class, () -> authService.refreshToken(refreshRequest));
 
 		verify(tokenService).findByToken("refresh-token-123");
 		verify(jwtUtils, never()).generateAccessToken(any(CustomUserDetails.class));
@@ -365,9 +385,10 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Отзыв токена - успешно")
-	void revokeToken_Success(){
+	void revokeToken_Success() {
 		// Подготовка
-		doNothing().when(tokenService).revokeToken(anyString());
+		doNothing().when(tokenService)
+				   .revokeToken(anyString());
 
 		// Выполнение
 		authService.revokeToken("access-token-123");
@@ -378,10 +399,11 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Отзыв всех токенов пользователя - успешно")
-	void revokeAllUserTokens_Success(){
+	void revokeAllUserTokens_Success() {
 		// Подготовка
 		when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-		doNothing().when(tokenService).revokeAllUserTokens(any(User.class));
+		doNothing().when(tokenService)
+				   .revokeAllUserTokens(any(User.class));
 
 		// Выполнение
 		authService.revokeAllUserTokens("testuser");
@@ -393,12 +415,12 @@ public class AuthServiceTest {
 
 	@Test
 	@DisplayName("Отзыв всех токенов пользователя - пользователь не найден")
-	void revokeAllUserTokens_UserNotFound(){
+	void revokeAllUserTokens_UserNotFound() {
 		// Подготовка
 		when(userRepository.findByUsername("nonexistentuser")).thenReturn(Optional.empty());
 
 		// Выполнение и проверка
-		assertThrows(BadRequestException.class, ()->authService.revokeAllUserTokens("nonexistentuser"));
+		assertThrows(BadRequestException.class, () -> authService.revokeAllUserTokens("nonexistentuser"));
 
 		verify(userRepository).findByUsername("nonexistentuser");
 		verify(tokenService, never()).revokeAllUserTokens(any(User.class));

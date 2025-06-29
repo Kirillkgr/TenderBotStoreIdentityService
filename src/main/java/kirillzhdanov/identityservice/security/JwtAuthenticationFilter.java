@@ -1,15 +1,9 @@
 package kirillzhdanov.identityservice.security;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
-import io.jsonwebtoken.UnsupportedJwtException;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
+import io.jsonwebtoken.*;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -29,34 +23,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private final JwtAuthenticator authenticator;
 
 	@Override
-	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException{
+	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
 
 		try {
 			// Извлекаем JWT токен из заголовка
 			String jwt = tokenExtractor.extractJwtFromRequest(request);
 
 			// Если токен найден, обрабатываем его
-			if(jwt != null) {
+			if (jwt != null) {
 				authenticator.processJwtToken(request, jwt);
 			}
-		} catch(ExpiredJwtException e) {
+		} catch (ExpiredJwtException e) {
 			log.warn("JWT токен истек");
 			authenticator.clearSecurityContext();
-		} catch(SignatureException e) {
+		} catch (SignatureException e) {
 			log.warn("Неверная подпись JWT");
 			authenticator.clearSecurityContext();
-		} catch(MalformedJwtException e) {
+		} catch (MalformedJwtException e) {
 			log.warn("Неверный формат JWT");
 			authenticator.clearSecurityContext();
-		} catch(UnsupportedJwtException e) {
+		} catch (UnsupportedJwtException e) {
 			log.warn("Неподдерживаемый JWT");
 			authenticator.clearSecurityContext();
-		} catch(IllegalArgumentException e) {
+		} catch (IllegalArgumentException e) {
 			log.warn("Пустые утверждения JWT");
 			authenticator.clearSecurityContext();
-		} catch(Exception e) {
+		} catch (Exception e) {
 			// Логируем только тип исключения, без деталей
-			log.error("Ошибка при аутентификации: {}", e.getClass().getSimpleName());
+			log.error("Ошибка при аутентификации: {}", e.getClass()
+														.getSimpleName());
 			authenticator.clearSecurityContext();
 		} finally {
 			// Продолжаем цепочку фильтров

@@ -1,18 +1,8 @@
 package kirillzhdanov.identityservice.security;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.SignatureException;
-import kirillzhdanov.identityservice.model.Brand;
-import kirillzhdanov.identityservice.model.Role;
-import kirillzhdanov.identityservice.model.Token;
-import kirillzhdanov.identityservice.model.User;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import io.jsonwebtoken.*;
+import kirillzhdanov.identityservice.model.*;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -20,20 +10,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 public class JwtUtilsTest {
@@ -56,7 +36,7 @@ public class JwtUtilsTest {
 	private String malformedToken;
 
 	@BeforeEach
-	void setUp(){
+	void setUp() {
 		// Устанавливаем значения для полей JwtUtils
 		ReflectionTestUtils.setField(jwtUtils, "secret", "test_secret_key_for_jwt_token_that_is_long_enough");
 		ReflectionTestUtils.setField(jwtUtils, "accessTokenExpiration", 3600000L); // 1 час
@@ -79,7 +59,13 @@ public class JwtUtilsTest {
 		brand2.setId(2L);
 		brand2.setName("TestBrand2");
 
-		testUser = User.builder().id(1L).username("testuser").password("encodedPassword").roles(new HashSet<>(Arrays.asList(userRole, adminRole))).brands(new HashSet<>(Arrays.asList(brand1, brand2))).build();
+		testUser = User.builder()
+					   .id(1L)
+					   .username("testuser")
+					   .password("encodedPassword")
+					   .roles(new HashSet<>(Arrays.asList(userRole, adminRole)))
+					   .brands(new HashSet<>(Arrays.asList(brand1, brand2)))
+					   .build();
 
 		customUserDetails = new CustomUserDetails(testUser);
 
@@ -92,11 +78,23 @@ public class JwtUtilsTest {
 		Map<String, Object> claims = new HashMap<>();
 		claims.put("tokenType", Token.TokenType.ACCESS.name());
 		claims.put("userId", testUser.getId());
-		claims.put("brandIds", testUser.getBrands().stream().map(Brand::getId).collect(Collectors.toList()));
-		claims.put("roles", testUser.getRoles().stream().map(role->role.getName().name()).collect(Collectors.toList()));
+		claims.put("brandIds", testUser.getBrands()
+									   .stream()
+									   .map(Brand::getId)
+									   .collect(Collectors.toList()));
+		claims.put("roles", testUser.getRoles()
+									.stream()
+									.map(role -> role.getName()
+													 .name())
+									.collect(Collectors.toList()));
 
-		expiredToken = Jwts.builder().setClaims(claims).setSubject(customUserDetails.getUsername()).setIssuedAt(pastDate).setExpiration(pastDate) // Устанавливаем дату истечения в прошлом
-				               .signWith(SignatureAlgorithm.HS256, "test_secret_key_for_jwt_token_that_is_long_enough").compact();
+		expiredToken = Jwts.builder()
+						   .setClaims(claims)
+						   .setSubject(customUserDetails.getUsername())
+						   .setIssuedAt(pastDate)
+						   .setExpiration(pastDate) // Устанавливаем дату истечения в прошлом
+						   .signWith(SignatureAlgorithm.HS256, "test_secret_key_for_jwt_token_that_is_long_enough")
+						   .compact();
 
 		// Создаем токен с неверной подписью
 		invalidSignatureToken = accessToken.substring(0, accessToken.lastIndexOf('.') + 1) + "invalid_signature";
@@ -107,7 +105,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Генерация токена доступа - успешно")
-	void generateAccessToken_Success(){
+	void generateAccessToken_Success() {
 		// Проверка
 		assertNotNull(accessToken);
 		assertFalse(accessToken.isEmpty());
@@ -141,7 +139,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Генерация токена обновления - успешно")
-	void generateRefreshToken_Success(){
+	void generateRefreshToken_Success() {
 		// Проверка
 		assertNotNull(refreshToken);
 		assertTrue(!refreshToken.isEmpty());
@@ -163,7 +161,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Извлечение имени пользователя из токена - успешно")
-	void extractUsername_Success(){
+	void extractUsername_Success() {
 		// Выполнение
 		String username = jwtUtils.extractUsername(accessToken);
 
@@ -173,7 +171,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Извлечение даты истечения из токена - успешно")
-	void extractExpiration_Success(){
+	void extractExpiration_Success() {
 		// Выполнение
 		Date expiration = jwtUtils.extractExpiration(accessToken);
 
@@ -184,7 +182,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Извлечение даты истечения как LocalDateTime - успешно")
-	void extractExpirationAsLocalDateTime_Success(){
+	void extractExpirationAsLocalDateTime_Success() {
 		// Выполнение
 		LocalDateTime expiration = jwtUtils.extractExpirationAsLocalDateTime(accessToken);
 
@@ -195,7 +193,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Извлечение типа токена - успешно")
-	void extractTokenType_Success(){
+	void extractTokenType_Success() {
 		// Выполнение
 		Token.TokenType accessTokenType = jwtUtils.extractTokenType(accessToken);
 		Token.TokenType refreshTokenType = jwtUtils.extractTokenType(refreshToken);
@@ -207,7 +205,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Извлечение ID пользователя - успешно")
-	void extractUserId_Success(){
+	void extractUserId_Success() {
 		// Выполнение
 		Long userId = jwtUtils.extractUserId(accessToken);
 
@@ -217,7 +215,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Извлечение ID брендов - успешно")
-	void extractBrandIds_Success(){
+	void extractBrandIds_Success() {
 		// Выполнение
 		List<Long> brandIds = jwtUtils.extractBrandIds(accessToken);
 
@@ -232,7 +230,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Извлечение ролей - успешно")
-	void extractRoles_Success(){
+	void extractRoles_Success() {
 		// Выполнение
 		List<String> roles = jwtUtils.extractRoles(accessToken);
 
@@ -247,7 +245,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Валидация токена - успешно")
-	void validateToken_Success(){
+	void validateToken_Success() {
 		// Выполнение
 		boolean isValid = jwtUtils.validateToken(accessToken, customUserDetails);
 
@@ -257,9 +255,15 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Валидация токена - неверное имя пользователя")
-	void validateToken_WrongUsername(){
+	void validateToken_WrongUsername() {
 		// Подготовка
-		UserDetails wrongUser = new CustomUserDetails(User.builder().id(2L).username("wronguser").password("encodedPassword").roles(new HashSet<>()).brands(new HashSet<>()).build());
+		UserDetails wrongUser = new CustomUserDetails(User.builder()
+														  .id(2L)
+														  .username("wronguser")
+														  .password("encodedPassword")
+														  .roles(new HashSet<>())
+														  .brands(new HashSet<>())
+														  .build());
 
 		// Выполнение
 		boolean isValid = jwtUtils.validateToken(accessToken, wrongUser);
@@ -270,12 +274,12 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Валидация токена - истекший токен")
-	void validateToken_ExpiredToken(){
+	void validateToken_ExpiredToken() {
 		// Выполнение и проверка
 		try {
 			boolean isValid = jwtUtils.validateToken(expiredToken, customUserDetails);
 			assertFalse(isValid);
-		} catch(ExpiredJwtException e) {
+		} catch (ExpiredJwtException e) {
 			// Если выбрасывается исключение, то тест также проходит
 			assertTrue(true);
 		}
@@ -283,21 +287,21 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Валидация токена - неверная подпись")
-	void validateToken_InvalidSignature(){
+	void validateToken_InvalidSignature() {
 		// Выполнение и проверка
-		assertThrows(SignatureException.class, ()->jwtUtils.validateToken(invalidSignatureToken, customUserDetails));
+		assertThrows(SignatureException.class, () -> jwtUtils.validateToken(invalidSignatureToken, customUserDetails));
 	}
 
 	@Test
 	@DisplayName("Валидация токена - некорректный формат")
-	void validateToken_MalformedToken(){
+	void validateToken_MalformedToken() {
 		// Выполнение и проверка
-		assertThrows(MalformedJwtException.class, ()->jwtUtils.validateToken(malformedToken, customUserDetails));
+		assertThrows(MalformedJwtException.class, () -> jwtUtils.validateToken(malformedToken, customUserDetails));
 	}
 
 	@Test
 	@DisplayName("Извлечение всех утверждений из токена - успешно")
-	void extractAllClaims_Success() throws Exception{
+	void extractAllClaims_Success() throws Exception {
 		// Выполнение
 		Claims claims = ReflectionTestUtils.invokeMethod(jwtUtils, "extractAllClaims", accessToken);
 
@@ -305,12 +309,13 @@ public class JwtUtilsTest {
 		assertNotNull(claims);
 		assertEquals(testUser.getUsername(), claims.getSubject());
 		assertEquals(Token.TokenType.ACCESS.name(), claims.get("tokenType"));
-		assertEquals(testUser.getId().longValue(), ((Number) claims.get("userId")).longValue());
+		assertEquals(testUser.getId()
+							 .longValue(), ((Number) claims.get("userId")).longValue());
 	}
 
 	@Test
 	@DisplayName("Проверка срока действия токена - действительный токен")
-	void isTokenExpired_ValidToken() throws Exception{
+	void isTokenExpired_ValidToken() throws Exception {
 		// Выполнение
 		Boolean isExpired = ReflectionTestUtils.invokeMethod(jwtUtils, "isTokenExpired", accessToken);
 
@@ -321,7 +326,7 @@ public class JwtUtilsTest {
 
 	@Test
 	@DisplayName("Проверка срока действия токена - истекший токен")
-	void isTokenExpired_ExpiredToken(){
+	void isTokenExpired_ExpiredToken() {
 		// Выполнение
 		Boolean isExpired = ReflectionTestUtils.invokeMethod(jwtUtils, "isTokenExpired", expiredToken);
 

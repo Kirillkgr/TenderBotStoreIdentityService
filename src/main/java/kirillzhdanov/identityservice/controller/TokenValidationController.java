@@ -2,15 +2,11 @@ package kirillzhdanov.identityservice.controller;
 
 import kirillzhdanov.identityservice.dto.JwtUserDetailsResponse;
 import kirillzhdanov.identityservice.security.JwtUtils;
-import kirillzhdanov.identityservice.service.TokenService;
-import kirillzhdanov.identityservice.service.UserService;
+import kirillzhdanov.identityservice.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * Контроллер для валидации JWT токенов.
@@ -35,37 +31,40 @@ public class TokenValidationController {
 	 * <p>Проверяет наличие и корректность заголовка Authorization, подпись токена и отсутствие токена в списке отозванных.</p>
 	 *
 	 * @param authHeader заголовок Authorization, содержащий Bearer токен
-	 *
 	 * @return {@code ResponseEntity} с HTTP статусом:
 	 * {@code 200 OK} - токен валиден;
 	 * {@code 403 Forbidden} - токен невалиден (некорректный заголовок, неверная подпись, отозванный токен).
 	 */
 	@PostMapping
-	public ResponseEntity<Void> validateToken(@RequestHeader("Authorization") String authHeader){
+	public ResponseEntity<Void> validateToken(@RequestHeader("Authorization") String authHeader) {
 
-		if(authHeader == null || !authHeader.startsWith("Bearer ")) {
+		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 			log.warn("Получен запрос с некорректным заголовком Authorization");
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		String token = authHeader.substring(7);
 
 		// Проверяем подпись токена
 		boolean isSignatureValid = jwtUtils.validateTokenSignature(token);
-		if(!isSignatureValid) {
+		if (!isSignatureValid) {
 			log.warn("Токен имеет недействительную подпись");
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		// Проверяем, не отозван ли токен
 		boolean isTokenValid = tokenService.isTokenValid(token);
-		if(!isTokenValid) {
+		if (!isTokenValid) {
 			log.warn("Токен отозван или не найден в базе данных");
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		log.info("Токен успешно валидирован");
-		return ResponseEntity.ok().build();
+		return ResponseEntity.ok()
+							 .build();
 	}
 
 	/**
@@ -75,47 +74,51 @@ public class TokenValidationController {
 	 * При успешной валидации возвращает данные пользователя.</p>
 	 *
 	 * @param authHeader заголовок Authorization, содержащий Bearer токен
-	 *
 	 * @return {@code ResponseEntity} с HTTP статусом:
 	 * {@code 200 OK} - токен валиден, в теле ответа содержатся данные пользователя;
 	 * {@code 403 Forbidden} - токен невалиден (некорректный заголовок, неверная подпись, отозванный токен) или пользователь не найден.
 	 */
 	@PostMapping("/user-details")
-	public ResponseEntity<JwtUserDetailsResponse> validateTokenAndGetUserDetails(@RequestHeader("Authorization") String authHeader){
+	public ResponseEntity<JwtUserDetailsResponse> validateTokenAndGetUserDetails(@RequestHeader("Authorization") String authHeader) {
 
-		if(authHeader == null || !authHeader.startsWith("Bearer ")) {
+		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 			log.warn("Получен запрос с некорректным заголовком Authorization");
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		String token = authHeader.substring(7);
 
 		// Проверяем подпись токена
 		boolean isSignatureValid = jwtUtils.validateTokenSignature(token);
-		if(!isSignatureValid) {
+		if (!isSignatureValid) {
 			log.warn("Токен имеет недействительную подпись");
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		// Проверяем, не отозван ли токен
 		boolean isTokenValid = tokenService.isTokenValid(token);
-		if(!isTokenValid) {
+		if (!isTokenValid) {
 			log.warn("Токен отозван или не найден в базе данных");
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		// Получаем ID пользователя из токена
 		Long userId = jwtUtils.extractUserId(token);
-		if(userId == null) {
+		if (userId == null) {
 			log.warn("Не удалось извлечь ID пользователя из токена");
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		// Получаем информацию о пользователе
 		JwtUserDetailsResponse userDetails = userService.getUserDetailsById(userId);
-		if(userDetails == null) {
+		if (userDetails == null) {
 			log.warn("Пользователь с ID {} не найден", userId);
-			return ResponseEntity.status(403).build();
+			return ResponseEntity.status(403)
+								 .build();
 		}
 
 		log.info("Токен успешно валидирован и получены данные пользователя");

@@ -1,9 +1,6 @@
 package kirillzhdanov.identityservice.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 /**
  * @deprecated Use {@link UserResponse} instead which includes user information along with tokens

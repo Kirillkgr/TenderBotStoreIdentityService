@@ -1,8 +1,7 @@
 package kirillzhdanov.identityservice.security;
 
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -26,29 +25,29 @@ public class JwtTokenExtractor {
 	 * Извлекает JWT токен из заголовка запроса
 	 *
 	 * @param request HTTP запрос
-	 *
 	 * @return JWT токен или null, если токен не найден
 	 */
-	public String extractJwtFromRequest(@NonNull HttpServletRequest request){
+	public String extractJwtFromRequest(@NonNull HttpServletRequest request) {
 
 		String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
 
-		if(authorizationHeader == null || authorizationHeader.isEmpty()) {
+		if (authorizationHeader == null || authorizationHeader.isEmpty()) {
 			return null;
 		}
 
-		if(!authorizationHeader.startsWith(BEARER_PREFIX)) {
+		if (!authorizationHeader.startsWith(BEARER_PREFIX)) {
 			return null;
 		}
 
-		String token = authorizationHeader.substring(BEARER_PREFIX.length()).trim();
+		String token = authorizationHeader.substring(BEARER_PREFIX.length())
+										  .trim();
 
 		// Проверка на пустой токен и длину
-		if(token.length()<MIN_TOKEN_LENGTH) {
+		if (token.length() < MIN_TOKEN_LENGTH) {
 			return null;
 		}
 
-		if(token.length()>MAX_TOKEN_LENGTH) {
+		if (token.length() > MAX_TOKEN_LENGTH) {
 			log.warn("Токен превышает максимально допустимую длину");
 			return null;
 		}
