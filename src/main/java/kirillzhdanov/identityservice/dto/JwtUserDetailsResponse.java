@@ -1,9 +1,6 @@
 package kirillzhdanov.identityservice.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
@@ -12,8 +9,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JwtUserDetailsResponse {
-    private Long userId;
-    private String username;
-    private List<Long> brandIds;
-    private List<String> roles;
+
+	private Long userId;
+
+	private String username;
+
+	private List<Long> brandIds;
+
+	private List<String> roles;
 }

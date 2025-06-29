@@ -3,16 +3,8 @@ package kirillzhdanov.identityservice.controller;
 import kirillzhdanov.identityservice.dto.BrandDto;
 import kirillzhdanov.identityservice.service.BrandService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -34,7 +26,8 @@ public class BrandController {
 	 * @return {@code ResponseEntity} со списком брендов и HTTP статусом {@code 200 OK}
 	 */
 	@GetMapping
-	public ResponseEntity<List<BrandDto>> getAllBrands(){
+	public ResponseEntity<List<BrandDto>> getAllBrands() {
+
 		return ResponseEntity.ok(brandService.getAllBrands());
 	}
 
@@ -43,11 +36,12 @@ public class BrandController {
 	 *
 	 * @param id идентификатор бренда
 	 * @return {@code ResponseEntity} с данными бренда и HTTP статусом:
-	 *         {@code 200 OK} - бренд найден;
-	 *         {@code 404 Not Found} - бренд с указанным ID не найден.
+	 * {@code 200 OK} - бренд найден;
+	 * {@code 404 Not Found} - бренд с указанным ID не найден.
 	 */
 	@GetMapping("/{id}")
-	public ResponseEntity<BrandDto> getBrandById(@PathVariable Long id){
+	public ResponseEntity<BrandDto> getBrandById(@PathVariable Long id) {
+
 		return ResponseEntity.ok(brandService.getBrandById(id));
 	}
 
@@ -58,20 +52,22 @@ public class BrandController {
 	 * @return {@code ResponseEntity} с созданным брендом и HTTP статусом {@code 201 Created}
 	 */
 	@PostMapping
-	public ResponseEntity<BrandDto> createBrand(@RequestBody BrandDto brandDto){
+	public ResponseEntity<BrandDto> createBrand(@RequestBody BrandDto brandDto) {
+
 		return new ResponseEntity<>(brandService.createBrand(brandDto), HttpStatus.CREATED);
 	}
 
 	/**
 	 * Обновляет данные бренда.
 	 *
-	 * @param id идентификатор обновляемого бренда
+	 * @param id       идентификатор обновляемого бренда
 	 * @param brandDto новые данные бренда
 	 * @return {@code ResponseEntity} с обновленным брендом и HTTP статусом {@code 200 OK};
-	 *         {@code 404 Not Found} - бренд с указанным ID не найден.
+	 * {@code 404 Not Found} - бренд с указанным ID не найден.
 	 */
 	@PutMapping("/{id}")
-	public ResponseEntity<BrandDto> updateBrand(@PathVariable Long id, @RequestBody BrandDto brandDto){
+	public ResponseEntity<BrandDto> updateBrand(@PathVariable Long id, @RequestBody BrandDto brandDto) {
+
 		return ResponseEntity.ok(brandService.updateBrand(id, brandDto));
 	}
 
@@ -80,40 +76,46 @@ public class BrandController {
 	 *
 	 * @param id идентификатор удаляемого бренда
 	 * @return {@code ResponseEntity} с HTTP статусом {@code 204 No Content};
-	 *         {@code 404 Not Found} - бренд с указанным ID не найден.
+	 * {@code 404 Not Found} - бренд с указанным ID не найден.
 	 */
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteBrand(@PathVariable Long id){
+	public ResponseEntity<Void> deleteBrand(@PathVariable Long id) {
+
 		brandService.deleteBrand(id);
-		return ResponseEntity.noContent().build();
+		return ResponseEntity.noContent()
+							 .build();
 	}
 
 	/**
 	 * Назначает пользователя бренду.
 	 *
-	 * @param userId идентификатор пользователя
+	 * @param userId  идентификатор пользователя
 	 * @param brandId идентификатор бренда
 	 * @return {@code ResponseEntity} с HTTP статусом {@code 200 OK};
-	 *         {@code 404 Not Found} - пользователь или бренд не найдены.
+	 * {@code 404 Not Found} - пользователь или бренд не найдены.
 	 */
 	@PostMapping("/{brandId}/users/{userId}")
-	public ResponseEntity<Void> assignUserToBrand(@PathVariable Long userId, @PathVariable Long brandId){
+	public ResponseEntity<Void> assignUserToBrand(@PathVariable Long userId, @PathVariable Long brandId) {
+
 		brandService.assignUserToBrand(userId, brandId);
-		return ResponseEntity.ok().build();
+		return ResponseEntity.ok()
+							 .build();
 	}
 
 	/**
 	 * Удаляет пользователя из бренда.
 	 *
-	 * @param userId идентификатор пользователя
+	 * @param userId  идентификатор пользователя
 	 * @param brandId идентификатор бренда
 	 * @return {@code ResponseEntity} с HTTP статусом {@code 200 OK};
-	 *         {@code 404 Not Found} - пользователь или бренд не найдены;
-	 *         {@code 400 Bad Request} - пользователь не назначен на бренд.
+	 * {@code 404 Not Found} - пользователь или бренд не найдены;
+	 * {@code 400 Bad Request} - пользователь не назначен на бренд.
 	 */
 	@DeleteMapping("/{brandId}/users/{userId}")
-	public ResponseEntity<Void> removeUserFromBrand(@PathVariable Long userId, @PathVariable Long brandId){
+	public ResponseEntity<Void> removeUserFromBrand(@PathVariable Long userId, @PathVariable Long brandId) {
+
 		brandService.removeUserFromBrand(userId, brandId);
-		return ResponseEntity.ok().build();
+		return ResponseEntity.ok()
+							 .build();
 	}
 }

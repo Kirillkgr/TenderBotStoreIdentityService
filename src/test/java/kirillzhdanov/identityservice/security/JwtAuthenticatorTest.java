@@ -1,36 +1,23 @@
 package kirillzhdanov.identityservice.security;
 
 import jakarta.servlet.http.HttpServletRequest;
-import kirillzhdanov.identityservice.model.Role;
-import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
+import kirillzhdanov.identityservice.model.*;
 import kirillzhdanov.identityservice.service.TokenService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.*;
 
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class JwtAuthenticatorTest {
@@ -59,7 +46,7 @@ public class JwtAuthenticatorTest {
 	private String invalidToken;
 
 	@BeforeEach
-	void setUp(){
+	void setUp() {
 		// Очищаем контекст безопасности перед каждым тестом
 		SecurityContextHolder.clearContext();
 
@@ -69,12 +56,12 @@ public class JwtAuthenticatorTest {
 		userRole.setName(Role.RoleName.USER);
 
 		User testUser = User.builder()
-								.id(1L)
-								.username("testuser")
-								.password("encodedPassword")
-								.roles(new HashSet<>(Collections.singletonList(userRole)))
-								.brands(new HashSet<>())
-								.build();
+							.id(1L)
+							.username("testuser")
+							.password("encodedPassword")
+							.roles(new HashSet<>(Collections.singletonList(userRole)))
+							.brands(new HashSet<>())
+							.build();
 
 		userDetails = new CustomUserDetails(testUser);
 		validAccessToken = "valid-access-token";
@@ -84,7 +71,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка валидного JWT токена - успешно")
-	void processJwtToken_ValidToken_Success(){
+	void processJwtToken_ValidToken_Success() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(validAccessToken)).thenReturn(Token.TokenType.ACCESS);
 		when(jwtUtils.extractUsername(validAccessToken)).thenReturn("testuser");
@@ -100,7 +87,8 @@ public class JwtAuthenticatorTest {
 		assertTrue(result);
 
 		// Проверяем, что пользователь аутентифицирован
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		Authentication authentication = SecurityContextHolder.getContext()
+															 .getAuthentication();
 		assertNotNull(authentication);
 		assertTrue(authentication.isAuthenticated());
 		assertEquals(userDetails, authentication.getPrincipal());
@@ -114,7 +102,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - неверный тип токена")
-	void processJwtToken_WrongTokenType(){
+	void processJwtToken_WrongTokenType() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(refreshToken)).thenReturn(Token.TokenType.REFRESH);
 
@@ -123,7 +111,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(refreshToken);
 		verify(jwtUtils, never()).extractUsername(anyString());
@@ -132,7 +121,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - ошибка при извлечении типа токена")
-	void processJwtToken_ErrorExtractingTokenType(){
+	void processJwtToken_ErrorExtractingTokenType() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(invalidToken)).thenThrow(new RuntimeException("Ошибка при извлечении типа токена"));
 
@@ -141,7 +130,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(invalidToken);
 		verify(jwtUtils, never()).extractUsername(anyString());
@@ -150,7 +140,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - пустое имя пользователя")
-	void processJwtToken_EmptyUsername(){
+	void processJwtToken_EmptyUsername() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(validAccessToken)).thenReturn(Token.TokenType.ACCESS);
 		when(jwtUtils.extractUsername(validAccessToken)).thenReturn("");
@@ -160,7 +150,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(validAccessToken);
 		verify(jwtUtils).extractUsername(validAccessToken);
@@ -169,7 +160,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - ошибка при извлечении имени пользователя")
-	void processJwtToken_ErrorExtractingUsername(){
+	void processJwtToken_ErrorExtractingUsername() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(validAccessToken)).thenReturn(Token.TokenType.ACCESS);
 		when(jwtUtils.extractUsername(validAccessToken)).thenThrow(new RuntimeException("Ошибка при извлечении имени пользователя"));
@@ -179,7 +170,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(validAccessToken);
 		verify(jwtUtils).extractUsername(validAccessToken);
@@ -188,7 +180,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - пользователь не найден")
-	void processJwtToken_UserNotFound(){
+	void processJwtToken_UserNotFound() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(validAccessToken)).thenReturn(Token.TokenType.ACCESS);
 		when(jwtUtils.extractUsername(validAccessToken)).thenReturn("testuser");
@@ -199,7 +191,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(validAccessToken);
 		verify(jwtUtils).extractUsername(validAccessToken);
@@ -209,7 +202,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - UserDetailsService вернул null")
-	void processJwtToken_UserDetailsServiceReturnsNull(){
+	void processJwtToken_UserDetailsServiceReturnsNull() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(validAccessToken)).thenReturn(Token.TokenType.ACCESS);
 		when(jwtUtils.extractUsername(validAccessToken)).thenReturn("testuser");
@@ -220,7 +213,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(validAccessToken);
 		verify(jwtUtils).extractUsername(validAccessToken);
@@ -230,7 +224,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - невалидный JWT токен")
-	void processJwtToken_InvalidJwtToken(){
+	void processJwtToken_InvalidJwtToken() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(validAccessToken)).thenReturn(Token.TokenType.ACCESS);
 		when(jwtUtils.extractUsername(validAccessToken)).thenReturn("testuser");
@@ -242,7 +236,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(validAccessToken);
 		verify(jwtUtils).extractUsername(validAccessToken);
@@ -253,7 +248,7 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Обработка JWT токена - токен отозван в базе данных")
-	void processJwtToken_TokenRevokedInDatabase(){
+	void processJwtToken_TokenRevokedInDatabase() {
 		// Подготовка
 		when(jwtUtils.extractTokenType(validAccessToken)).thenReturn(Token.TokenType.ACCESS);
 		when(jwtUtils.extractUsername(validAccessToken)).thenReturn("testuser");
@@ -266,7 +261,8 @@ public class JwtAuthenticatorTest {
 
 		// Проверка
 		assertFalse(result);
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 
 		verify(jwtUtils).extractTokenType(validAccessToken);
 		verify(jwtUtils).extractUsername(validAccessToken);
@@ -277,19 +273,20 @@ public class JwtAuthenticatorTest {
 
 	@Test
 	@DisplayName("Очистка контекста безопасности")
-	void clearSecurityContext(){
+	void clearSecurityContext() {
 		// Подготовка
-		SecurityContextHolder.getContext().setAuthentication(
-				new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities())
-		);
+		SecurityContextHolder.getContext()
+							 .setAuthentication(new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
 
 		// Проверяем, что аутентификация установлена
-		assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNotNull(SecurityContextHolder.getContext()
+										   .getAuthentication());
 
 		// Выполнение
 		jwtAuthenticator.clearSecurityContext();
 
 		// Проверка
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(SecurityContextHolder.getContext()
+										.getAuthentication());
 	}
 }

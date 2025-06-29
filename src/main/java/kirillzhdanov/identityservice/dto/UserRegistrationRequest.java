@@ -2,11 +2,9 @@ package kirillzhdanov.identityservice.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import kirillzhdanov.identityservice.model.Role;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Data
@@ -20,6 +18,11 @@ public class UserRegistrationRequest {
 
 	@NotBlank(message = "Пароль не может быть пустым")
 	private String password;
+
+	private String firstName;
+	private String lastName;
+	private String patronymic;
+	private LocalDate dateOfBirth;
 
 	private String telegramBotToken;
 
