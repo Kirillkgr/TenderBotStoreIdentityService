@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  * <p>Предоставляет эндпоинты для проверки валидности токенов и получения информации о пользователе.</p>
  */
 @RestController
-@RequestMapping("/api/auth/validate")
+@RequestMapping("/token/validate")
 @RequiredArgsConstructor
 @Slf4j
 public class TokenValidationController {
@@ -78,7 +78,7 @@ public class TokenValidationController {
 	 * {@code 200 OK} - токен валиден, в теле ответа содержатся данные пользователя;
 	 * {@code 403 Forbidden} - токен невалиден (некорректный заголовок, неверная подпись, отозванный токен) или пользователь не найден.
 	 */
-	@PostMapping("/user-details")
+	@PostMapping("/details")
 	public ResponseEntity<JwtUserDetailsResponse> validateTokenAndGetUserDetails(@RequestHeader("Authorization") String authHeader) {
 
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
