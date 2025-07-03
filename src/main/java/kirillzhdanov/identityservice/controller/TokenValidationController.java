@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  * <p>Предоставляет эндпоинты для проверки валидности токенов и получения информации о пользователе.</p>
  */
 @RestController
-@RequestMapping("/token/validate")
+@RequestMapping("/token/v1/validate")
 @RequiredArgsConstructor
 @Slf4j
 public class TokenValidationController {
