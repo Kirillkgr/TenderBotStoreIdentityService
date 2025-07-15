@@ -23,6 +23,10 @@ public class Brand {
 	@EqualsAndHashCode.Include
 	private String name;
 
+	@Column(unique = true)
+	@EqualsAndHashCode.Include
+	private String organizationName;
+
 	private String telegramBotToken;
 
 	@ManyToMany(mappedBy = "brands")

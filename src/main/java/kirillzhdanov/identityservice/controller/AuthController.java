@@ -1,8 +1,10 @@
 package kirillzhdanov.identityservice.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import kirillzhdanov.identityservice.dto.*;
 import kirillzhdanov.identityservice.service.AuthService;
+import kirillzhdanov.identityservice.util.Base64Utils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -28,11 +30,12 @@ public class AuthController {
 
 	/* Login endpoint */
 	@PostMapping("/login")
-	public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest request) {
-
-		UserResponse response = authService.login(request);
+	public ResponseEntity<UserResponse> login(@NotEmpty @NotBlank @RequestHeader("Authorization") String authHeader) {
+		LoginRequest requestFromAuthHeader = Base64Utils.getUsernameAndPassword(authHeader);
+		UserResponse response = authService.login(requestFromAuthHeader);
 		return ResponseEntity.ok(response);
 	}
+
 
 	/* Refresh token endpoint */
 	@PostMapping("/refresh")

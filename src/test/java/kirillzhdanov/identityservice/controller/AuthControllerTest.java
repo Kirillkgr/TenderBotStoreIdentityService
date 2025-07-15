@@ -131,9 +131,10 @@ public class AuthControllerTest {
 	void login_Success() throws Exception {
 
 		when(authService.login(any(LoginRequest.class))).thenReturn(userResponse);
+		String credentials = Base64.getEncoder().encodeToString("testuser:Password123!".getBytes());
 
-		mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
-										   .content(objectMapper.writeValueAsString(loginRequest)))
+		mockMvc.perform(post("/auth/login")
+				.header("Authorization", "Basic " + credentials))
 			   .andExpect(status().isOk())
 			   .andExpect(jsonPath("$.username", is("testuser")))
 			   .andExpect(jsonPath("$.accessToken", is("access-token-123")))
@@ -147,9 +148,10 @@ public class AuthControllerTest {
 	void login_InvalidCredentials() throws Exception {
 
 		when(authService.login(any(LoginRequest.class))).thenThrow(new BadRequestException("Неверные учетные данные"));
+		String wrongCredentials = Base64.getEncoder().encodeToString("testuser:wrongpassword".getBytes());
 
-		mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
-										   .content(objectMapper.writeValueAsString(loginRequest)))
+		mockMvc.perform(post("/auth/login")
+				.header("Authorization", "Basic " + wrongCredentials))
 			   .andExpect(status().isBadRequest())
 			   .andExpect(jsonPath("$.message", is("Неверные учетные данные")));
 
