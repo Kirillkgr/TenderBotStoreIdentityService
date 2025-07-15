@@ -35,6 +35,11 @@ public class AuthService {
 	private final TokenService tokenService;
 
 	@Transactional
+	public boolean checkUniqUsername(String username) {
+		return userRepository.existsByUsername(username);
+	}
+
+	@Transactional
 	public UserResponse registerUser(UserRegistrationRequest request) {
 		// Проверяем, что пользователь с таким именем не существует
 		if (userRepository.existsByUsername(request.getUsername())) {
@@ -212,9 +217,28 @@ public class AuthService {
 								   .build();
 	}
 
+	@Transactional(readOnly = true)
+	public boolean validateToken(String token) {
+		try {
+			// Проверяем, что токен не отозван и не истек в нашей БД
+			boolean isTokenInDbAndValid = tokenService.findByToken(token)
+													  .map(Token::isValid)
+													  .orElse(false);
+
+			if (!isTokenInDbAndValid) {
+				return false;
+			}
+
+			// Дополнительно проверяем подпись и срок действия самого JWT
+			return jwtUtils.validateTokenSignature(token);
+		} catch (Exception e) {
+			// Любая ошибка при парсинге или валидации означает, что токен невалиден
+			return false;
+		}
+	}
+
 	@Transactional
 	public void revokeToken(String token) {
-
 		tokenService.revokeToken(token);
 	}
 

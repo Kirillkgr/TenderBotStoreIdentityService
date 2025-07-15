@@ -19,6 +19,6 @@ spring:
 jwt:
   secret: your_jwt_secret_key_please_change_in_production_environment
   access:
-    expiration: 3600000  # 1 час в миллисекундах
+    expiration: 36000000  # 1 час в миллисекундах
   refresh:
-    expiration: 2592000000  # 30 дней в миллисекундах
+    expiration: 25920000000  # 30 дней в миллисекундах

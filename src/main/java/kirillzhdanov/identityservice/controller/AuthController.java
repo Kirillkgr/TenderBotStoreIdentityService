@@ -1,21 +1,39 @@
 package kirillzhdanov.identityservice.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import kirillzhdanov.identityservice.dto.*;
 import kirillzhdanov.identityservice.service.AuthService;
+import kirillzhdanov.identityservice.util.Base64Utils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
 	private final AuthService authService;
+
+	/* Registration endpoint */
+	@PostMapping("/checkUsername")
+	public ResponseEntity<UserResponse> checkUsername(@Valid @NotEmpty @NotBlank @RequestParam String username) {
+		log.info("Check username: {}", username);
+		boolean response;
+
+		response = authService.checkUniqUsername(username);
+		log.info("response: {}", response);
+
+		log.info("checkUsername: {}", username);
+		return ResponseEntity.status(response ? 409 : 200)
+							 .build();
+	}
 
 	/* Registration endpoint */
 	@PostMapping("/register")
@@ -28,11 +46,12 @@ public class AuthController {
 
 	/* Login endpoint */
 	@PostMapping("/login")
-	public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest request) {
-
-		UserResponse response = authService.login(request);
+	public ResponseEntity<UserResponse> login(@NotEmpty @NotBlank @RequestHeader("Authorization") String authHeader) {
+		LoginRequest requestFromAuthHeader = Base64Utils.getUsernameAndPassword(authHeader);
+		UserResponse response = authService.login(requestFromAuthHeader);
 		return ResponseEntity.ok(response);
 	}
+
 
 	/* Refresh token endpoint */
 	@PostMapping("/refresh")

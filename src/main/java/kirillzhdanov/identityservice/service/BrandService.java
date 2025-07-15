@@ -5,6 +5,7 @@ import kirillzhdanov.identityservice.exception.*;
 import kirillzhdanov.identityservice.model.*;
 import kirillzhdanov.identityservice.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,15 +38,24 @@ public class BrandService {
 	@Transactional
 	public BrandDto createBrand(BrandDto brandDto) {
 
+		String username = SecurityContextHolder.getContext().getAuthentication().getName();
+		User currentUser = userRepository.findByUsername(username)
+				.orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found: " + username));
+
 		if (brandRepository.existsByName(brandDto.getName())) {
 			throw new ResourceAlreadyExistsException("Brand already exists with name: " + brandDto.getName());
 		}
 
 		Brand brand = Brand.builder()
 						   .name(brandDto.getName())
+						   .organizationName(brandDto.getOrganizationName())
 						   .build();
 
 		Brand savedBrand = brandRepository.save(brand);
+
+		currentUser.getBrands().add(savedBrand);
+		userRepository.save(currentUser);
+
 		return convertToDto(savedBrand);
 	}
 
@@ -102,6 +112,7 @@ public class BrandService {
 		return BrandDto.builder()
 					   .id(brand.getId())
 					   .name(brand.getName())
+					   .organizationName(brand.getOrganizationName())
 					   .build();
 	}
 }
