@@ -35,6 +35,11 @@ public class AuthService {
 	private final TokenService tokenService;
 
 	@Transactional
+	public boolean checkUniqUsername(String username) {
+		return userRepository.existsByUsername(username);
+	}
+
+	@Transactional
 	public UserResponse registerUser(UserRegistrationRequest request) {
 		// Проверяем, что пользователь с таким именем не существует
 		if (userRepository.existsByUsername(request.getUsername())) {
