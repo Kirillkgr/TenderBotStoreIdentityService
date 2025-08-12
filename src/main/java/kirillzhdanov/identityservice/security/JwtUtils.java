@@ -1,12 +1,21 @@
 package kirillzhdanov.identityservice.security;
 
-import io.jsonwebtoken.*;
-import kirillzhdanov.identityservice.model.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.Token;
+import kirillzhdanov.identityservice.model.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import java.time.*;
+import java.security.Key;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -16,12 +25,18 @@ public class JwtUtils {
 
 	@Value("${jwt.secret:secret_key_for_jwt_token_please_change_in_production}")
 	private String secret;
+	private Key key;
 
 	@Value("${jwt.access.expiration:3600000}")
 	private Long accessTokenExpiration; // 1 час по умолчанию
 
 	@Value("${jwt.refresh.expiration:2592000000}")
 	private Long refreshTokenExpiration; // 30 дней по умолчанию
+
+	@PostConstruct
+	public void init() {
+		this.key = Keys.hmacShaKeyFor(secret.getBytes());
+	}
 
 	public String extractUsername(String token) {
 
@@ -42,8 +57,9 @@ public class JwtUtils {
 	private Claims extractAllClaims(String token) {
 
 		try {
-			return Jwts.parser()
-					   .setSigningKey(secret)
+			return Jwts.parserBuilder()
+					.setSigningKey(key)
+					.build()
 					   .parseClaimsJws(token)
 					   .getBody();
 		} catch (ExpiredJwtException e) {
@@ -102,7 +118,7 @@ public class JwtUtils {
 				   .setSubject(subject)
 				   .setIssuedAt(new Date(System.currentTimeMillis()))
 				   .setExpiration(new Date(System.currentTimeMillis() + expiration))
-				   .signWith(SignatureAlgorithm.HS256, secret)
+				.signWith(key, SignatureAlgorithm.HS256)
 				   .compact();
 	}
 
@@ -160,8 +176,9 @@ public class JwtUtils {
 	public boolean validateTokenSignature(String token) {
 
 		try {
-			Jwts.parser()
-				.setSigningKey(secret)
+			Jwts.parserBuilder()
+					.setSigningKey(key)
+					.build()
 				.parseClaimsJws(token);
 			return !isTokenExpired(token);
 		} catch (Exception e) {
