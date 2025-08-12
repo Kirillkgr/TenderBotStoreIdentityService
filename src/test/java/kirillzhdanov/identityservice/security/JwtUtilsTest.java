@@ -1,14 +1,21 @@
 package kirillzhdanov.identityservice.security;
 
 import io.jsonwebtoken.*;
-import kirillzhdanov.identityservice.model.*;
-import org.junit.jupiter.api.*;
+import io.jsonwebtoken.security.Keys;
+import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.Role;
+import kirillzhdanov.identityservice.model.Token;
+import kirillzhdanov.identityservice.model.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.security.Key;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,9 +45,11 @@ public class JwtUtilsTest {
 	@BeforeEach
 	void setUp() {
 		// Устанавливаем значения для полей JwtUtils
-		ReflectionTestUtils.setField(jwtUtils, "secret", "test_secret_key_for_jwt_token_that_is_long_enough");
+		String secret = "test_secret_key_for_jwt_token_that_is_long_enough";
+		ReflectionTestUtils.setField(jwtUtils, "secret", secret);
 		ReflectionTestUtils.setField(jwtUtils, "accessTokenExpiration", 3600000L); // 1 час
 		ReflectionTestUtils.setField(jwtUtils, "refreshTokenExpiration", 2592000000L); // 30 дней
+		jwtUtils.init();
 
 		// Создаем тестового пользователя с ролями и брендами
 		Role userRole = new Role();
@@ -88,12 +97,13 @@ public class JwtUtilsTest {
 													 .name())
 									.collect(Collectors.toList()));
 
+		Key key = Keys.hmacShaKeyFor(secret.getBytes());
 		expiredToken = Jwts.builder()
 						   .setClaims(claims)
 						   .setSubject(customUserDetails.getUsername())
 						   .setIssuedAt(pastDate)
 						   .setExpiration(pastDate) // Устанавливаем дату истечения в прошлом
-						   .signWith(SignatureAlgorithm.HS256, "test_secret_key_for_jwt_token_that_is_long_enough")
+				.signWith(key, SignatureAlgorithm.HS256)
 						   .compact();
 
 		// Создаем токен с неверной подписью
