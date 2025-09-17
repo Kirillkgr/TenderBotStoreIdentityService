@@ -89,4 +89,4 @@ jobs:
 
       - name: start update script starts3.sh
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }}  ssh -o StrictHostKeyChecking=no  root@${{ vars.IP_ADDRESS }} OAUTH_TOKEN='${{ secrets.YC_OAUTH_TOKEN }}' /home/user/starts3.sh  && exit;
+          sshpass -p ${{ secrets.SERVER_PASSWORD }}  ssh -o StrictHostKeyChecking=no  root@${{ vars.IP_ADDRESS }} YC_SA_JSON_CREDENTIALS='${{ secrets.YC_SA_JSON_CREDENTIALS }}' /home/user/starts3.sh  && exit;

@@ -23,13 +23,13 @@ fi
 echo "Starting the Docker service..."
 systemctl start docker
 
-# OAuth to docker yandex registry (expects OAUTH_TOKEN env variable)
-echo "OAuth to docker yandex registry..."
-if [ -z "$OAUTH_TOKEN" ]; then
-  echo "ERROR: OAUTH_TOKEN is not set. Export OAUTH_TOKEN before running this script."
+# Login to Yandex Container Registry using Service Account JSON key
+echo "Login to Yandex Container Registry (via service account JSON key)..."
+if [ -z "$YC_SA_JSON_CREDENTIALS" ]; then
+  echo "ERROR: YC_SA_JSON_CREDENTIALS is not set. Export YC_SA_JSON_CREDENTIALS with the JSON key before running this script."
   exit 1
 fi
-echo "$OAUTH_TOKEN" | docker login --username oauth --password-stdin cr.yandex
+echo "$YC_SA_JSON_CREDENTIALS" | docker login --username json_key --password-stdin cr.yandex
 
 # Change directory
 echo "Change directory..."
