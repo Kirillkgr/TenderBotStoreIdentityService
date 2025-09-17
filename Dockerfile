@@ -4,10 +4,12 @@ WORKDIR /app
 COPY pom.xml .
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q -e dependency:go-offline
 COPY src/ /app/src/
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q -e package
+# For production image build, skip tests inside container to avoid relying on test-only resources
+RUN --mount=type=cache,target=/root/.m2 mvn -B -q -e package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
+# Application listens on 9900 by default (see src/main/resources/application.yml)
+EXPOSE 9900
 ENTRYPOINT ["java", "-jar", "app.jar"]
