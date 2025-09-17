@@ -1,0 +1,17 @@
+.profile-container {
+  max-width: 800px;
+  margin: auto;
+  padding: 2rem;
+}
+
+.user-info {
+  margin-bottom: 2rem;
+}
+
+hr {
+  margin: 2rem 0;
+}
+
+.order-history h2 {
+  margin-bottom: 1.5rem;
+}

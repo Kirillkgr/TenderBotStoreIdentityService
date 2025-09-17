@@ -1,6 +1,8 @@
 package kirillzhdanov.identityservice.security;
 
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -27,15 +29,19 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
 		http.csrf(AbstractHttpConfigurer::disable)
-			.authorizeHttpRequests(auth -> auth.requestMatchers("/auth/**")
-											   .permitAll()
-											   .requestMatchers("/auth/v1/register")
-											   .permitAll()
-											   .requestMatchers("/auth/v1/checkUsername")
-											   .permitAll()
-											   .requestMatchers("/auth/v1/login")
-											   .permitAll()
-											   .requestMatchers("/swagger-ui/**")
+				.authorizeHttpRequests(auth -> auth
+												   .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight
+												   .requestMatchers("/auth/v1/login")
+												   .permitAll()
+												   .requestMatchers("/auth/v1/register")
+												   .permitAll()
+												   .requestMatchers("/auth/v1/checkUsername")
+												   .permitAll()
+												   .requestMatchers("/auth/v1/refresh")
+												   .permitAll()
+												   .requestMatchers("/menu/v1/**").permitAll()
+
+						.requestMatchers("/swagger-ui/**")
 											   .permitAll()
 											   .requestMatchers("/swagger-ui.html")
 											   .permitAll()
@@ -43,10 +49,10 @@ public class SecurityConfig {
 											   .permitAll()
 											   .requestMatchers("/v3/api-docs/**")
 											   .permitAll()
-											   .requestMatchers("/status")
-											   .permitAll()
-											   .anyRequest()
-											   .authenticated())
+												   .requestMatchers("/status")
+												   .permitAll()
+												   .anyRequest()
+												   .authenticated())
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

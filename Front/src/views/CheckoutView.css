@@ -1,0 +1,49 @@
+/* Mobile-first styles */
+.checkout-container {
+  max-width: 600px;
+  margin: auto;
+  padding: 1rem; /* Уменьшаем отступы для мобильных */
+}
+
+/* Tablet and Desktop styles */
+@media (min-width: 768px) {
+  .checkout-container {
+    padding: 2rem; /* Возвращаем исходные отступы */
+  }
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.error-message {
+  color: #ff4d4d;
+  margin-top: 0.25rem;
+}
+
+button {
+  width: 100%;
+  padding: 1rem;
+  background-color: #42b983;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #ccc;
+}

@@ -12,8 +12,6 @@ spring:
     open-in-view: false
 
     show-sql: false
-  kafka:
-    bootstrap-servers: ${KAFKA_HOST:kafka:9092}
 
 # JWT Configuration
 jwt:
@@ -28,4 +26,5 @@ address:
     front-service-cors:
       list:
         - "https://kirillkgr.ru"
+        - "http://kirillkgr.ru"
         - "http://localhost:5173"
