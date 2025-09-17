@@ -63,7 +63,7 @@ jobs:
           #IMAGE_TAG: ${{ github.sha }}
           IMAGE_TAG: master
         run: |
-          docker build -f Front/Dockerfile  -t cr.yandex/crpp92t3gcj0he0j8nj2/$CR_REPO:$IMAGE_TAG .
+          docker build -f Front/Dockerfile -t cr.yandex/crpp92t3gcj0he0j8nj2/$CR_REPO:$IMAGE_TAG Front
           docker push cr.yandex/crpp92t3gcj0he0j8nj2/$CR_REPO:$IMAGE_TAG
 
 
