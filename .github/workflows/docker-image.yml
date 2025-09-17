@@ -69,24 +69,24 @@ jobs:
 
       - name: Create Docker directory
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }}  ssh -o StrictHostKeyChecking=no  root@${{ vars.IP_ADDRESS }} mkdir -p /home/user;
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'mkdir -p /home/user'
 
       - name: copy docker-compose-prod.yml
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }} scp -o StrictHostKeyChecking=no ./docker-compose.yml root@${{ vars.IP_ADDRESS }}:/home/user/;
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no ./docker-compose.yml root@${{ vars.IP_ADDRESS }}:/home/user/
 
       - name: copy frontend nginx.conf
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }} scp -o StrictHostKeyChecking=no ./Front/nginx.conf root@${{ vars.IP_ADDRESS }}:/home/user/nginx.conf;
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no ./Front/nginx.conf root@${{ vars.IP_ADDRESS }}:/home/user/nginx.conf
 
       - name: copy start.sh
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }}  scp -o StrictHostKeyChecking=no -P 22 -r ./starts3.sh root@${{ vars.IP_ADDRESS }}:/home/user/ ;
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no -P 22 -r ./starts3.sh root@${{ vars.IP_ADDRESS }}:/home/user/
 
       - name: make start.sh executable
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }}  ssh -o StrictHostKeyChecking=no  root@${{ vars.IP_ADDRESS }} chmod +x /home/user/starts3.sh && exit;
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'chmod +x /home/user/starts3.sh'
 
       - name: start update script starts3.sh
         run: |
-          sshpass -p ${{ secrets.SERVER_PASSWORD }}  ssh -o StrictHostKeyChecking=no  root@${{ vars.IP_ADDRESS }} YC_SA_JSON_CREDENTIALS='${{ secrets.YC_SA_JSON_CREDENTIALS }}' /home/user/starts3.sh  && exit;
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "YC_SA_JSON_CREDENTIALS='${{ secrets.YC_SA_JSON_CREDENTIALS }}' /home/user/starts3.sh"
