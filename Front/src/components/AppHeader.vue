@@ -1,7 +1,12 @@
 <template>
   <div class="header-container">
     <nav class="main-nav" :class="{ 'main-nav--hidden': !isHeaderVisible }">
-      <router-link to="/" class="logo">TenderBotStore</router-link>
+      <div class="logo-wrap" @click="openQr">
+        <button class="qr-btn" @click="openQr" aria-label="Показать QR код" type="button">
+          <img :src="qrCode" alt="QR code" class="logo-img" @click="openQr" />
+        </button>
+        <router-link to="/" class="logo">TenderBotStore</router-link>
+      </div>
 
       <div class="burger" @click="toggleMenu" :class="{ 'is-active': isMenuOpen }">
         <span></span>
@@ -29,15 +34,30 @@
       </div>
     </nav>
     <div v-if="isMenuOpen" class="nav-overlay" @click="closeMenu"></div>
+    
+    <!-- Modal with enlarged QR for easy scanning (teleported to body) -->
+    <teleport to="body">
+      <transition name="fade-scale">
+        <div v-if="showQr" class="qr-overlay" @click="showQr = false" aria-modal="true" role="dialog">
+          <div class="qr-card" @click.stop>
+            <img :src="qrCode" alt="QR code full" class="qr-full" />
+            <button class="qr-close" @click="showQr = false" aria-label="Закрыть" type="button">×</button>
+            <p class="qr-hint">Наведите камеру, чтобы открыть сайт</p>
+          </div>
+        </div>
+      </transition>
+    </teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../store/auth';
 import { useCartStore } from '../store/cart';
 import { useRouter } from 'vue-router';
+
+import qrCode from '../assets/qr-code.svg';
 
 const props = defineProps({
   isModalVisible: {
@@ -52,6 +72,7 @@ const authStore = useAuthStore();
 const cartStore = useCartStore();
 const router = useRouter();
 const isMenuOpen = ref(false);
+const showQr = ref(false);
 const isProfilePage = computed(() => route.name === 'Profile');
 const isHeaderVisible = ref(true);
 let lastScrollPosition = 0;
@@ -88,6 +109,14 @@ function openRegister() {
   isMenuOpen.value = false; // Close menu on mobile after clicking
 }
 
+function openQr() {
+  // Небольшая защита от случайного двойного клика/пропагации
+  console.log('openQr click');
+  // Закрываем мобильное меню, если открыто (иначе overlay может перекрывать клики)
+  if (isMenuOpen.value) isMenuOpen.value = false;
+  showQr.value = true;
+}
+
 function handleScroll() {
   const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
   if (currentScrollPosition < 0) {
@@ -98,12 +127,29 @@ function handleScroll() {
   lastScrollPosition = currentScrollPosition;
 }
 
+function onKeydown(e) {
+  if (e.key === 'Escape') {
+    showQr.value = false;
+  }
+}
+
 onMounted(() => {
   window.addEventListener('scroll', handleScroll);
+  window.addEventListener('keydown', onKeydown);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll);
+  window.removeEventListener('keydown', onKeydown);
+});
+
+// Lock body scroll when modal is open
+watch(showQr, (open) => {
+  if (open) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
 });
 </script>
 
@@ -129,6 +175,62 @@ onBeforeUnmount(() => {
 
 </style>
 
+<!-- Global styles for teleported QR modal (scoped styles don't apply to teleport) -->
+<style>
+.qr-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  cursor: zoom-out;
+}
+
+.qr-card {
+  position: relative;
+  background: #1f1f1f;
+  border-radius: 12px;
+  padding: 1rem 1rem 0.75rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.qr-full {
+  display: block;
+  width: min(80vw, 20rem);
+  height: auto;
+}
+
+.qr-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.qr-hint {
+  color: #bdbdbd;
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
+</style>
 
 <style scoped>
 .header-container {
@@ -158,6 +260,34 @@ onBeforeUnmount(() => {
   align-items: center;
   transition: transform 0.3s ease-in-out;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Logo container with QR icon */
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* небольшой отступ между иконкой и названием */
+  position: relative;
+  z-index: 2;
+}
+
+.qr-btn {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  z-index: 2; /* на случай перекрытий соседними элементами */
+  pointer-events: auto;
+}
+
+.logo-img {
+  height: 2.5rem; /* иконка в шапке скромная, но заметная */
+  width: auto;
+  display: inline-block;
 }
 
 .main-nav--hidden {
@@ -253,6 +383,11 @@ onBeforeUnmount(() => {
 
   .burger {
     display: flex;
+  }
+
+  /* На мобильных уменьшим немного иконку */
+  .logo-img {
+    height: 2rem;
   }
 
   /* Анимация бургера в крестик */
