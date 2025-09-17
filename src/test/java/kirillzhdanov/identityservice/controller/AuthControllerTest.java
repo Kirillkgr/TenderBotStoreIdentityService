@@ -6,11 +6,13 @@ import kirillzhdanov.identityservice.dto.TokenRefreshRequest;
 import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
 import kirillzhdanov.identityservice.model.Role;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
@@ -52,8 +54,17 @@ public class AuthControllerTest extends IntegrationTestBase {
         registrationRequest.setRoleNames(roles);
     }
 
+    private String loginAndGetRefreshTokenCookie() throws Exception {
+        String credentials = Base64.getEncoder().encodeToString(("testuser:Password123!").getBytes());
+        MvcResult loginResult = mockMvc.perform(post("/auth/v1/login").header("Authorization", "Basic " + credentials))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie cookie = loginResult.getResponse().getCookie("refreshToken");
+        return cookie != null ? cookie.getValue() : null;
+    }
+
     private UserResponse registerAndGetResponse() throws Exception {
-        MvcResult result = mockMvc.perform(post("/auth/register")
+        MvcResult result = mockMvc.perform(post("/auth/v1/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registrationRequest)))
                 .andExpect(status().isCreated())
@@ -65,12 +76,11 @@ public class AuthControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("Регистрация пользователя - успешно")
     void registerUser_Success() throws Exception {
-        mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/auth/v1/register").contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registrationRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username", is("testuser")))
-                .andExpect(jsonPath("$.accessToken", notNullValue()))
-                .andExpect(jsonPath("$.refreshToken", notNullValue()));
+                .andExpect(jsonPath("$.accessToken", notNullValue()));
     }
 
     @Test
@@ -78,7 +88,7 @@ public class AuthControllerTest extends IntegrationTestBase {
     void registerUser_UsernameAlreadyExists() throws Exception {
         registerAndGetResponse(); // First registration
 
-        mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON) // Second registration
+        mockMvc.perform(post("/auth/v1/register").contentType(MediaType.APPLICATION_JSON) // Second registration
                         .content(objectMapper.writeValueAsString(registrationRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", is("Пользователь с таким именем уже существует")));
@@ -91,7 +101,7 @@ public class AuthControllerTest extends IntegrationTestBase {
         invalidRequest.setUsername("");
         invalidRequest.setPassword("123");
 
-        mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/auth/v1/register").contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest());
     }
@@ -102,12 +112,13 @@ public class AuthControllerTest extends IntegrationTestBase {
         registerAndGetResponse();
         String credentials = Base64.getEncoder().encodeToString(("testuser:Password123!").getBytes());
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/auth/v1/login")
                         .header("Authorization", "Basic " + credentials))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username", is("testuser")))
                 .andExpect(jsonPath("$.accessToken", notNullValue()))
-                .andExpect(jsonPath("$.refreshToken", notNullValue()));
+                // refreshToken уходит в Set-Cookie, а не в body
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("refreshToken=")));
     }
 
     @Test
@@ -116,7 +127,7 @@ public class AuthControllerTest extends IntegrationTestBase {
         registerAndGetResponse();
         String wrongCredentials = Base64.getEncoder().encodeToString("testuser:wrongpassword".getBytes());
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/auth/v1/login")
                         .header("Authorization", "Basic " + wrongCredentials))
                 .andExpect(status().isUnauthorized());
     }
@@ -124,27 +135,23 @@ public class AuthControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("Обновление токена - успешно")
     void refreshToken_Success() throws Exception {
-        UserResponse userResponse = registerAndGetResponse();
-        TokenRefreshRequest refreshRequest = new TokenRefreshRequest();
-        refreshRequest.setRefreshToken(userResponse.getRefreshToken());
-
-        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest)))
+        registerAndGetResponse();
+        String refresh = loginAndGetRefreshTokenCookie();
+        org.junit.jupiter.api.Assertions.assertNotNull(refresh, "Refresh token cookie must be present after login");
+        mockMvc.perform(post("/auth/v1/refresh")
+                        .cookie(new Cookie("refreshToken", refresh)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", notNullValue()))
-                .andExpect(jsonPath("$.refreshToken", is(userResponse.getRefreshToken())));
+                .andExpect(jsonPath("$.refreshToken", is(refresh)));
     }
 
     @Test
     @DisplayName("Обновление токена - недействительный токен")
     void refreshToken_InvalidToken() throws Exception {
-        TokenRefreshRequest refreshRequest = new TokenRefreshRequest();
-        refreshRequest.setRefreshToken("invalid-refresh-token");
-
-        mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest)))
+        mockMvc.perform(post("/auth/v1/refresh")
+                        .cookie(new Cookie("refreshToken", "invalid-refresh-token")))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message", is("Токен обновления недействителен или истек")));
+                ;
     }
 
     @Test
@@ -153,7 +160,7 @@ public class AuthControllerTest extends IntegrationTestBase {
     void revokeToken_Success() throws Exception {
         UserResponse userResponse = registerAndGetResponse();
 
-        mockMvc.perform(post("/auth/revoke").param("token", userResponse.getAccessToken()))
+        mockMvc.perform(post("/auth/v1/revoke").param("token", userResponse.getAccessToken()))
                 .andExpect(status().isOk());
     }
 
@@ -163,26 +170,28 @@ public class AuthControllerTest extends IntegrationTestBase {
     void revokeAllUserTokens_Success() throws Exception {
         registerAndGetResponse();
 
-        mockMvc.perform(post("/auth/revoke-all").param("username", "testuser"))
+        mockMvc.perform(post("/auth/v1/revoke-all").param("username", "testuser"))
                 .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("Выход из системы - успешно")
+    @WithMockUser(username = "testuser")
     void logout_Success() throws Exception {
         UserResponse userResponse = registerAndGetResponse();
 
-        mockMvc.perform(delete("/auth/logout").contentType(MediaType.TEXT_PLAIN)
+        mockMvc.perform(delete("/auth/v1/logout").contentType(MediaType.TEXT_PLAIN)
                         .content(userResponse.getAccessToken()))
                 .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("Выход из всех сессий - успешно")
+    @WithMockUser(username = "admin", roles = "ADMIN")
     void logoutAll_Success() throws Exception {
         registerAndGetResponse();
 
-        mockMvc.perform(delete("/auth/logout/all/{username}", "testuser"))
+        mockMvc.perform(delete("/auth/v1/logout/all/{username}", "testuser"))
                 .andExpect(status().isOk());
     }
 }

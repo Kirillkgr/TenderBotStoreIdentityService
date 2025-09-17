@@ -1,9 +1,12 @@
 package kirillzhdanov.identityservice.service;
 
 import kirillzhdanov.identityservice.dto.BrandDto;
-import kirillzhdanov.identityservice.exception.*;
-import kirillzhdanov.identityservice.model.*;
-import kirillzhdanov.identityservice.repository.*;
+import kirillzhdanov.identityservice.exception.ResourceAlreadyExistsException;
+import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
+import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.User;
+import kirillzhdanov.identityservice.repository.BrandRepository;
+import kirillzhdanov.identityservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,16 +26,25 @@ public class BrandService {
 	public List<BrandDto> getAllBrands() {
 
 		return brandRepository.findAll()
-							  .stream()
-							  .map(this::convertToDto)
-							  .collect(Collectors.toList());
+				.stream()
+				.map(this::convertToDto)
+				.collect(Collectors.toList());
 	}
 
-	public BrandDto getBrandById(Long id) {
+	/**
+	 * Returns brands assigned to the currently authenticated user only.
+	 */
+	@Transactional(readOnly = true)
+	public List<BrandDto> getMyBrands() {
 
-		Brand brand = brandRepository.findById(id)
-									 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + id));
-		return convertToDto(brand);
+		String username = SecurityContextHolder.getContext().getAuthentication().getName();
+		User currentUser = userRepository.findByUsername(username)
+				.orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found: " + username));
+
+		return currentUser.getBrands()
+				.stream()
+				.map(this::convertToDto)
+				.collect(Collectors.toList());
 	}
 
 	@Transactional
@@ -114,5 +126,12 @@ public class BrandService {
 					   .name(brand.getName())
 					   .organizationName(brand.getOrganizationName())
 					   .build();
+	}
+
+	public BrandDto getBrandById(Long id) {
+
+		Brand brand = brandRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + id));
+		return convertToDto(brand);
 	}
 }

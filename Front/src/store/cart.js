@@ -1,0 +1,54 @@
+import {defineStore} from 'pinia';
+import * as cartService from '../services/cartService';
+
+export const useCartStore = defineStore('cart', {
+    state: () => ({
+        items: [],
+        total: 0,
+        loading: false,
+    }),
+
+    actions: {
+        async fetchCart() {
+            this.loading = true;
+            try {
+                const response = await cartService.getCart();
+                this.items = response.data.items;
+                this.total = response.data.total;
+            } catch (error) {
+                console.error('Ошибка при загрузке корзины:', error);
+                this.items = [];
+                this.total = 0;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async addItem(productId, quantity) {
+            try {
+                await cartService.addToCart(productId, quantity);
+                // После успешного добавления обновляем корзину, чтобы получить актуальные данные
+                await this.fetchCart();
+            } catch (error) {
+                console.error('Ошибка при добавлении товара в корзину:', error);
+                throw error;
+            }
+        },
+
+        async removeItem(cartItemId) {
+            try {
+                await cartService.removeFromCart(cartItemId);
+                // Обновляем корзину после удаления
+                await this.fetchCart();
+            } catch (error) {
+                console.error('Ошибка при удалении товара из корзины:', error);
+                throw error;
+            }
+        },
+
+        clearCart() {
+            this.items = [];
+            this.total = 0;
+        }
+    },
+});

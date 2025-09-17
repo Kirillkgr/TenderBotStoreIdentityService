@@ -1,0 +1,53 @@
+.admin-panel {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.controls {
+  margin-bottom: 20px;
+}
+
+#brand-select {
+  margin-left: 10px;
+  padding: 5px;
+}
+
+.actions-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tag-groups-container {
+  margin-top: 20px;
+  border-top: 1px solid #ccc;
+  padding-top: 20px;
+}
+
+.tag-group-list {
+  list-style-type: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag-group-list li {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.tag-group-list li:hover {
+  background-color: #f0f0f0;
+  border-color: #aaa;
+}
+
+.tag-group-list li.selected {
+  background-color: #42b983;
+  color: white;
+  border-color: #42b983;
+}

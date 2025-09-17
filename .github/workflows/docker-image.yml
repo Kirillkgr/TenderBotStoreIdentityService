@@ -1,0 +1,92 @@
+on:
+  push:
+    branches: [ "master" ]
+    # Publish semver tags as releases.
+    tags: [ "v*.*.*" ]
+
+  pull_request:
+    branches: [ "master" ]
+  schedule:
+    - cron: "* * * * 2"
+
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install the cosign tool except on PR
+      # https://github.com/sigstore/cosign-installer
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@6e04d228eb30da1757ee4e1dd75a0ec73a653e06 #v3.1.1
+        with:
+          cosign-release: "v2.1.1"
+
+      # Workaround: https://github.com/docker/build-push-action/issues/461
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@79abd3f86f79a9d68a23c75a09a9a85889262adf
+
+      - name: Yandex Cloud CR "Login" Action for GitHub Actions
+        id: login-cr
+        uses: yc-actions/yc-cr-login@v2
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+
+      - name: Build backend image, tag, and push to Yandex Cloud Container Registry
+        env:
+          CR_REPO: tenderbotstore_server
+          #IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: master
+        run: |
+          docker build -t cr.yandex/crpp92t3gcj0he0j8nj2/$CR_REPO:$IMAGE_TAG .
+          docker push cr.yandex/crpp92t3gcj0he0j8nj2/$CR_REPO:$IMAGE_TAG
+
+      - name: Build frontend image, tag, and push to Yandex Cloud Container Registry
+        env:
+          CR_REPO: tenderbotstore_front
+          #IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: master
+        run: |
+          docker build -f Front/Dockerfile -t cr.yandex/crpp92t3gcj0he0j8nj2/$CR_REPO:$IMAGE_TAG Front
+          docker push cr.yandex/crpp92t3gcj0he0j8nj2/$CR_REPO:$IMAGE_TAG
+
+
+      - name: Create Docker directory
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'mkdir -p /home/user'
+
+      - name: copy docker-compose-prod.yml
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no ./docker-compose.yml root@${{ vars.IP_ADDRESS }}:/home/user/
+
+      - name: copy frontend nginx.conf
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no ./Front/nginx.conf root@${{ vars.IP_ADDRESS }}:/home/user/nginx.conf
+
+      - name: copy start.sh
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no -P 22 -r ./starts3.sh root@${{ vars.IP_ADDRESS }}:/home/user/
+
+      - name: make start.sh executable
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'chmod +x /home/user/starts3.sh'
+
+      - name: start update script starts3.sh
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "YC_SA_JSON_CREDENTIALS='${{ secrets.YC_SA_JSON_CREDENTIALS }}' /home/user/starts3.sh"

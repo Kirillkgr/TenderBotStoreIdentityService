@@ -1,0 +1,97 @@
+package kirillzhdanov.identityservice.controller;
+
+import kirillzhdanov.identityservice.dto.BrandDto;
+import kirillzhdanov.identityservice.dto.group.GroupTagResponse;
+import kirillzhdanov.identityservice.dto.menu.PublicBrandResponse;
+import kirillzhdanov.identityservice.dto.menu.PublicGroupTagResponse;
+import kirillzhdanov.identityservice.dto.menu.PublicProductResponse;
+import kirillzhdanov.identityservice.dto.product.ProductResponse;
+import kirillzhdanov.identityservice.service.BrandService;
+import kirillzhdanov.identityservice.service.GroupTagService;
+import kirillzhdanov.identityservice.service.ProductService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/menu/v1")
+@RequiredArgsConstructor
+public class MenuController {
+
+    private final BrandService brandService;
+    private final GroupTagService groupTagService;
+    private final ProductService productService;
+
+    // 1) Публичный список брендов (минимум данных)
+    @GetMapping("/brands")
+    public ResponseEntity<List<PublicBrandResponse>> getBrands() {
+        List<BrandDto> brands = brandService.getAllBrands();
+        List<PublicBrandResponse> response = brands.stream()
+                .map(b -> new PublicBrandResponse(b.getId(), b.getName()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    // 2) Публичная карточка бренда (минимум данных)
+    @GetMapping("/brands/{brandId}")
+    public ResponseEntity<PublicBrandResponse> getBrand(@PathVariable Long brandId) {
+        BrandDto b = brandService.getBrandById(brandId);
+        return ResponseEntity.ok(new PublicBrandResponse(b.getId(), b.getName()));
+    }
+
+    // 3) Публичные теги бренда по родителю (parentId=0 -> корневые)
+    @GetMapping("/brands/{brandId}/tags")
+    public ResponseEntity<List<PublicGroupTagResponse>> getBrandTags(
+            @PathVariable Long brandId,
+            @RequestParam(required = false, defaultValue = "0") Long parentId
+    ) {
+        List<GroupTagResponse> tags = groupTagService.getGroupTagsByBrandAndParent(brandId, parentId);
+        List<PublicGroupTagResponse> response = tags.stream()
+                .map(t -> new PublicGroupTagResponse(t.getId(), t.getName(), t.getParentId(), t.getLevel()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    // 4) Публичные товары бренда по группе (groupTagId=0 -> корневые). Всегда только видимые.
+    @GetMapping("/brands/{brandId}/products")
+    public ResponseEntity<List<PublicProductResponse>> getBrandProducts(
+            @PathVariable Long brandId,
+            @RequestParam(required = false, defaultValue = "0") Long groupTagId
+    ) {
+        List<ProductResponse> products = productService.getByBrandAndGroup(brandId, groupTagId, true);
+        List<PublicProductResponse> response = products.stream()
+                .map(p -> new PublicProductResponse(p.getId(), p.getName(), p.getDescription(), p.getPrice(), p.getPromoPrice()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    // ALIAS: совместимость с путём вида /menu/v1/products/by-brand/{brandId}
+    @GetMapping("/products/by-brand/{brandId}")
+    public ResponseEntity<List<PublicProductResponse>> getBrandProductsAlias(
+            @PathVariable Long brandId,
+            @RequestParam(required = false, defaultValue = "0") Long groupTagId
+    ) {
+        return getBrandProducts(brandId, groupTagId);
+    }
+
+    // ALIAS: совместимость с путём вида /menu/v1/tags/by-brand/{brandId}
+    @GetMapping("/tags/by-brand/{brandId}")
+    public ResponseEntity<List<PublicGroupTagResponse>> getBrandTagsAlias(
+            @PathVariable Long brandId,
+            @RequestParam(required = false, defaultValue = "0") Long parentId
+    ) {
+        return getBrandTags(brandId, parentId);
+    }
+
+    // ALIAS: совместимость с путём вида /menu/v1/group-tags/by-brand/{brandId}
+    @GetMapping("/group-tags/by-brand/{brandId}")
+    public ResponseEntity<List<PublicGroupTagResponse>> getBrandGroupTagsAlias(
+            @PathVariable Long brandId,
+            @RequestParam(required = false, defaultValue = "0") Long parentId
+    ) {
+        return getBrandTags(brandId, parentId);
+    }
+}

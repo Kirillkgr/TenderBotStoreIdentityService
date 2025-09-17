@@ -1,19 +1,17 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:9900}
 
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/identity_db
-    username: postgres
-    password: postgres
+    username: ${USER_DB:postgres}
+    password: ${PASSWORD_DB:postgres}
   jpa:
     hibernate:
       ddl-auto: update
     open-in-view: false
 
-    show-sql: true
-  kafka:
-    bootstrap-servers: kafka:9092
+    show-sql: false
 
 # JWT Configuration
 jwt:
@@ -22,3 +20,11 @@ jwt:
     expiration: 36000000  # 1 час в миллисекундах
   refresh:
     expiration: 25920000000  # 30 дней в миллисекундах
+
+address:
+  service:
+    front-service-cors:
+      list:
+        - "https://kirillkgr.ru"
+        - "http://kirillkgr.ru"
+        - "http://localhost:5173"
