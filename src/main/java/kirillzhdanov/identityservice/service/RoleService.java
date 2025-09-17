@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -32,15 +32,10 @@ public class RoleService {
 	@Transactional(readOnly = true)
 	public Role getUserRole() {
 
-		return roleRepository.findByName(Role.RoleName.USER)
+		return roleRepository.findByName(Role.RoleName.OWNER)
 							 .orElseThrow(() -> new RuntimeException("Default USER role not found"));
 	}
 
-	@Transactional(readOnly = true)
-	public List<Role> getAllRoles() {
-
-		return roleRepository.findAll();
-	}
 
 	@Transactional(readOnly = true)
 	public Optional<Role> findByName(Role.RoleName name) {
@@ -48,11 +43,6 @@ public class RoleService {
 		return roleRepository.findByName(name);
 	}
 
-	public boolean existsByName(Role.RoleName roleName) {
-
-		return roleRepository.existsByName(roleName);
-
-	}
 
 	public Role save(Role role) {
 

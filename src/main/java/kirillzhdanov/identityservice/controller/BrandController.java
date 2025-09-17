@@ -28,7 +28,7 @@ public class BrandController {
 	@GetMapping
 	public ResponseEntity<List<BrandDto>> getAllBrands() {
 
-		return ResponseEntity.ok(brandService.getAllBrands());
+		return ResponseEntity.ok(brandService.getMyBrands());
 	}
 
 	/**
