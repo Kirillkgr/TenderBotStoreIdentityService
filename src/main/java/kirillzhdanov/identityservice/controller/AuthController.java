@@ -1,7 +1,8 @@
 package kirillzhdanov.identityservice.controller;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import kirillzhdanov.identityservice.dto.*;
 import kirillzhdanov.identityservice.service.AuthService;
 import kirillzhdanov.identityservice.util.Base64Utils;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/auth/v1")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -46,18 +47,41 @@ public class AuthController {
 
 	/* Login endpoint */
 	@PostMapping("/login")
-	public ResponseEntity<UserResponse> login(@NotEmpty @NotBlank @RequestHeader("Authorization") String authHeader) {
+	public ResponseEntity<UserResponse> login(
+			@NotEmpty @NotBlank @RequestHeader("Authorization") String authHeader) {
+		
 		LoginRequest requestFromAuthHeader = Base64Utils.getUsernameAndPassword(authHeader);
 		UserResponse response = authService.login(requestFromAuthHeader);
-		return ResponseEntity.ok(response);
+		
+		// Создаем куки с refresh token
+		ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
+			.httpOnly(true)
+			.secure(true)  // Только для HTTPS
+			.path("/")
+			.maxAge(30 * 24 * 60 * 60)  // 30 дней
+			.sameSite("Lax")  // Защита от CSRF
+			.build();
+		
+		// Удаляем refresh token из тела ответа
+		response.setRefreshToken(null);
+		
+		// Возвращаем ответ с куки
+		return ResponseEntity.ok()
+			.header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+			.body(response);
 	}
 
 
 	/* Refresh token endpoint */
+	/* Эндпоинт для обновления токена */
 	@PostMapping("/refresh")
-	public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+	public ResponseEntity<TokenRefreshResponse> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
 
-		TokenRefreshResponse response = authService.refreshToken(request);
+		if (refreshToken == null || refreshToken.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(TokenRefreshResponse.builder().build());
+		}
+
+		TokenRefreshResponse response = authService.refreshToken(new TokenRefreshRequest(refreshToken));
 		return ResponseEntity.ok(response);
 	}
 

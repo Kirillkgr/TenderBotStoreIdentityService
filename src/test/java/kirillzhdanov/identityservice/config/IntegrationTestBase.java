@@ -14,17 +14,16 @@ import java.io.File;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class IntegrationTestBase {
 
-    private static final String COMPOSE_FILE_PATH = "docker-compose.yml";
+    private static final String COMPOSE_FILE_PATH = "docker-compose-test.yml";
     private static final String POSTGRES_SERVICE_NAME = "postgres";
     private static final int POSTGRES_SERVICE_PORT = 5432;
     private static final String KAFKA_SERVICE_NAME = "kafka";
     private static final int KAFKA_SERVICE_PORT = 29092;
 
     @Container
-    public static DockerComposeContainer<?> compose =
-            new DockerComposeContainer<>(new File(COMPOSE_FILE_PATH))
-                    .withExposedService(POSTGRES_SERVICE_NAME, POSTGRES_SERVICE_PORT, Wait.forListeningPort())
-                    .withExposedService(KAFKA_SERVICE_NAME, KAFKA_SERVICE_PORT, Wait.forListeningPort());
+    public static DockerComposeContainer<?> compose = new DockerComposeContainer<>(new File(COMPOSE_FILE_PATH))
+            .withExposedService(POSTGRES_SERVICE_NAME, POSTGRES_SERVICE_PORT, Wait.forListeningPort())
+            .withExposedService(KAFKA_SERVICE_NAME, KAFKA_SERVICE_PORT, Wait.forListeningPort());
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {

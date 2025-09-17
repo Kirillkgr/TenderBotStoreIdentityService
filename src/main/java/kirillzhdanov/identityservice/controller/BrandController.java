@@ -14,7 +14,7 @@ import java.util.List;
  * <p>Предоставляет CRUD операции для работы с брендами, а также операции по назначению пользователей брендам.</p>
  */
 @RestController
-@RequestMapping("/api/brands")
+@RequestMapping("/auth/v1/brands")
 @RequiredArgsConstructor
 public class BrandController {
 
