@@ -21,7 +21,7 @@ export const login = (credentials) => {
 
 // Проверка доступности логина
 export const checkUsername = (username) => {
-    return apiClient.post(`/auth/v1/checkUsername?username=${username}`);
+    return apiClient.get(`/auth/v1/checkUsername?username=${username}`);
 };
 
 // Выход пользователя. Запрос инвалидирует refresh_token на бэкенде.

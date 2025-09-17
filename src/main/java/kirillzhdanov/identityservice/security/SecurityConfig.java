@@ -40,6 +40,7 @@ public class SecurityConfig {
 												   .requestMatchers("/auth/v1/refresh")
 												   .permitAll()
 												   .requestMatchers("/menu/v1/**").permitAll()
+												   .requestMatchers(HttpMethod.GET, "/menu/**").permitAll()
 
 						.requestMatchers("/swagger-ui/**")
 											   .permitAll()

@@ -36,6 +36,14 @@ public class AuthController {
 							 .build();
 	}
 
+	/* Convenience GET endpoint to support clients using GET for availability check */
+	@GetMapping("/checkUsername")
+	public ResponseEntity<UserResponse> checkUsernameGet(@Valid @NotEmpty @NotBlank @RequestParam String username) {
+		log.info("[GET] Check username: {}", username);
+		boolean response = authService.checkUniqUsername(username);
+		return ResponseEntity.status(response ? 409 : 200).build();
+	}
+
 	/* Registration endpoint */
 	@PostMapping("/register")
 	public ResponseEntity<UserResponse> registerUser(@Valid @RequestBody UserRegistrationRequest request) {
