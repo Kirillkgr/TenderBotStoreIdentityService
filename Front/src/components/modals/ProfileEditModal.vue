@@ -61,6 +61,7 @@ import Modal from '../Modal.vue';
 import DateOfBirthField from '../fields/DateOfBirthField.vue';
 import { useAuthStore } from '../../store/auth';
 import { useToast } from 'vue-toastification';
+import * as userService from '../../services/userService';
 
 const emit = defineEmits(['close', 'success']);
 const authStore = useAuthStore();
@@ -123,15 +124,9 @@ function handleEmailChange(e) {
 }
 
 async function sendEmailVerification() {
-  // Отправить POST /v1/user/verifield/email
   try {
     const email = values.email;
-    // TODO: заменить на userService
-    await fetch('/v1/user/verifield/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
+    await userService.requestEmailVerification(email);
     showEmailCode.value = true;
   } catch (e) {
     toast.error('Ошибка при отправке письма');
@@ -144,21 +139,13 @@ async function onEmailCodeInput(e) {
   if (code.length === 6 && !isVerifyingCode.value) {
     isVerifyingCode.value = true;
     try {
-      // TODO: заменить на userService
-      const resp = await fetch('/v1/user/verifield/email', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: values.email, code })
-      });
-      if (resp.ok) {
-        emailVerified.value = true;
-        showEmailCode.value = false;
-        toast.success('Email подтвержден!');
-      } else {
-        toast.error('Неверный код');
-      }
+      const email = values.email || user.email;
+      await userService.verifyEmailCode(email, code);
+      emailVerified.value = true;
+      showEmailCode.value = false;
+      toast.success('Email подтвержден!');
     } catch (e) {
-      toast.error('Ошибка при подтверждении');
+      toast.error('Неверный код или ошибка подтверждения');
     } finally {
       isVerifyingCode.value = false;
     }
@@ -178,6 +165,21 @@ onMounted(() => {
       showEmailCode.value = values.email !== user.email;
     } catch {}
   }
+  // Проверка статуса подтверждения email при открытии модалки
+  (async () => {
+    try {
+      const emailToCheck = values.email || user.email;
+      if (!emailToCheck) return;
+      const resp = await userService.checkEmailVerified(emailToCheck);
+      const verified = typeof resp.data === 'boolean' ? resp.data : !!resp.data?.verified;
+      emailVerified.value = verified;
+      emailNeedsVerification.value = !verified && (!!values.email || !!user.email);
+      if (!verified) {
+        showEmailCode.value = true;
+        try { await userService.requestEmailVerification(emailToCheck); } catch (_) {}
+      }
+    } catch (_) { /* ignore network errors here */ }
+  })();
 });
 
 function handleClose() {
@@ -186,14 +188,31 @@ function handleClose() {
 
 const onSubmit = handleSubmit(async (formData) => {
   try {
-    // TODO: отправка emailCode если email менялся
-    // await authStore.updateProfile(formData);
+    // Нормализация даты: если пришёл объект Date — превратим в yyyy-MM-dd
+    if (formData.dateOfBirth instanceof Date) {
+      const y = formData.dateOfBirth.getFullYear();
+      const m = String(formData.dateOfBirth.getMonth() + 1).padStart(2, '0');
+      const d = String(formData.dateOfBirth.getDate()).padStart(2, '0');
+      formData.dateOfBirth = `${y}-${m}-${d}`;
+    }
+
+    // Если email менялся, на бэке ожидается код: добавим его, если поле показано
+    if (showEmailCode.value && !emailVerified.value) {
+      toast.error('Подтвердите email перед сохранением');
+      return;
+    }
+
+    const { data: updated } = await userService.editProfile(formData);
+
+    // Обновляем стор и локальное хранилище
+    authStore.setUser(updated);
+
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     toast.success('Профиль успешно обновлён!');
     emit('success');
     emit('close');
   } catch (error) {
-    toast.error('Ошибка при обновлении профиля.');
+    toast.error(error?.response?.data?.message || 'Ошибка при обновлении профиля.');
     console.error(error);
   }
 });

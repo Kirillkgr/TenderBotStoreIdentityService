@@ -80,18 +80,20 @@ public class AuthController {
 	}
 
 
-	/* Refresh token endpoint */
-	/* Эндпоинт для обновления токена */
-	@PostMapping("/refresh")
-	public ResponseEntity<TokenRefreshResponse> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
+	    /* Refresh token endpoint */
+    /* Эндпоинт для обновления токена */
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenRefreshResponse> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
 
 		if (refreshToken == null || refreshToken.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(TokenRefreshResponse.builder().build());
 		}
 
-		TokenRefreshResponse response = authService.refreshToken(new TokenRefreshRequest(refreshToken));
-		return ResponseEntity.ok(response);
-	}
+		        TokenRefreshResponse response = authService.refreshToken(new TokenRefreshRequest(refreshToken));
+        return ResponseEntity.ok(response);
+    }
+
+    
 
 	/* Revoke token endpoint */
 	@PostMapping("/revoke")
@@ -131,12 +133,32 @@ public class AuthController {
 	}
 
 	@DeleteMapping("/logout")
-	public ResponseEntity<Void> logout(@RequestBody String token) {
+	public ResponseEntity<Void> logout(@RequestBody String token,
+                                       @CookieValue(name = "refreshToken", required = false) String refreshCookie) {
 
-		authService.revokeToken(token);
-		return ResponseEntity.ok()
-							 .build();
-	}
+        // Revoke access token sent in body
+        if (token != null && !token.isBlank()) {
+            authService.revokeToken(token);
+        }
+
+        // Revoke refresh token if present in cookie
+        if (refreshCookie != null && !refreshCookie.isBlank()) {
+            authService.revokeToken(refreshCookie);
+        }
+
+        // Instruct client to clear refresh cookie
+        ResponseCookie cleared = ResponseCookie.from("refreshToken", "")
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .maxAge(0)
+            .sameSite("Lax")
+            .build();
+
+        return ResponseEntity.ok()
+                             .header(HttpHeaders.SET_COOKIE, cleared.toString())
+                             .build();
+    }
 
 	@DeleteMapping("/logout/all/{username}")
 	public ResponseEntity<Void> logoutAll(@PathVariable String username) {

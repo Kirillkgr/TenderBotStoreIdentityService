@@ -1,0 +1,81 @@
+/* Global admin styling overrides, driven by theme.css variables. Apply under a wrapper: .admin-scope */
+
+.admin-scope {
+  color: var(--text);
+}
+
+/* Surfaces */
+.admin-scope .adm-card,
+.admin-scope .card,
+.admin-scope .panel,
+.admin-scope .sheet,
+.admin-scope .tag-manager-container {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 24px var(--shadow-color);
+}
+
+/* Lists (bootstrap-like) */
+.admin-scope .list-group { background: transparent; }
+.admin-scope .list-group-item,
+.admin-scope .list-group-item-action {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.admin-scope .list-group-item + .list-group-item { border-top-color: var(--border) !important; }
+.admin-scope .list-group-item.active,
+.admin-scope .list-group-item-action.active,
+.admin-scope .tag-row.active {
+  background: var(--input-bg-hover) !important;
+  color: var(--text) !important;
+}
+
+/* Tag row inner title/readability */
+.admin-scope .tag-row .tag-title { color: var(--text) !important; font-weight: 600; }
+.admin-scope .tag-row i { color: var(--muted); }
+
+/* Buttons */
+.admin-scope .btn { color: var(--text); border-color: var(--border); background: var(--input-bg); }
+.admin-scope .btn:hover { background: var(--input-bg-hover); }
+.admin-scope .btn-primary, .admin-scope .btn.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.admin-scope .btn-primary:hover { background: var(--primary-600); border-color: var(--primary-600); }
+.admin-scope .btn-outline-primary { color: var(--primary); border-color: var(--primary); background: transparent; }
+.admin-scope .btn-outline-secondary { color: var(--text); border-color: var(--border); background: transparent; }
+.admin-scope .btn-outline-danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.admin-scope .btn-outline-success { color: var(--success); border-color: var(--success); background: transparent; }
+
+/* Badges */
+.admin-scope .badge.bg-secondary { background: var(--input-bg); color: var(--text); }
+.admin-scope .badge.bg-success { background: color-mix(in srgb, var(--success) 35%, transparent); color: var(--text); }
+
+/* Forms */
+.admin-scope .form-control,
+.admin-scope input,
+.admin-scope select,
+.admin-scope textarea {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.admin-scope .form-control:focus,
+.admin-scope input:focus,
+.admin-scope select:focus,
+.admin-scope textarea:focus { background: var(--input-bg-hover); border-color: var(--primary); box-shadow: none; }
+
+/* Alerts */
+.admin-scope .alert { background: var(--input-bg) !important; color: var(--text) !important; border-color: var(--border) !important; }
+
+/* Tables */
+.admin-scope table { color: var(--text); }
+.admin-scope thead { background: var(--surface); }
+.admin-scope tr { border-color: var(--border); }
+
+/* Cards in products */
+.admin-scope .product-card-admin { background: var(--card); color: var(--text); border: 1px solid var(--card-border); }
+.admin-scope .pc-price .old { color: var(--muted); }
+
+/* Breadcrumb chips */
+.admin-scope .path-chip { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+.admin-scope .path-chip.active { background: var(--input-bg-hover); border-color: var(--primary); }

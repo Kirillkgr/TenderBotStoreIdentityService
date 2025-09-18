@@ -1,11 +1,21 @@
 <template>
   <div class="header-container">
     <nav class="main-nav" :class="{ 'main-nav--hidden': !isHeaderVisible }">
-      <div class="logo-wrap" @click="openQr">
-        <button class="qr-btn" @click="openQr" aria-label="Показать QR код" type="button">
-          <img :src="qrCode" alt="QR code" class="logo-img" @click="openQr" />
+      <div class="logo-wrap">
+        <!-- Вертикальный переключатель темы -->
+        <div class="theme-toggle-vert" @click.stop>
+          <button class="ttv-btn" :class="{active: computedTheme === 'light' && themeMode !== 'auto'}"
+                  @click="setTheme('light')" title="День">☀
+          </button>
+          <button class="ttv-btn" :class="{active: computedTheme === 'dark' && themeMode !== 'auto'}"
+                  @click="setTheme('dark')" title="Ночь">🌙
+          </button>
+        </div>
+
+        <button class="qr-btn" @click.stop="openQr" aria-label="Показать QR код" type="button">
+          <img :src="qrCodeUrl" alt="QR code" class="logo-img"/>
         </button>
-        <router-link to="/" class="logo">TenderBotStore</router-link>
+        <router-link to="/" class="logo" @click.stop> TenderBotStore</router-link>
       </div>
 
       <div class="burger" @click="toggleMenu" :class="{ 'is-active': isMenuOpen }">
@@ -40,7 +50,7 @@
       <transition name="fade-scale">
         <div v-if="showQr" class="qr-overlay" @click="showQr = false" aria-modal="true" role="dialog">
           <div class="qr-card" @click.stop>
-            <img :src="qrCode" alt="QR code full" class="qr-full" />
+            <div class="qr-full qr-inline" v-html="qrInline"></div>
             <button class="qr-close" @click="showQr = false" aria-label="Закрыть" type="button">×</button>
             <p class="qr-hint">Наведите камеру, чтобы открыть сайт</p>
           </div>
@@ -51,13 +61,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { useAuthStore } from '../store/auth';
-import { useCartStore } from '../store/cart';
-import { useRouter } from 'vue-router';
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {useAuthStore} from '../store/auth';
+import {useCartStore} from '../store/cart';
 
-import qrCode from '../assets/qr-code.svg';
+import qrCodeUrl from '../assets/qr-code.svg';
+import qrInline from '../assets/qr-code.svg?raw';
 
 const props = defineProps({
   isModalVisible: {
@@ -71,6 +81,29 @@ const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 const router = useRouter();
+const qrInlineRef = ref(qrInline);
+// Тема: общий ключ с админкой
+const THEME_KEY = 'admin_theme_mode'; // 'auto' | 'light' | 'dark'
+const themeMode = ref('auto'); // авто до первого вмешательства пользователя
+const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+const computedTheme = computed(() => {
+  if (themeMode.value === 'light') return 'light';
+  if (themeMode.value === 'dark') return 'dark';
+  const systemDark = media ? media.matches : false;
+  return systemDark ? 'dark' : 'light';
+});
+
+function applyTheme() {
+  const html = document.documentElement;
+  html.classList.remove('theme-light', 'theme-dark');
+  html.classList.add(computedTheme.value === 'dark' ? 'theme-dark' : 'theme-light');
+}
+
+function setTheme(mode) {
+  // Пользователь явно выбирает режим: сохраняем
+  themeMode.value = mode; // 'light' | 'dark'
+}
 const isMenuOpen = ref(false);
 const showQr = ref(false);
 const isProfilePage = computed(() => route.name === 'Profile');
@@ -135,12 +168,30 @@ function onKeydown(e) {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll);
+  // init theme
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'light' || saved === 'dark') themeMode.value = saved; // иначе остаёмся в auto
+  if (media && media.addEventListener) {
+    media.addEventListener('change', () => {
+      if (themeMode.value === 'auto') applyTheme();
+    });
+  }
+  applyTheme();
   window.addEventListener('keydown', onKeydown);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll);
+  if (media && media.removeEventListener) {
+    media.removeEventListener('change', () => {
+    });
+  }
   window.removeEventListener('keydown', onKeydown);
+});
+
+watch(themeMode, (v) => {
+  localStorage.setItem(THEME_KEY, v);
+  applyTheme();
 });
 
 // Lock body scroll when modal is open
@@ -221,15 +272,6 @@ watch(showQr, (open) => {
   margin: 0.5rem 0 0.25rem;
 }
 
-.fade-scale-enter-active,
-.fade-scale-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-.fade-scale-enter-from,
-.fade-scale-leave-to {
-  opacity: 0;
-  transform: scale(0.98);
-}
 </style>
 
 <style scoped>
@@ -269,6 +311,39 @@ watch(showQr, (open) => {
   gap: 0.5rem; /* небольшой отступ между иконкой и названием */
   position: relative;
   z-index: 2;
+}
+
+/* Вертикальный переключатель темы */
+.theme-toggle-vert {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-right: 8px;
+  align-items: center;
+}
+
+.ttv-btn {
+  width: 24px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.ttv-btn.active {
+  background: #4a6cf7;
+  border-color: #4a6cf7;
+}
+
+.ttv-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .qr-btn {

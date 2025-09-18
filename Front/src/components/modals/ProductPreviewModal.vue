@@ -33,10 +33,12 @@
 
       <div class="footer-actions mt-3">
         <button class="btn btn-outline-secondary" @click="$emit('close')">Закрыть</button>
-        <button class="btn btn-primary">
-          <i class="bi bi-cart-plus me-1"></i>
-          В корзину (заглушка)
-        </button>
+        <div class="add-to-cart-wrap">
+          <button class="icon-square" title="Добавить в корзину" aria-label="Добавить в корзину">
+            <i class="bi bi-cart-plus"></i>
+          </button>
+          <span class="caption">Добавить в корзину</span>
+        </div>
       </div>
     </template>
   </Modal>
@@ -78,25 +80,25 @@ function formatPrice(val) {
 .image-box {
   width: 300px;
   height: 300px;
-  background: #f8fafc center/cover no-repeat;
-  border: 1px solid #e2e8f0;
+  background: var(--input-bg) center/cover no-repeat;
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px var(--shadow-color);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .image-box:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .info {
-  color: #1e293b;
+  color: var(--text);
   max-height: 400px;
   overflow-y: auto;
   padding-right: 8px;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-color: var(--border) var(--card);
 }
 
 .info::-webkit-scrollbar {
@@ -104,12 +106,12 @@ function formatPrice(val) {
 }
 
 .info::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--card);
   border-radius: 3px;
 }
 
 .info::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+  background-color: var(--border);
   border-radius: 3px;
 }
 
@@ -118,7 +120,7 @@ function formatPrice(val) {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.3;
-  color: #0f172a;
+  color: var(--text);
   letter-spacing: -0.01em;
 }
 
@@ -128,17 +130,17 @@ function formatPrice(val) {
   gap: 10px;
   margin-bottom: 20px;
   padding: 10px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border);
 }
 
 .old {
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 1rem;
   text-decoration: line-through;
 }
 
 .new {
-  color: #0f172a;
+  color: var(--text);
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.01em;
@@ -168,20 +170,20 @@ function formatPrice(val) {
 }
 
 .visible-badge.on {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
 }
 
 .visible-badge.off {
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--input-bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
 }
 
 .desc {
   margin: 16px 0 24px;
-  color: #475569;
+  color: var(--text);
   line-height: 1.6;
   font-size: 0.9375rem;
   white-space: pre-wrap;
@@ -190,7 +192,7 @@ function formatPrice(val) {
 .modal-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text);
   margin: 0;
   padding: 0;
 }
@@ -213,7 +215,15 @@ function formatPrice(val) {
     padding-right: 0;
   }
 }
-.mods h5 { margin: 0 0 6px; font-size: 14px; color: #111827; }
-.mods .stub { font-size: 13px; color: #6b7280; padding: 8px; border: 1px dashed #d1d5db; border-radius: 8px; }
-.footer-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.mods h5 { margin: 0 0 6px; font-size: 14px; color: var(--text); }
+.mods .stub { font-size: 13px; color: var(--muted); padding: 8px; border: 1px dashed var(--border); border-radius: 8px; }
+.footer-actions { display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
+.add-to-cart-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.icon-square {
+  width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); color: var(--text);
+  cursor: pointer; transition: all .18s ease;
+}
+.icon-square:hover { background: var(--input-bg-hover); border-color: var(--primary); color: var(--text); }
+.caption { color: var(--text); font-weight: 600; font-size: 0.95rem; }
 </style>

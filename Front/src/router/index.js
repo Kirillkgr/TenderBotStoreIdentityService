@@ -72,8 +72,19 @@ const router = createRouter({
     routes,
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
+
+    // Сохраняем последнюю страницу (кроме явных auth-роутов)
+    const exclude = new Set(['Login', 'Register']);
+    if (from?.name && !exclude.has(from.name)) {
+        localStorage.setItem('last_path', from.fullPath || '/');
+    }
+
+    // Если нет accessToken – пробуем восстановиться 1 раз перед проверками
+    if (!authStore.accessToken && !authStore.isRestoringSession) {
+        try { await authStore.restoreSession(); } catch (_) {}
+    }
 
     // Проверка на необходимость аутентификации
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
@@ -92,6 +103,14 @@ router.beforeEach((to, from, next) => {
     }
 
     next(); // Разрешаем переход
+});
+
+// После каждого перехода сохраняем текущий путь как последний
+router.afterEach((to) => {
+    const exclude = new Set(['Login', 'Register']);
+    if (to?.name && !exclude.has(to.name)) {
+        localStorage.setItem('last_path', to.fullPath || '/');
+    }
 });
 
 export default router;
