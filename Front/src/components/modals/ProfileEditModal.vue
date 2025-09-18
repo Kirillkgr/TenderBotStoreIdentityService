@@ -118,6 +118,8 @@ const isVerifyingCode = ref(false);
 
 function handleEmailChange(e) {
   emailVerified.value = false;
+  // Явно синхронизируем с формой, чтобы не зависеть от событий blur
+  values.email = e.target.value;
   emailNeedsVerification.value = e.target.value && e.target.value !== user.email;
   // поле для кода не показываем до клика по иконке
   if (!emailNeedsVerification.value) showEmailCode.value = false;
@@ -125,7 +127,16 @@ function handleEmailChange(e) {
 
 async function sendEmailVerification() {
   try {
-    const email = values.email;
+    // Берём email из формы, или из профиля, или напрямую из DOM, затем trim
+    let email = (values.email || user.email || '').trim();
+    if (!email) {
+      const el = document.getElementById('email');
+      if (el && el.value) email = el.value.trim();
+    }
+    if (!email) {
+      toast.error('Укажите email');
+      return;
+    }
     await userService.requestEmailVerification(email);
     showEmailCode.value = true;
   } catch (e) {
@@ -139,7 +150,16 @@ async function onEmailCodeInput(e) {
   if (code.length === 6 && !isVerifyingCode.value) {
     isVerifyingCode.value = true;
     try {
-      const email = values.email || user.email;
+      let email = (values.email || user.email || '').trim();
+      if (!email) {
+        const el = document.getElementById('email');
+        if (el && el.value) email = el.value.trim();
+      }
+      if (!email) {
+        toast.error('Укажите email');
+        isVerifyingCode.value = false;
+        return;
+      }
       await userService.verifyEmailCode(email, code);
       emailVerified.value = true;
       showEmailCode.value = false;

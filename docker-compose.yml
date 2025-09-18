@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Mailu (минимальная инсталляция)
   mailu-front:
-    image: mailu/nginx:2.0
+    image: ghcr.io/mailu/nginx:2.0
     restart: unless-stopped
     environment:
       SECRET_KEY: dev-secret-change
@@ -30,7 +30,7 @@ services:
       - mailu_mail_state:/data
 
   mailu-admin:
-    image: mailu/admin:2.0
+    image: ghcr.io/mailu/admin:2.0
     restart: unless-stopped
     environment:
       SECRET_KEY: dev-secret-change
@@ -47,7 +47,7 @@ services:
       - mailu-redis
 
   mailu-imap:
-    image: mailu/dovecot:2.0
+    image: ghcr.io/mailu/dovecot:2.0
     restart: unless-stopped
     environment:
       SECRET_KEY: dev-secret-change
@@ -58,7 +58,7 @@ services:
       - mailu-admin
 
   mailu-smtp:
-    image: mailu/postfix:2.0
+    image: ghcr.io/mailu/postfix:2.0
     restart: unless-stopped
     environment:
       SECRET_KEY: dev-secret-change
@@ -73,7 +73,7 @@ services:
     restart: unless-stopped
 
   mailu-webmail:
-    image: mailu/roundcube:2.0
+    image: ghcr.io/mailu/roundcube:2.0
     restart: unless-stopped
     environment:
       SECRET_KEY: dev-secret-change
