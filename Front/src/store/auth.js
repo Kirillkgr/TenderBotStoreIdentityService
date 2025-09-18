@@ -52,7 +52,9 @@ export const useAuthStore = defineStore('auth', {
 
         async logout() {
             try {
-                await authService.logout();
+                // Передаём текущий accessToken в тело запроса, как ожидает бэкенд
+                const token = this.accessToken;
+                await authService.logout(token);
             } catch (error) {
                 console.error('Ошибка при выходе из системы на сервере:', error);
             }

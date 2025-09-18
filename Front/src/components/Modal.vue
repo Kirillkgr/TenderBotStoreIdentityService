@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue';
+import {computed, onUnmounted, ref} from 'vue';
 
 const emit = defineEmits(['close']);
 
@@ -122,7 +122,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Added for visual clarity */
+  background-color: var(--overlay);
   z-index: 9998;
   /* This is the new centering method */
   display: flex;
@@ -140,12 +140,12 @@ onUnmounted(() => {
   width: 380px;
   max-width: 95vw;
   border-radius: 18px;
-  
-  /* Minimalist Light Style */
-  background-color: var(--surface-main);
-  border: 1px solid var(--border-main);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  color: var(--text-primary);
+
+  /* Themed surface */
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 20px 48px var(--shadow-color);
+  color: var(--text);
   
   display: flex;
   flex-direction: column;
@@ -168,25 +168,6 @@ onUnmounted(() => {
   position: relative;
 }
 
-.close-btn {
-  position: absolute;
-  top: 10px;
-  right: 14px;
-  border: none;
-  background: none;
-  font-size: 28px;
-  font-weight: 300;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s ease;
-  line-height: 1;
-  padding: 0;
-}
-
-.close-btn:hover {
-  color: var(--text-primary);
-}
-
 .modal-header > *,
 .modal-body > * {
   cursor: default;
@@ -203,8 +184,8 @@ onUnmounted(() => {
 .modal-header h3 {
   margin: 0;
   font-size: 24px;
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
+  font-weight: 700;
+  color: var(--text);
 }
 
 

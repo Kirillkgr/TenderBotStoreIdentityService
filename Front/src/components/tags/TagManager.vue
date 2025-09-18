@@ -366,18 +366,22 @@ export default {
 }
 
 .tag-form-container {
-  background-color: #f8f9fa;
-  border-radius: 8px;
+  background-color: var(--card);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 16px var(--shadow-color);
 }
 
 .tag-tree-container {
-  background-color: #fff;
-  border-radius: 8px;
+  background-color: var(--card);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 16px var(--shadow-color);
 }
 
 .loading {
@@ -386,24 +390,27 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  color: #6c757d;
+  color: var(--muted);
 }
 
 .no-tags {
   text-align: center;
   padding: 20px;
-  color: #6c757d;
+  color: var(--muted);
 }
 
 .alert {
   padding: 15px;
   margin-bottom: 20px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 4px;
+  background-color: var(--card);
 }
 
 .alert-danger {
   color: #721c24;
+  background-color: var(--card);
+  border-color: var(--border);
   background-color: #f8d7da;
   border-color: #f5c6cb;
 }

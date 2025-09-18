@@ -31,8 +31,32 @@
       @close="showProductPreview = false"
   />
 
-  <div class="admin-panel">
+  <!-- Модалка редактирования товара (админ) -->
+  <EditProductModal
+      v-if="showEditProductModal && editProduct"
+      :model-value="showEditProductModal"
+      @update:modelValue="(v) => showEditProductModal = v"
+      :product="editProduct"
+      :brands="brands"
+      :groupOptions="groupOptions"
+      :tagOptions="tags"
+      :theme="computedTheme"
+      @close="showEditProductModal = false"
+      @save="onProductSave"
+  />
+
+  <div class="admin-panel admin-scope">
     <h1>Панель администратора</h1>
+
+    <!-- Переключатель темы: Авто / День / Ночь -->
+    <div class="theme-toggle">
+      <span class="tt-label">Тема:</span>
+      <div class="tt-group">
+        <button class="tt-btn" :class="{ active: themeMode === 'auto' }" @click="setTheme('auto')">Авто</button>
+        <button class="tt-btn" :class="{ active: themeMode === 'light' }" @click="setTheme('light')">День</button>
+        <button class="tt-btn" :class="{ active: themeMode === 'dark' }" @click="setTheme('dark')">Ночь</button>
+      </div>
+    </div>
 
     <div v-if="loading" class="loading">
       <div class="spinner-border text-primary" role="status">
@@ -266,6 +290,9 @@
               <span class="pc-title" :title="p.name">{{ p.name }}</span>
               <div class="d-flex align-items-center gap-2">
                 <span class="badge" :class="p.visible ? 'bg-success' : 'bg-secondary'">{{ p.visible ? 'Видим' : 'Скрыт' }}</span>
+                <button class="btn btn-sm btn-outline-secondary" @click.stop="openEdit(p)" title="Редактировать">
+                  <i class="bi bi-pencil"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-primary pc-cart-btn" @click.stop="addToCartStub(p)" title="Добавить в корзину">
                   <i class="bi bi-cart-plus"></i>
                 </button>
@@ -349,6 +376,7 @@ import CreateBrandModal from '../components/modals/CreateBrandModal.vue';
 import CreateGroupModal from '../components/modals/CreateGroupModal.vue';
 import CreateProductModal from '../components/modals/CreateProductModal.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
+import EditProductModal from '../components/modals/EditProductModal.vue';
 
 // Refs
 const brands = ref([]);
@@ -373,6 +401,8 @@ const showCreateGroupModal = ref(false);
 const showCreateProductModal = ref(false);
 const showProductPreview = ref(false);
 const previewProduct = ref(null);
+const showEditProductModal = ref(false);
+const editProduct = ref(null);
 
 // Store
 const tagStore = useTagStore();
@@ -398,8 +428,52 @@ const toggleExpanded = (id) => {
 };
 const truncate = (text, len = 127) => {
   if (!text) return '';
-  return text.length > len ? text.slice(0, len) + '…' : text;
+  if (text.length <= len) return text;
+  return text.slice(0, len) + '…';
 };
+
+// Опции групп для модалки (текущий уровень + корень)
+const groupOptions = computed(() => {
+  // Текущие теги (tags) — список на активном уровне. Отображаем их как кандидаты
+  return (tags.value || []).map(t => ({ id: t.id, label: t.name }));
+});
+
+// ===== Темы: авто / светлая / тёмная =====
+const THEME_KEY = 'admin_theme_mode'; // 'auto' | 'light' | 'dark'
+const themeMode = ref('auto');
+const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+const computedTheme = computed(() => {
+  if (themeMode.value === 'light') return 'light';
+  if (themeMode.value === 'dark') return 'dark';
+  const systemDark = media ? media.matches : false;
+  return systemDark ? 'dark' : 'light';
+});
+
+function applyTheme() {
+  const html = document.documentElement;
+  html.classList.remove('theme-light', 'theme-dark');
+  html.classList.add(computedTheme.value === 'dark' ? 'theme-dark' : 'theme-light');
+}
+
+function setTheme(mode) {
+  themeMode.value = mode;
+}
+
+onMounted(() => {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'light' || saved === 'dark' || saved === 'auto') themeMode.value = saved;
+  // слушаем смену системной темы, если режим авто
+  if (media && media.addEventListener) {
+    media.addEventListener('change', () => { if (themeMode.value === 'auto') applyTheme(); });
+  }
+  applyTheme();
+});
+
+watch(themeMode, (v) => {
+  localStorage.setItem(THEME_KEY, v);
+  applyTheme();
+});
 
 // Товары текущего уровня
 const products = computed(() => productStore.products || []);
@@ -524,7 +598,7 @@ const fetchTags = async (brandId, parentId = null) => {
     console.log('Tags API response:', response);
 
     // Handle different response formats
-    let loadedTags = [];
+    let loadedTags;
     if (Array.isArray(response)) {
       loadedTags = response;
     } else if (response && Array.isArray(response.data)) {
@@ -830,8 +904,6 @@ const deleteTag = async () => {
   try {
     await tagStore.deleteTag(tagToDelete.value.id);
     toast.success('Тег успешно удален');
-
-    // Refresh the tags list
     if (selectedBrand.value) {
       await fetchTags(selectedBrand.value);
     }
@@ -946,7 +1018,42 @@ const onBrandSelect = async () => {
 
 /* Но внутри белой карточки для тегов заголовок должен быть чёрным */
 .tag-manager-container h2 {
-  color: #111827;
+  color: var(--text);
+}
+
+/* Themed container for tags/products block */
+.tag-manager-container {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px var(--shadow-color);
+  padding: 16px;
+}
+
+/* Force theme for Bootstrap list styles inside the container */
+.tag-manager-container :deep(.list-group),
+.tag-manager-container :deep(.list-group-item),
+.tag-manager-container :deep(.list-group-item-action) {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.tag-manager-container :deep(.tag-row.active) {
+  background: var(--input-bg-hover) !important;
+}
+.tag-manager-container :deep(.badge.bg-secondary) { background: var(--input-bg); color: var(--text); }
+.tag-manager-container :deep(.btn.btn-outline-secondary) { color: var(--text); border-color: var(--border); }
+.tag-manager-container :deep(.btn.btn-outline-primary) { color: var(--primary); border-color: var(--primary); }
+.tag-manager-container :deep(.btn.btn-outline-danger) { color: var(--danger); border-color: var(--danger); }
+
+/* Theme alerts inside */
+.tag-manager-container :deep(.alert),
+.tag-manager-container :deep(.alert-info),
+.tag-manager-container :deep(.alert-danger) {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
 }
 
 .brand-selector-container {
@@ -957,7 +1064,7 @@ const onBrandSelect = async () => {
   text-align: left;
   margin-bottom: 10px;
   font-size: 1.2rem;
-  color: #333;
+  color: var(--text);
 }
 
 .brand-list-scroll {
@@ -976,22 +1083,22 @@ const onBrandSelect = async () => {
 }
 
 .brand-list-scroll::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--card);
   border-radius: 4px;
 }
 
 .brand-list-scroll::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--border);
   border-radius: 4px;
 }
 
 .brand-chip {
   flex: 0 0 auto;
   padding: 8px 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background-color: #4CAF50; /* Default green for USER and unknown roles */
-  color: white;
+  background-color: color-mix(in srgb, var(--success) 45%, var(--card));
+  color: var(--text);
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -1000,25 +1107,25 @@ const onBrandSelect = async () => {
 
 /* Blue for OWNER role */
 .brand-chip.owner {
-  background-color: #1e88e5;
+  background-color: color-mix(in srgb, var(--primary) 60%, var(--card));
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
   border-radius: 20px;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(30, 136, 229, 0.2);
+  box-shadow: 0 2px 4px var(--shadow-color);
   transition: all 0.2s ease;
 }
 
 .brand-chip.owner:hover {
-  background-color: #1976d2;
+  background-color: color-mix(in srgb, var(--primary) 75%, var(--card));
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(30, 136, 229, 0.3);
+  box-shadow: 0 4px 8px var(--shadow-color);
 }
 
 .role-badge {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: var(--input-bg);
   border-radius: 12px;
   padding: 2px 8px;
   font-size: 10px;
@@ -1026,6 +1133,24 @@ const onBrandSelect = async () => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* Override list items (Bootstrap-like) to theme */
+.tag-manager-container .list-group-item {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Product cards in admin */
+.product-card-admin {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 16px var(--shadow-color);
+}
+.pc-price .old { color: var(--muted); }
+.pc-desc { color: var(--text); }
 
 .brand-chip:hover {
   opacity: 0.9;

@@ -71,7 +71,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useProductStore } from '../store/product';
 import ProductCard from '../components/ProductCard.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
@@ -103,9 +103,11 @@ function openProductPreview(p) {
 
 // Товары как было
 onMounted(async () => {
-  productStore.fetchCategories();
-  productStore.fetchProducts();
   await loadBrands();
+  // Если есть хотя бы один бренд — выберем первый, чтобы показать контент
+  if (brands.value.length > 0) {
+    await selectBrand(brands.value[0].id);
+  }
 });
 
 const loadBrands = async () => {
@@ -194,18 +196,6 @@ const navigateToCrumb = async (parentId, index) => {
 
 <style scoped>
 .home-container {
-  /* Цветовая палитра страницы */
-  --primary: #4a6cf7;
-  --primary-600: #3558ec;
-  --primary-700: #2947d8;
-  --success: #22c55e;
-  --surface: #0f172a;     /* не используется как фон, но для оттенков */
-  --card: #0b1220;        /* тёмная карта, если понадобится */
-  --muted: #94a3b8;       /* вторичный текст */
-  --line: #1f2937;        /* деликатные линии на тёмном */
-  --white: #ffffff;
-  --ink: #111827;         /* чёрный текст на белом */
-
   padding: 2rem;
 }
 
@@ -219,20 +209,20 @@ const navigateToCrumb = async (parentId, index) => {
 }
 .brand-chip {
   padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.06);
-  color: #e5e7eb;
+  border-radius: var(--brand-button-radius, 20px);
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
   cursor: pointer;
   transition: all .18s ease;
   backdrop-filter: blur(6px);
 }
-.brand-chip:hover { background: rgba(255,255,255,0.12); }
+.brand-chip:hover { background: var(--input-bg-hover); }
 .brand-chip.owner {
-  background: var(--primary);
-  color: var(--white);
+  background: var(--brand-accent, var(--primary));
+  color: var(--brand-accent-contrast, #fff);
 }
-.brand-chip.active { box-shadow: 0 0 0 2px rgba(74,108,247,0.3); }
+.brand-chip.active { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent, var(--primary)) 35%, transparent); }
 
 /* Крошки пути по группам */
 .group-breadcrumbs {
@@ -244,18 +234,18 @@ const navigateToCrumb = async (parentId, index) => {
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
-.group-breadcrumbs .sep { color: #64748b; opacity: .7; }
+.group-breadcrumbs .sep { color: var(--muted); opacity: .7; }
 .crumb {
   background: transparent;
-  color: #dbeafe; /* светло-голубой на тёмном */
-  border: 1px solid rgba(148,163,184,.25);
+  color: var(--text);
+  border: 1px solid var(--border);
   padding: 6px 10px;
   border-radius: 10px;
   font-weight: 600;
   transition: all .18s ease;
 }
-.crumb:hover { background: rgba(148,163,184,.12); }
-.crumb.active { background: rgba(74,108,247,.18); color: #e0e7ff; border-color: rgba(74,108,247,.35); }
+.crumb:hover { background: var(--input-bg-hover); }
+.crumb.active { background: color-mix(in srgb, var(--brand-accent, var(--primary)) 18%, transparent); color: var(--text); border-color: var(--brand-accent, var(--primary)); }
 
 /* Группы (теги) квадратными карточками */
 .group-grid {
@@ -265,19 +255,19 @@ const navigateToCrumb = async (parentId, index) => {
   margin-bottom: 2rem;
 }
 .group-card {
-  background: var(--white);
-  border: 1px solid #e7eaf0;
+  background: var(--card);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
-  box-shadow: 0 6px 16px rgba(0,0,0,.08);
+  box-shadow: 0 6px 16px var(--shadow-color);
   overflow: hidden;
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
-.group-card:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0,0,0,.12); border-color: #d8dbe2; }
-.group-image { aspect-ratio: 1 / 1; background: linear-gradient(135deg, #e2e8f0, #f1f5f9); display: flex; align-items: center; justify-content: center; }
+.group-card:hover { transform: translateY(-3px); box-shadow: 0 10px 22px var(--shadow-color); border-color: var(--border); }
+.group-image { aspect-ratio: 1 / 1; background: var(--surface); display: flex; align-items: center; justify-content: center; }
 .group-image img { width: 100%; height: 100%; object-fit: cover; }
-.image-placeholder { font-size: 28px; font-weight: 800; color: #64748b; letter-spacing: .5px; }
-.group-title { text-align: center; padding: 12px 10px; color: var(--ink); font-weight: 700; }
+.image-placeholder { font-size: 28px; font-weight: 800; color: var(--muted); letter-spacing: .5px; }
+.group-title { text-align: center; padding: 12px 10px; color: var(--text); font-weight: 700; }
 
 /* Товары */
 .product-grid {
@@ -286,7 +276,7 @@ const navigateToCrumb = async (parentId, index) => {
   gap: 1.5rem;
 }
 
-.info-text { color: #cbd5e1; margin: 10px 0 18px; text-align: center; }
+.info-text { color: var(--muted); margin: 10px 0 18px; text-align: center; }
 
 @media (max-width: 480px) {
   .home-container { padding: 1rem; }

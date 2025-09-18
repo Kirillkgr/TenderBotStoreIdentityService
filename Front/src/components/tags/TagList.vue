@@ -144,7 +144,7 @@ export default {
 .tag-list {
   margin-left: 20px;
   padding-left: 10px;
-  border-left: 1px solid #e0e0e0;
+  border-left: 1px solid var(--border);
 }
 
 .tag-item {
@@ -157,8 +157,10 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 8px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
+  background-color: var(--input-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .tag-actions {
@@ -168,10 +170,12 @@ export default {
 
 .btn {
   padding: 4px 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  background: var(--input-bg);
+  color: var(--text);
 }
 
 .btn-sm {
@@ -179,31 +183,17 @@ export default {
   font-size: 12px;
 }
 
-.btn-outline-primary {
-  color: #0d6efd;
-  border-color: #0d6efd;
-  background-color: transparent;
-}
+.btn-outline-primary { color: var(--primary); border-color: var(--primary); background-color: transparent; }
 
-.btn-outline-secondary {
-  color: #6c757d;
-  border-color: #6c757d;
-  background-color: transparent;
-}
+.btn-outline-secondary { color: var(--muted); border-color: var(--border); background-color: transparent; }
 
-.btn-outline-danger {
-  color: #dc3545;
-  border-color: #dc3545;
-  background-color: transparent;
-}
+.btn-outline-danger { color: var(--danger); border-color: var(--danger); background-color: transparent; }
 
 .loading, .error, .no-tags {
   padding: 10px;
   text-align: center;
-  color: #6c757d;
+  color: var(--muted);
 }
 
-.error {
-  color: #dc3545;
-}
+.error { color: var(--danger); }
 </style>

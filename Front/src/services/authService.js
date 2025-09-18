@@ -25,8 +25,9 @@ export const checkUsername = (username) => {
 };
 
 // Выход пользователя. Запрос инвалидирует refresh_token на бэкенде.
-export const logout = () => {
-    return apiClient.post('/auth/v1/logout');
+export const logout = (token) => {
+    // Бэкенд ожидает DELETE /auth/v1/logout с body = token
+    return apiClient.delete('/auth/v1/logout', { data: token });
 };
 
 // Получение информации о текущем пользователе

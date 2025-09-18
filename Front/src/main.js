@@ -7,6 +7,9 @@ import 'vue-datepicker-next/index.css';
 import App from './App.vue';
 import router from './router';
 import './style.css';
+import './theme.css';
+import './brand/default.css';
+import './admin.css';
 
 const app = createApp(App);
 
@@ -20,3 +23,6 @@ app.use(Toast, {
 });
 
 app.mount('#app');
+
+// Attach default brand class so brand variables apply
+document.documentElement.classList.add('brand-default');

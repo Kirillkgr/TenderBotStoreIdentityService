@@ -1,29 +1,5 @@
 import apiClient from './api';
 
-// Получить все категории
-export const getCategories = () => {
-    return apiClient.get('/menu/categories');
-};
-
-// Получить товары (с возможностью фильтрации по категории)
-export const getProducts = (categoryId = null) => {
-    const params = {};
-    if (categoryId) {
-        params.categoryId = categoryId;
-    }
-    return apiClient.get('/menu/products', {params});
-};
-
-// Получить детальную информацию о товаре
-export const getProductDetails = (id) => {
-    return apiClient.get(`/menu/products/${id}`);
-};
-
-// Добавить отзыв к товару
-export const addReview = (id, reviewData) => {
-    return apiClient.post(`/menu/products/${id}/reviews`, reviewData);
-};
-
 // ===================== Новые методы (auth/v1/products) =====================
 
 // Создать товар (в корне или выбранной группе)

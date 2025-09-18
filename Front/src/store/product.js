@@ -3,7 +3,6 @@ import * as productService from '../services/productService';
 
 export const useProductStore = defineStore('product', {
     state: () => ({
-        categories: [],
         products: [],
         selectedProduct: null,
         loading: false,
@@ -11,42 +10,7 @@ export const useProductStore = defineStore('product', {
     }),
 
     actions: {
-        async fetchCategories() {
-            this.loading = true;
-            try {
-                const response = await productService.getCategories();
-                this.categories = response.data;
-            } catch (error) {
-                console.error('Ошибка при загрузке категорий:', error);
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async fetchProducts(categoryId = null) {
-            this.loading = true;
-            try {
-                const response = await productService.getProducts(categoryId);
-                this.products = response.data;
-            } catch (error) {
-                console.error('Ошибка при загрузке товаров:', error);
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async fetchProductDetails(id) {
-            this.loading = true;
-            this.selectedProduct = null;
-            try {
-                const response = await productService.getProductDetails(id);
-                this.selectedProduct = response.data;
-            } catch (error) {
-                console.error('Ошибка при загрузке информации о товаре:', error);
-            } finally {
-                this.loading = false;
-            }
-        },
+        // Старые экшены удалены, используем новые by-brand/group и public-версии ниже
 
         // ================= Новые действия для брендов/групп =================
         async fetchByBrandAndGroup(brandId, groupTagId = 0, visibleOnly = true) {
@@ -89,10 +53,9 @@ export const useProductStore = defineStore('product', {
         async create(productData) {
             try {
                 const res = await productService.createProduct(productData);
-                const created = res?.data ?? res;
                 // Опционально: если товар в текущем уровне, добавим его в список
                 // Оставляем вызывающей стороне решать, добавлять ли в текущий список
-                return created;
+                return res?.data ?? res;
             } catch (error) {
                 console.error('Ошибка при создании товара:', error);
                 throw error;

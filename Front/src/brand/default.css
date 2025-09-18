@@ -1,0 +1,20 @@
+/* Default brand variables. To switch brand, add a different class on <html>, e.g. brand-acme, and create a css with the same variables. */
+
+.brand-default {
+  /* Primary accent used for buttons/active chips on landing */
+  --brand-accent: #4a6cf7;
+  --brand-accent-600: #3558ec;
+  --brand-accent-contrast: #ffffff;
+
+  /* Secondary accents if needed */
+  --brand-secondary: #22c55e;
+  --brand-secondary-contrast: #0b1f12;
+
+  /* Chips/cards specifics on landing */
+  --brand-chip-bg: color-mix(in srgb, var(--brand-accent) 10%, var(--card));
+  --brand-chip-text: var(--text);
+
+  /* Corner radii for landing controls */
+  --brand-button-radius: 20px;
+  --brand-chip-radius: 16px;
+}

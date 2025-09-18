@@ -39,7 +39,6 @@
             xmlns="http://www.w3.org/2000/svg"
             class="h-5 w-5"
             viewBox="0 0 20 20"
-            fill="currentColor"
           >
             <path
               fill-rule="evenodd"
@@ -103,21 +102,21 @@ function formatPrice(price) {
 
 <style scoped>
 .product-card {
-  background: white;
+  background: var(--card);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 16px var(--shadow-color);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--card-border);
 }
 
 .product-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  border-color: #e2e8f0;
+  box-shadow: 0 10px 22px var(--shadow-color);
+  border-color: var(--border);
 }
 
 .product-card.has-promo .image-container::before {
@@ -136,7 +135,7 @@ function formatPrice(price) {
   width: 100%;
   aspect-ratio: 1/1;
   overflow: hidden;
-  background-color: #f8fafc;
+  background-color: var(--input-bg);
   border-radius: 14px 14px 0 0;
 }
 
@@ -173,14 +172,14 @@ function formatPrice(price) {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  background: white;
+  background: var(--card);
   border-radius: 0 0 16px 16px;
 }
 
 .product-name {
   font-size: 1rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text);
   margin: 0 0 12px 0;
   line-height: 1.4;
   display: -webkit-box;
@@ -197,7 +196,7 @@ function formatPrice(price) {
   align-items: center;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--border);
 }
 
 .prices {
@@ -207,13 +206,13 @@ function formatPrice(price) {
 }
 
 .old-price {
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 0.85rem;
   text-decoration: line-through;
 }
 
 .current-price {
-  color: #0f172a;
+  color: var(--text);
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -226,19 +225,15 @@ function formatPrice(price) {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background-color: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background-color: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
-.add-to-cart-btn:hover {
-  background-color: #f1f5f9;
-  color: #334155;
-  border-color: #cbd5e1;
-}
+.add-to-cart-btn:hover { background-color: var(--input-bg-hover); color: var(--text); border-color: var(--primary); }
 
 .add-to-cart-btn:active {
   transform: scale(0.95);
