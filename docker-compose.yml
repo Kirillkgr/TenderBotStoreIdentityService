@@ -1,6 +1,86 @@
 version: '3.8'
 
 services:
+  # Mailu (минимальная инсталляция)
+  mailu-front:
+    image: mailu/nginx:2.0
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: dev-secret-change
+      DOMAIN: kirillkgr.ru
+      HOSTNAMES: mail.kirillkgr.ru
+      TLS_FLAVOR: notls
+      WEBSITE: https://kirillkgr.ru
+      WEBMAIL: roundcube
+      ADMIN: "true"
+    depends_on:
+      - mailu-redis
+      - mailu-imap
+      - mailu-smtp
+      - mailu-admin
+    ports:
+      - "25:25"      # SMTP
+      - "465:465"    # SMTPS
+      - "587:587"    # Submission (STARTTLS)
+      - "110:110"    # POP3 (optional)
+      - "995:995"    # POP3S (optional)
+      - "143:143"    # IMAP
+      - "993:993"    # IMAPS
+    volumes:
+      - mailu_mail_state:/data
+
+  mailu-admin:
+    image: mailu/admin:2.0
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: dev-secret-change
+      DOMAIN: kirillkgr.ru
+      HOSTNAMES: mail.kirillkgr.ru
+      INITIAL_ADMIN_ACCOUNT: admin
+      INITIAL_ADMIN_DOMAIN: kirillkgr.ru
+      INITIAL_ADMIN_PW: adminpass
+      AUTH_RATELIMIT: 10/minute;1000/hour
+    volumes:
+      - mailu_mail_state:/data
+      - mailu_mail_dkim:/dkim
+    depends_on:
+      - mailu-redis
+
+  mailu-imap:
+    image: mailu/dovecot:2.0
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: dev-secret-change
+      DOMAIN: kirillkgr.ru
+    volumes:
+      - mailu_mail_state:/data
+    depends_on:
+      - mailu-admin
+
+  mailu-smtp:
+    image: mailu/postfix:2.0
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: dev-secret-change
+      DOMAIN: kirillkgr.ru
+    volumes:
+      - mailu_mail_state:/data
+    depends_on:
+      - mailu-admin
+
+  mailu-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  mailu-webmail:
+    image: mailu/roundcube:2.0
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: dev-secret-change
+      DOMAIN: kirillkgr.ru
+    depends_on:
+      - mailu-front
+
   postgres:
     image: postgres:13
     environment:
@@ -16,11 +96,23 @@ services:
     restart: always
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      # Mail settings (жёстко для тестового сервера)
+      SPRING_MAIL_HOST: mailu-smtp
+      SPRING_MAIL_PORT: "587"
+      SPRING_MAIL_PROTOCOL: smtp
+      SPRING_MAIL_USERNAME: no-reply@kirillkgr.ru
+      SPRING_MAIL_PASSWORD: change-me
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      # From по умолчанию (используется MailService)
+      APP_MAIL_FROM: no-reply@kirillkgr.ru
     depends_on:
       - postgres
+      - mailu-front
 
   frontend:
     image: cr.yandex/crpp92t3gcj0he0j8nj2/tenderbotstore_front:master
@@ -28,6 +120,7 @@ services:
     restart: always
     depends_on:
       - backend
+      - mailu-front
     ports:
       - "80:80"
       - "443:443"
@@ -38,3 +131,5 @@ services:
 
 volumes:
   postgres_data:
+  mailu_mail_state:
+  mailu_mail_dkim:

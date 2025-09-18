@@ -24,6 +24,12 @@ public class UserResponse {
     private String patronymic;
     private LocalDate dateOfBirth;
 
+    private String email;
+
+    private String phone;
+
+    private Boolean emailVerified;
+
     private Set<String> roles;
 
     private Set<BrandDto> brands;

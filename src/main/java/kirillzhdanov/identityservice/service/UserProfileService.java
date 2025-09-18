@@ -1,0 +1,108 @@
+package kirillzhdanov.identityservice.service;
+
+import jakarta.transaction.Transactional;
+import kirillzhdanov.identityservice.dto.EmailVerificationRequest;
+import kirillzhdanov.identityservice.dto.EmailVerifiedResponse;
+import kirillzhdanov.identityservice.dto.UpdateUserRequest;
+import kirillzhdanov.identityservice.dto.UserResponse;
+import kirillzhdanov.identityservice.exception.BadRequestException;
+import kirillzhdanov.identityservice.model.User;
+import kirillzhdanov.identityservice.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Random;
+
+@Service
+@RequiredArgsConstructor
+public class UserProfileService {
+
+    private final UserRepository userRepository;
+    private final MailService mailService;
+
+    @Transactional
+    public EmailVerifiedResponse checkEmailVerified(String username, String email) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        boolean verified = user.isEmailVerified() && email != null && email.equalsIgnoreCase(user.getEmail());
+        return EmailVerifiedResponse.builder().verified(verified).build();
+    }
+
+    @Transactional
+    public void sendVerificationCode(String username, String email) {
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email обязателен");
+        }
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        // генерируем 6-значный код
+        String code = String.format("%06d", new Random().nextInt(1_000_000));
+        user.setPendingEmail(email);
+        user.setEmailVerified(false);
+        user.setEmailVerificationCode(code);
+        user.setEmailVerificationExpiresAt(LocalDateTime.now().plusMinutes(10));
+        userRepository.save(user);
+        mailService.sendEmailVerificationCode(email, code);
+    }
+
+    @Transactional
+    public EmailVerifiedResponse verifyCode(String username, EmailVerificationRequest req) {
+        if (req.getEmail() == null || req.getCode() == null) {
+            throw new BadRequestException("Email и код обязательны");
+        }
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        if (user.getPendingEmail() == null || !req.getEmail().equalsIgnoreCase(user.getPendingEmail())) {
+            throw new BadRequestException("Email не запрошен для подтверждения");
+        }
+        if (user.getEmailVerificationCode() == null || user.getEmailVerificationExpiresAt() == null) {
+            throw new BadRequestException("Код не запрошен");
+        }
+        if (LocalDateTime.now().isAfter(user.getEmailVerificationExpiresAt())) {
+            throw new BadRequestException("Срок действия кода истёк");
+        }
+        if (!req.getCode().trim().equals(user.getEmailVerificationCode())) {
+            throw new BadRequestException("Неверный код");
+        }
+        // подтверждаем
+        user.setEmail(user.getPendingEmail());
+        user.setPendingEmail(null);
+        user.setEmailVerified(true);
+        user.setEmailVerificationCode(null);
+        user.setEmailVerificationExpiresAt(null);
+        userRepository.save(user);
+        return EmailVerifiedResponse.builder().verified(true).build();
+    }
+
+    @Transactional
+    public UserResponse updateProfile(String username, UpdateUserRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getPatronymic() != null) user.setPatronymic(request.getPatronymic());
+        if (request.getDateOfBirth() != null) user.setDateOfBirth(request.getDateOfBirth());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        // Email меняется только через успешную верификацию (verifyCode), здесь не трогаем
+
+        user = userRepository.save(user);
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .patronymic(user.getPatronymic())
+                .dateOfBirth(user.getDateOfBirth())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .emailVerified(user.isEmailVerified())
+                .roles(user.getRoles().stream().map(r -> r.getName().name()).collect(java.util.stream.Collectors.toSet()))
+                .brands(user.getBrands().stream()
+                        .map(b -> kirillzhdanov.identityservice.dto.BrandDto.builder().id(b.getId()).name(b.getName()).build())
+                        .collect(java.util.stream.Collectors.toSet()))
+                .build();
+    }
+}
