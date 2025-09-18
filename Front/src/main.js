@@ -1,26 +1,54 @@
 import {createApp} from 'vue';
 import {createPinia} from 'pinia';
+
 import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
 import 'vue-datepicker-next/index.css';
 
 import App from './App.vue';
 import router from './router';
+import { useAuthStore } from './store/auth';
+
 import './style.css';
 import './theme.css';
 import './brand/default.css';
 import './admin.css';
 
 const app = createApp(App);
+const pinia = createPinia();
 
-app.use(createPinia());
+app.use(pinia);
 app.use(router);
+
 app.use(Toast, {
     // Опции для уведомлений, если нужно
     transition: "Vue-Toastification__bounce",
     maxToasts: 5,
     newestOnTop: true
 });
+
+// Восстанавливаем сессию и возвращаем пользователя на последнюю страницу
+const auth = useAuthStore();
+auth.hydrateFromStorage(); // подхватить роли/профиль сразу, без запроса
+let shouldRestore = true;
+try {
+    const skip = localStorage.getItem('skip_refresh_once') === '1';
+    if (skip) {
+        localStorage.removeItem('skip_refresh_once');
+        shouldRestore = false; // после logout не делаем refresh на первой загрузке
+    }
+} catch (_) {}
+
+if (shouldRestore) {
+    try {
+        await auth.restoreSession();
+    } catch (_) {}
+}
+
+const lastPath = localStorage.getItem('last_path');
+if (auth.isAuthenticated && lastPath && lastPath !== router.currentRoute.value.fullPath) {
+    await router.replace(lastPath).catch(() => {});
+}
 
 app.mount('#app');
 

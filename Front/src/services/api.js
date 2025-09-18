@@ -71,6 +71,12 @@ apiClient.interceptors.response.use(
 
     const hasBasicHeader = !!originalRequest.headers?.Authorization && /^Basic\s/i.test(originalRequest.headers.Authorization);
 
+    // Если мы выходим или помечено пропустить рефреш — не делаем refresh
+    const skipOnce = (() => { try { return localStorage.getItem('skip_refresh_once') === '1'; } catch(_) { return false; } })();
+    if (authStore.isLoggingOut || skipOnce) {
+      return Promise.reject(error);
+    }
+
     // Не пытаемся рефрешить, если это публичные auth-запросы, Basic, нет accessToken или статус не 401
     if (status !== 401 || isPublicAuthEndpoint || hasBasicHeader || !authStore.accessToken) {
       return Promise.reject(error);
@@ -103,8 +109,9 @@ apiClient.interceptors.response.use(
 
     } catch (refreshError) {
       processQueue(refreshError, null);
-      console.error('Не удалось восстановить сессию (куки refresh отсутствует или просрочен). Выход.', refreshError);
-      authStore.logout();
+      console.error('Не удалось восстановить сессию (куки refresh отсутствует или просрочен). Локальная очистка.', refreshError);
+      // Важно: не вызываем server-side logout, просто чистим локальную сессию
+      await authStore.clearSession();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

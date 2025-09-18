@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import * as authService from '../services/authService';
 import router from '../router';
 
+const USER_STORAGE_KEY = 'user_data';
+
 export const useAuthStore = defineStore('auth', {
     state: () => ({
         // Токены и данные пользователя хранятся только в памяти, не в localStorage
@@ -9,6 +11,8 @@ export const useAuthStore = defineStore('auth', {
         accessToken: null,
         // Флаг, чтобы показать, что мы пытаемся восстановить сессию после перезагрузки
         isRestoringSession: false,
+        // Флаг, чтобы не запускать refresh во время выхода
+        isLoggingOut: false,
     }),
 
     getters: {
@@ -22,7 +26,22 @@ export const useAuthStore = defineStore('auth', {
         },
 
         setUser(userData) {
+            // Если пришёл null — явная очистка пользователя
+            if (userData === null) {
+                this.user = null;
+                try { localStorage.removeItem(USER_STORAGE_KEY); } catch (_) {}
+                return;
+            }
+
+            // Если пришёл пустой объект (типичный кейс ответа refresh без полей пользователя)
+            // — НЕ перетираем текущие данные пользователя и localStorage.
+            if (typeof userData === 'object' && userData && Object.keys(userData).length === 0) {
+                return;
+            }
+
+            // Иначе обновляем и сохраняем
             this.user = userData;
+            try { localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData)); } catch (_) {}
         },
 
         async login(credentials) {
@@ -51,6 +70,7 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async logout() {
+            this.isLoggingOut = true;
             try {
                 // Передаём текущий accessToken в тело запроса, как ожидает бэкенд
                 const token = this.accessToken;
@@ -59,10 +79,66 @@ export const useAuthStore = defineStore('auth', {
                 console.error('Ошибка при выходе из системы на сервере:', error);
             }
 
+            // Маркер, чтобы на следующей загрузке и в перехватчике не делать refresh
+            try { localStorage.setItem('skip_refresh_once', '1'); } catch(_) {}
+
             this.setUser(null);
             this.setAccessToken(null);
+            try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
 
             await router.push('/');
+            this.isLoggingOut = false;
         },
+
+        // Клиентское очищение состояния без запроса на бэкенд (например, если refresh 4xx)
+        async clearSession() {
+            this.setUser(null);
+            this.setAccessToken(null);
+            try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
+            await router.push('/');
+        },
+
+        // Попытка восстановить сессию из refresh cookie
+        async restoreSession() {
+            // помечаем, что идёт восстановление, чтобы роутер мог учитывать это при редиректах
+            this.isRestoringSession = true;
+            try {
+                // Явный вызов refresh: сервер читает httpOnly refreshToken из cookie и вернёт новый accessToken
+                const refreshResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/v1/refresh`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                if (!refreshResp.ok) {
+                    // 4xx/5xx — refresh невалиден
+                    await this.clearSession();
+                    return false;
+                }
+                const data = await refreshResp.json();
+                const { accessToken } = data || {};
+                if (!accessToken) {
+                    await this.clearSession();
+                    return false;
+                }
+                this.setAccessToken(accessToken); // только токен; профиль берём из localStorage (hydrateFromStorage)
+                return true;
+            } catch (e) {
+                await this.clearSession();
+                return false;
+            } finally {
+                this.isRestoringSession = false;
+            }
+        },
+
+        // Гидратация пользовательских данных из localStorage (без токена)
+        hydrateFromStorage() {
+            try {
+                const raw = localStorage.getItem(USER_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    // setUser также обновит localStorage, это безопасно
+                    this.setUser(parsed);
+                }
+            } catch (_) { /* ignore */ }
+        }
     },
 });
