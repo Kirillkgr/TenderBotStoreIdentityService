@@ -100,6 +100,11 @@ router.beforeEach(async (to, from, next) => {
         try { await authStore.restoreSession(); } catch (_) {}
     }
 
+    // Гидратируем профиль/роли из localStorage, если они ещё не загружены
+    if (!authStore.user) {
+        try { authStore.hydrateFromStorage(); } catch (_) {}
+    }
+
     // Проверка на необходимость аутентификации
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
         return next('/login');
