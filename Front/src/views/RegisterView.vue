@@ -1,5 +1,6 @@
 <template>
   <Form @submit="onSubmit" class="register-form">
+
         <div class="form-group username-group">
       <Field name="username" type="text" class="form-control" :class="{ 'is-invalid': errors.username, 'has-feedback': usernameStatus !== 'idle' }" placeholder="Логин" v-model="username" />
       <span v-if="usernameStatus === 'available'" class="status-icon available" title="Логин свободен">✓</span>
@@ -16,9 +17,18 @@
       <ErrorMessage name="lastName" class="error-message" />
     </div>
     <div class="form-group">
+      <Field name="patronymic" type="text" class="form-control" :class="{ 'is-invalid': errors.patronymic }" placeholder="Отчество" v-model="patronymic" />
+      <ErrorMessage name="patronymic" class="error-message" />
+    </div>
+    <div class="form-group">
       <Field name="email" type="email" class="form-control" :class="{ 'is-invalid': errors.email }" placeholder="Email" v-model="email" />
       <ErrorMessage name="email" class="error-message" />
     </div>
+    <div class="form-group">
+      <Field name="phone" type="tel" class="form-control" :class="{ 'is-invalid': errors.phone }" placeholder="Телефон" v-model="phone" />
+      <ErrorMessage name="phone" class="error-message" />
+    </div>
+
                 <div class="form-group password-group">
       <Field name="password" :type="passwordFieldType" class="form-control" :class="{ 'is-invalid': errors.password, 'is-valid': passwordsMatch }" placeholder="Пароль" v-model="password" />
       <span @click="togglePasswordVisibility" class="password-toggle-icon">
@@ -66,11 +76,11 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+
 import { useForm, Field, ErrorMessage } from 'vee-validate';
 import * as Yup from 'yup';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from 'vue-toastification';
-
 
 const authStore = useAuthStore();
 const isSubmitting = ref(false);
@@ -131,7 +141,9 @@ const schema = Yup.object().shape({
     .test('is-unique', 'Этот логин уже занят', value => checkUsernameUnique(value)),
   lastName: Yup.string().required('Фамилия обязательна'),
   firstName: Yup.string().required('Имя обязательно'),
+  patronymic: Yup.string(),
   email: Yup.string().required('Email обязателен').email('Неверный формат email'),
+  phone: Yup.string(),
   password: Yup.string().required('Пароль обязателен').min(6, 'Пароль должен быть не менее 6 символов'),
   passwordConfirmation: Yup.string()
     .oneOf([Yup.ref('password')], 'Пароли должны совпадать')
@@ -145,11 +157,11 @@ const { errors, handleSubmit, defineField, meta, setErrors } = useForm({
 const [username, usernameAttrs] = defineField('username');
 const [lastName] = defineField('lastName');
 const [firstName] = defineField('firstName');
+const [patronymic] = defineField('patronymic');
 const [email] = defineField('email');
+const [phone] = defineField('phone');
 const [password] = defineField('password');
 const [passwordConfirmation] = defineField('passwordConfirmation');
-
-
 
 watch(username, (newValue) => {
   if (!newValue) {

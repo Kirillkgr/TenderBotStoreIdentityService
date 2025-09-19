@@ -32,8 +32,17 @@ public class CorsConfig {
         log.info("Установлено максимальное количество CORS-адресов: {}", MAX_ORIGINS);
         CorsConfiguration corsConfig = new CorsConfiguration();
         corsConfig.setAllowedOrigins(validateCorsConfig());
-        corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
         corsConfig.addAllowedHeader("*");
+		corsConfig.setAllowCredentials(true);
+		corsConfig.addExposedHeader("Authorization");
+		corsConfig.addAllowedMethod("GET");
+		corsConfig.addAllowedMethod("POST");
+		corsConfig.addAllowedMethod("PUT");
+		corsConfig.addAllowedMethod("PATCH");
+		corsConfig.addAllowedMethod("DELETE");
+		corsConfig.addAllowedMethod("OPTIONS");
+		corsConfig.setMaxAge(3600L);
         corsConfig.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

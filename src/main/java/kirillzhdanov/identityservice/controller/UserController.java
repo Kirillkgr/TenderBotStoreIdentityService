@@ -55,7 +55,7 @@ public class UserController {
         if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
             return ResponseEntity.status(401).build();
         }
-        var resp = userProfileService.updateProfile(authentication.getName(), request);
+        UserResponse resp = userProfileService.updateProfile(authentication.getName(), request);
         return ResponseEntity.ok(resp);
     }
 }

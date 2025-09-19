@@ -19,26 +19,22 @@
             <template v-else>
               <span class="new">{{ formatPrice(product?.price) }}</span>
             </template>
-            <span class="visible-badge" :class="product?.visible ? 'on' : 'off'">{{ product?.visible ? 'Видим' : 'Скрыт' }}</span>
           </div>
 
           <p class="desc">{{ product?.description || '—' }}</p>
-
-          <div class="mods">
-            <h5>Модификаторы</h5>
-            <div class="stub">Заглушка для модификаторов (скоро)</div>
-          </div>
         </div>
       </div>
 
       <div class="footer-actions mt-3">
         <button class="btn btn-outline-secondary" @click="$emit('close')">Закрыть</button>
-        <div class="add-to-cart-wrap">
-          <button class="icon-square" title="Добавить в корзину" aria-label="Добавить в корзину">
-            <i class="bi bi-cart-plus"></i>
-          </button>
-          <span class="caption">Добавить в корзину</span>
-        </div>
+        <button class="icon-square" title="Добавить в корзину" aria-label="Добавить в корзину">
+          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 96 96" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M84,74.34H43.05a6.36,6.36,0,0,1-6.12-4.68L20.87,10.51A8.84,8.84,0,0,0,12.36,4H3A1,1,0,0,1,3,2h9.32A10.84,10.84,0,0,1,22.8,10L38.86,69.13a4.35,4.35,0,0,0,4.19,3.21H84a1,1,0,1,1,0,2Z"/>
+            <path d="M79.41,61.73H35.54a1,1,0,0,1-1-.74L25.26,26.68a1,1,0,0,1,1-1.27H87.62a6.34,6.34,0,0,1,6,8.42L85.4,57.47A6.35,6.35,0,0,1,79.41,61.73Zm-43.1-2h43.1a4.34,4.34,0,0,0,4.1-2.91l8.21-23.65a4.35,4.35,0,0,0-4.1-5.76H27.53Z"/>
+            <path d="M44,94a8.57,8.57,0,1,1,8.56-8.56A8.57,8.57,0,0,1,44,94Zm0-15.13a6.57,6.57,0,1,0,6.56,6.57A6.58,6.58,0,0,0,44,78.87Z"/>
+            <path d="M81.22,94a8.57,8.57,0,1,1,8.57-8.56A8.57,8.57,0,0,1,81.22,94Zm0-15.13a6.57,6.57,0,1,0,6.57,6.57A6.57,6.57,0,0,0,81.22,78.87Z"/>
+          </svg>
+        </button>
       </div>
     </template>
   </Modal>

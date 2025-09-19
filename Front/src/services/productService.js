@@ -8,15 +8,6 @@ export const createProduct = (productData) => {
     return apiClient.post('/auth/v1/products', productData);
 };
 
-// Получить товары по бренду и группе (groupTagId=0 для корня)
-export const getProductsByBrandAndGroup = (brandId, groupTagId = 0, visibleOnly = true) => {
-    return apiClient.get(`/auth/v1/products/by-brand/${brandId}`, {
-        params: {
-            groupTagId: groupTagId ?? 0,
-            visibleOnly: visibleOnly !== false
-        }
-    });
-};
 
 // Сменить видимость товара
 export const patchVisibility = (productId, visible) => {

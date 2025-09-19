@@ -199,26 +199,32 @@ async function onSubmit(values, { resetForm }) {
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text); /* более контрастный текст заголовков полей */
 }
 
 .form-control {
   width: 100%;
   padding: 10px 14px; /* Adjusted padding */
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border, #3a3a3a);
   border-radius: 10px; /* Adjusted radius */
   font-size: 15px; /* Adjusted font size */
-  background-color: #f7f7f7;
+  background-color: var(--input-bg, #1f1f1f);
+  color: var(--text, #f3f4f6); /* текст внутри инпутов хорошо читаем */
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
+.form-control::placeholder {
+  color: var(--muted, #9aa3af); /* заметные плейсхолдеры на тёмном фоне */
+  opacity: 0.95;
+}
+
 .form-control:focus {
   outline: none;
-  border-color: var(--primary-color);
-  background-color: #fff;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+  border-color: var(--primary, var(--primary-color, #0a84ff));
+  background-color: color-mix(in srgb, var(--input-bg, #1f1f1f) 85%, #ffffff 15%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0a84ff) 25%, transparent);
 }
 
 textarea.form-control {
@@ -227,9 +233,15 @@ textarea.form-control {
 }
 
 .error-message {
-  color: #ff3b30;
+  color: #ff6b6b; /* повышенная контрастность ошибок */
   font-size: 13px;
   padding-top: 4px;
+}
+
+/* Состояние invalid, если добавим класс из vee-validate */
+.form-control.invalid {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, .25);
 }
 
 .form-group-checkbox {
@@ -242,6 +254,13 @@ textarea.form-control {
 .form-check-input {
   width: 18px;
   height: 18px;
+}
+
+/* Доступность для отключённых полей на тёмном фоне */
+select[disabled], .form-control[disabled] {
+  background-color: color-mix(in srgb, var(--input-bg, #1f1f1f) 90%, #ffffff 10%);
+  color: color-mix(in srgb, var(--muted, #9aa3af) 85%, #ffffff 15%);
+  border-color: var(--border, #3a3a3a);
 }
 
 .form-actions {

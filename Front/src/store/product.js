@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia';
 import * as productService from '../services/productService';
+import {getPublicProductsByBrandAndGroup} from "../services/productService";
 
 export const useProductStore = defineStore('product', {
     state: () => ({
@@ -17,7 +18,7 @@ export const useProductStore = defineStore('product', {
             this.loading = true;
             this.error = null;
             try {
-                const res = await productService.getProductsByBrandAndGroup(brandId, groupTagId, visibleOnly);
+                const res = await productService.getPublicProductsByBrandAndGroup(brandId, groupTagId, visibleOnly);
                 const arr = Array.isArray(res) ? res : (res?.data ?? res?.data?.data ?? []);
                 this.products = arr || [];
                 return this.products;

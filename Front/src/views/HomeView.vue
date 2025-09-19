@@ -28,19 +28,12 @@
 
     <div v-if="tagLoading" class="info-text">Загрузка групп...</div>
     <div v-else class="group-grid">
-      <div 
-        v-for="group in groups" 
-        :key="group.id" 
-        class="group-card" 
-        @click="openGroup(group)"
-        :title="group.name"
-      >
-        <div class="group-image">
-          <img v-if="group.imageUrl" :src="group.imageUrl" :alt="group.name" />
-          <div v-else class="image-placeholder">{{ group.name?.charAt(0)?.toUpperCase() }}</div>
-        </div>
-        <div class="group-title">{{ group.name }}</div>
-      </div>
+      <GroupCard
+        v-for="group in groups"
+        :key="group.id"
+        :group="group"
+        @open="openGroup"
+      />
       <div v-if="!tagLoading && selectedBrandId && groups.length === 0" class="info-text">
         В этом бренде пока нет групп
       </div>
@@ -75,6 +68,7 @@ import { onMounted, ref } from 'vue';
 import { useProductStore } from '../store/product';
 import ProductCard from '../components/ProductCard.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
+import GroupCard from '../components/cards/GroupCard.vue';
 import { getPublicBrands } from '../services/brandService';
 import tagService from '../services/tagService';
 import { useTagStore } from '@/store/tag';
@@ -197,6 +191,8 @@ const navigateToCrumb = async (parentId, index) => {
 <style scoped>
 .home-container {
   padding: 2rem;
+  max-width: 1280px; /* контентная ширина как у популярных магазинов */
+  margin: 0 auto;    /* центрируем весь контент */
 }
 
 /* Чипы брендов */
@@ -250,7 +246,9 @@ const navigateToCrumb = async (parentId, index) => {
 /* Группы (теги) квадратными карточками */
 .group-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  /* Центрированные ряды с фиксированной шириной карточек */
+  grid-template-columns: repeat(auto-fit, minmax(170px, 200px));
+  justify-content: center;  /* центрируем последнюю строку */
   gap: 18px;
   margin-bottom: 2rem;
 }
@@ -262,6 +260,7 @@ const navigateToCrumb = async (parentId, index) => {
   overflow: hidden;
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  width: 200px;   /* фиксируем ширину трека */
 }
 .group-card:hover { transform: translateY(-3px); box-shadow: 0 10px 22px var(--shadow-color); border-color: var(--border); }
 .group-image { aspect-ratio: 1 / 1; background: var(--surface); display: flex; align-items: center; justify-content: center; }
@@ -272,8 +271,10 @@ const navigateToCrumb = async (parentId, index) => {
 /* Товары */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.5rem;
+  /* Чётные столбцы карточек 260–280px, центрирование как у витрин */
+  grid-template-columns: repeat(auto-fit, minmax(260px, 280px));
+  justify-content: center;  /* центрируем последнюю строку */
+  gap: 24px;
 }
 
 .info-text { color: var(--muted); margin: 10px 0 18px; text-align: center; }

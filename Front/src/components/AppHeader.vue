@@ -13,7 +13,8 @@
         </div>
 
         <button class="qr-btn" @click.stop="openQr" aria-label="Показать QR код" type="button">
-          <img :src="qrCodeUrl" alt="QR code" class="logo-img"/>
+          <!-- data URL to avoid network fetch and keep predictable sizing -->
+          <img class="qr-img" :src="qrDataUrl" alt="QR code" width="28" height="28" />
         </button>
         <router-link to="/" class="logo" @click.stop> TenderBotStore</router-link>
       </div>
@@ -28,11 +29,16 @@
         <router-link v-if="route.name !== 'Home'" to="/">Главная</router-link>
         <template v-if="authStore.isAuthenticated">
           <router-link v-if="route.name !== 'Profile'" to="/profile">Профиль</router-link>
-          <button
-            v-if="isProfilePage && !isModalVisible"
-            @click="$emit('open-edit-profile-modal')"
+          <router-link
+            v-if="!isModalVisible"
+            to="/profile/edit"
             class="nav-link btn-primary"
-          >Редактировать профиль</button>
+          >Редактировать профиль</router-link>
+          <router-link
+            v-if="isAdminOrOwner"
+            to="/staff"
+            class="nav-link btn-primary"
+          >Управление персоналом</router-link>
           <router-link to="/cart">Корзина ({{ cartStore.items.length }})</router-link>
           <router-link v-if="isAdminOrOwner" to="/admin">Админ</router-link>
           <a @click="handleLogout" href="#">Выйти ({{ authStore.user?.username }})</a>
@@ -43,6 +49,8 @@
         </template>
       </div>
     </nav>
+    <!-- Spacer to offset fixed header height -->
+    <div class="header-spacer" aria-hidden="true"></div>
     <div v-if="isMenuOpen" class="nav-overlay" @click="closeMenu"></div>
     
     <!-- Modal with enlarged QR for easy scanning (teleported to body) -->
@@ -50,7 +58,7 @@
       <transition name="fade-scale">
         <div v-if="showQr" class="qr-overlay" @click="showQr = false" aria-modal="true" role="dialog">
           <div class="qr-card" @click.stop>
-            <div class="qr-full qr-inline" v-html="qrInline"></div>
+            <div class="qr-full qr-inline" v-html="qrInlineRef"></div>
             <button class="qr-close" @click="showQr = false" aria-label="Закрыть" type="button">×</button>
             <p class="qr-hint">Наведите камеру, чтобы открыть сайт</p>
           </div>
@@ -66,7 +74,6 @@ import {useRoute, useRouter} from 'vue-router';
 import {useAuthStore} from '../store/auth';
 import {useCartStore} from '../store/cart';
 
-import qrCodeUrl from '../assets/qr-code.svg';
 import qrInline from '../assets/qr-code.svg?raw';
 
 const props = defineProps({
@@ -82,6 +89,10 @@ const authStore = useAuthStore();
 const cartStore = useCartStore();
 const router = useRouter();
 const qrInlineRef = ref(qrInline);
+const qrDataUrl = computed(() =>
+  'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
+);
+
 // Тема: общий ключ с админкой
 const THEME_KEY = 'admin_theme_mode'; // 'auto' | 'light' | 'dark'
 const themeMode = ref('auto'); // авто до первого вмешательства пользователя
@@ -295,14 +306,33 @@ watch(showQr, (open) => {
   left: 0;
   right: 0;
   background: #2c2c2c;
-  padding: 1rem 2rem;
+  padding: 0.75rem 1.5rem;
   z-index: 1000;
   display: flex;
   justify-content: space-between;
   align-items: center;
   transition: transform 0.3s ease-in-out;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-height: 60px; /* стабильная высота шапки */
 }
+
+/* Header-specific tweaks for inline QR icon (small size like before) */
+.qr-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  overflow: hidden; /* не позволяем SVG вылезать за пределы */
+}
+.qr-small { display: inline-block; line-height: 0; width: 28px; height: 28px; }
+.qr-small svg { width: 100% !important; height: 100% !important; display: block; }
+.qr-img { width: 28px; height: 28px; display: block; }
+.qr-img { object-fit: contain; }
 
 /* Logo container with QR icon */
 .logo-wrap {
@@ -359,11 +389,7 @@ watch(showQr, (open) => {
   pointer-events: auto;
 }
 
-.logo-img {
-  height: 2.5rem; /* иконка в шапке скромная, но заметная */
-  width: auto;
-  display: inline-block;
-}
+/* .logo-img больше не используется для QR */
 
 .main-nav--hidden {
   transform: translateY(-100%);
