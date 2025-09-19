@@ -9,6 +9,8 @@ import ProductDetailView from '../views/ProductDetailView.vue';
 import CheckoutView from '../views/CheckoutView.vue';
 import AdminView from '../views/AdminView.vue';
 import TagsView from '../views/TagsView.vue';
+import ProfileEditView from '../views/ProfileEditView.vue';
+import StaffManagementView from '../views/StaffManagementView.vue';
 
 const routes = [
     {
@@ -36,6 +38,12 @@ const routes = [
         component: ProfileView,
     },
     {
+        path: '/profile/edit',
+        name: 'ProfileEdit',
+        meta: { title: 'Редактировать профиль', requiresAuth: true },
+        component: ProfileEditView,
+    },
+    {
         path: '/cart',
         name: 'Cart',
         meta: { title: 'Корзина', requiresAuth: true },
@@ -58,6 +66,12 @@ const routes = [
         name: 'Admin',
         meta: { title: 'Админ панель', requiresAuth: true, requiresAdmin: true },
         component: AdminView,
+    },
+    {
+        path: '/staff',
+        name: 'StaffManagement',
+        meta: { title: 'Управление персоналом', requiresAuth: true, roles: ['ADMIN', 'OWNER'] },
+        component: StaffManagementView,
     },
     {
         path: '/brands/:brandId/tags',

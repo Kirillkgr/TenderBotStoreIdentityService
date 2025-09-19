@@ -42,6 +42,19 @@ public class User {
 
 	private String pendingEmail;
 
+    // Ссылка на мастера (создателя/владельца) пользователя
+    @Column(name = "master_id")
+    private Long masterId;
+
+    // Отдел (many-to-one)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    // Дата создания для аудита/сортировки
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
 	@ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
 	@JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
 	private Set<Role> roles = new HashSet<>();
@@ -49,4 +62,10 @@ public class User {
 	@ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
 	@JoinTable(name = "user_brand", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "brand_id"))
 	private Set<Brand> brands = new HashSet<>();
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
 }
+

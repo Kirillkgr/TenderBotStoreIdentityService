@@ -24,6 +24,10 @@ public class UserRegistrationRequest {
 	private String patronymic;
 	private LocalDate dateOfBirth;
 
+	// contact data
+	private String email;
+	private String phone;
+
 	private String telegramBotToken;
 
 	private Set<Role.RoleName> roleNames;
