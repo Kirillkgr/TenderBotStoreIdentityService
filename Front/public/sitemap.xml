@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset>
+    <!-- Главная страница -->
+    <url>
+        <loc>https://kirillkgr.ru/</loc>
+        <lastmod>2025-09-20</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Страница входа -->
+    <url>
+        <loc>https://kirillkgr.ru/login</loc>
+        <lastmod>2025-09-20</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Страница регистрации -->
+    <url>
+        <loc>https://kirillkgr.ru/register</loc>
+        <lastmod>2025-09-20</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <!-- Профиль пользователя -->
+    <url>
+        <loc>https://kirillkgr.ru/profile</loc>
+        <lastmod>2025-09-20</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Другие важные страницы вашего приложения -->
+    <url>
+        <loc>https://kirillkgr.ru/dashboard</loc>
+        <lastmod>2025-09-20</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://kirillkgr.ru/settings</loc>
+        <lastmod>2025-09-20</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+</urlset>
