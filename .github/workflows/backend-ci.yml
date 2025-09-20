@@ -1,8 +1,8 @@
 name: Java CI with Maven
 
-on:
-  push:
-    branches: [ "**" ]
+#on:
+#  push:
+#    branches: [ "**" ]
 
 jobs:
   test_backend:
