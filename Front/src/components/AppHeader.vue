@@ -254,15 +254,19 @@ watch(showQr, (open) => {
   position: relative;
   background: #1f1f1f;
   border-radius: 12px;
-  padding: 1rem 1rem 0.75rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-  border: 1px solid rgba(255,255,255,0.06);
+  padding: 0.5rem 0.5rem -0.75rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  max-width: 76vw;
+  max-height: 83vh;
+  overflow: auto;
 }
 
 .qr-full {
   display: block;
-  width: min(80vw, 20rem);
+  width: min(80vw, 25rem);
   height: auto;
+  margin: 0 auto;
 }
 
 .qr-close {
@@ -329,7 +333,6 @@ watch(showQr, (open) => {
   cursor: pointer;
   overflow: hidden; /* не позволяем SVG вылезать за пределы */
 }
-.qr-small { display: inline-block; line-height: 0; width: 28px; height: 28px; }
 .qr-small svg { width: 100% !important; height: 100% !important; display: block; }
 .qr-img { width: 28px; height: 28px; display: block; }
 .qr-img { object-fit: contain; }
@@ -484,11 +487,6 @@ watch(showQr, (open) => {
 
   .burger {
     display: flex;
-  }
-
-  /* На мобильных уменьшим немного иконку */
-  .logo-img {
-    height: 2rem;
   }
 
   /* Анимация бургера в крестик */
