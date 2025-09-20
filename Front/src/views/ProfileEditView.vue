@@ -3,25 +3,21 @@
     <form class="form" @submit.prevent="onSubmit">
       <div class="grid">
         <label>
-          Фамилия*
-          <input v-model.trim="form.lastName" type="text" required />
+          <input v-model.trim="form.lastName" placeholder="Фамилия" required type="text"/>
         </label>
         <label>
-          Имя*
-          <input v-model.trim="form.firstName" type="text" required />
+          <input v-model.trim="form.firstName" placeholder="Имя" required type="text"/>
         </label>
         <label>
-          Отчество
-          <input v-model.trim="form.patronymic" type="text" />
+          <input v-model.trim="form.patronymic" placeholder="Отчество" type="text"/>
         </label>
         <label class="clickable" @click="openBirthPicker">
-          Дата рождения
-          <input ref="birthInput" v-model="form.birthDate" type="date" @change="validateBirthDate" @blur="validateBirthDate" />
+          <input ref="birthInput" v-model="form.birthDate" placeholder="Дата рождения дд.мм.гггг" type="date"
+                 @blur="validateBirthDate" @change="validateBirthDate"/>
           <small v-if="errors.birthDate" class="error">{{ errors.birthDate }}</small>
         </label>
         <label>
-          Email*
-          <input v-model.trim="form.email" type="email" required @blur="validateEmail" />
+          <input v-model.trim="form.email" placeholder="email@email.ru" required type="email" @blur="validateEmail"/>
           <small v-if="errors.email" class="error">{{ errors.email }}</small>
 
           <div v-if="emailChanged && !showEmailVerify" class="email-verify">
@@ -36,17 +32,16 @@
           </div>
         </label>
         <label>
-          Телефон* (+7 999 999-99-99)
-          <input v-model.trim="form.phone" type="tel" placeholder="+7 999 999-99-99" required @blur="validatePhone" />
+          <input v-model.trim="form.phone" placeholder="+7 (123) 456-78-90" required type="tel" @blur="validatePhone"/>
           <small v-if="errors.phone" class="error">{{ errors.phone }}</small>
         </label>
         <label>
-          Пароль (оставьте пустым, если не меняете)
-          <input v-model="form.password" type="password" autocomplete="new-password" />
+          <input v-model="form.password" autocomplete="new-password" placeholder="Пароль (оставьте пустым, если не меняете)"
+                 type="password"/>
         </label>
         <label>
-          Подтверждение пароля
-          <input v-model="form.confirmPassword" type="password" autocomplete="new-password" @blur="validatePasswords" />
+          <input v-model="form.confirmPassword" autocomplete="new-password" placeholder="Подтверждение пароля"
+                 type="password" @blur="validatePasswords"/>
           <small v-if="errors.password" class="error">{{ errors.password }}</small>
         </label>
       </div>
@@ -59,22 +54,35 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/store/auth';
-import { UserApi } from '@/services/user';
+import {computed, nextTick, reactive, ref, watch} from 'vue';
+import {useRouter} from 'vue-router';
+import {useAuthStore} from '@/store/auth';
+import {UserApi} from '@/services/user';
 import ModalBase from '@/components/ui/ModalBase.vue';
+import {useToast} from 'vue-toastification';
 
 const auth = useAuthStore();
 const router = useRouter();
 const open = ref(true);
 function onModalToggle(v) { if (!v) router.back(); }
 
+const toast = useToast();
+
+// Нормализатор даты к формату YYYY-MM-DD для input[type=date]
+function normalizeDate(val) {
+  if (!val) return '';
+  try {
+    return String(val).slice(0, 10);
+  } catch (_) {
+    return '';
+  }
+}
+
 const initial = {
   lastName: auth.user?.lastName || '',
   firstName: auth.user?.firstName || '',
   patronymic: auth.user?.patronymic || '',
-  birthDate: auth.user?.dateOfBirth || '',
+  birthDate: normalizeDate(auth.user?.dateOfBirth) || '',
   email: auth.user?.email || '',
   phone: auth.user?.phone || '',
 };
@@ -87,6 +95,7 @@ const form = reactive({
 
 const errors = reactive({ birthDate: '', email: '', phone: '', password: '' });
 const birthInput = ref(null);
+const hasFilledOnce = ref(false);
 function openBirthPicker(e){
   // Открыть нативный календарь по клику на всю область поля
   if (e?.target && e.target.tagName.toLowerCase() === 'input') return; // уже по инпуту
@@ -98,6 +107,42 @@ function openBirthPicker(e){
     }
   }
 }
+
+// Подтянуть данные из auth.user после гидратации/восстановления
+function fillFromAuth(u) {
+  if (!u) return;
+  const next = {
+    lastName: u.lastName || '',
+    firstName: u.firstName || '',
+    patronymic: u.patronymic || '',
+    birthDate: normalizeDate(u.dateOfBirth) || '',
+    email: u.email || '',
+    phone: u.phone || '',
+  };
+  // Обновляем initial, чтобы корректно работала проверка isDirty
+  initial.lastName = next.lastName;
+  initial.firstName = next.firstName;
+  initial.patronymic = next.patronymic;
+  initial.birthDate = next.birthDate;
+  initial.email = next.email;
+  initial.phone = next.phone;
+
+  // Заполняем форму один раз при первом появлении user, чтобы не перетирать ручные изменения
+  if (!hasFilledOnce.value) {
+    form.lastName = next.lastName;
+    form.firstName = next.firstName;
+    form.patronymic = next.patronymic;
+    form.birthDate = next.birthDate;
+    form.email = next.email;
+    form.phone = next.phone;
+    hasFilledOnce.value = true;
+  }
+}
+
+// Сразу попробовать заполнить (если user уже есть), и следить за изменениями
+watch(() => auth.user, (u) => {
+  fillFromAuth(u);
+}, {immediate: true});
 
 function validateBirthDate() {
   errors.birthDate = '';
@@ -122,7 +167,12 @@ function validateEmail() {
 
 function validatePhone() {
   errors.phone = '';
-  const re = /^\+7\s?\d{3}\s?\d{3}-?\d{2}-?\d{2}$/;
+  if (!form.phone) {
+    // Дата необязательная — ошибок нет, если пусто
+    return;
+  }
+
+  const re = /^(?:\+?(?:7|375|380|996|992|993|994|998|995|90|91|92|93|94|95|960|961|962|963|964|965|966|967|968|970|971|972|973|974|975|976|977|81|82|84|86)|8)\s?\d{2,4}[\s-]?\d{2,4}[\s-]?\d{2,4}$/;
   if (!re.test(form.phone)) {
     errors.phone = 'Формат: +7 999 999-99-99';
   }
@@ -159,7 +209,6 @@ const isValid = computed(() => {
     !errors.password &&
     form.lastName &&
     form.firstName &&
-    // дата рождения необязательна
     form.email &&
     form.phone &&
     (!form.password || (form.password && form.password === form.confirmPassword))
@@ -193,7 +242,7 @@ async function onSubmit() {
     const updated = await UserApi.editProfile(payload);
     // обновим auth store локально
     auth.setUser({ ...(auth.user || {}), ...updated });
-    alert('Профиль обновлён');
+    toast.success('Профиль обновлён');
   } finally {
     saving.value = false;
   }

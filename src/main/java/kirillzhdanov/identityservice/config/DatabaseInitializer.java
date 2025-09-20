@@ -1,9 +1,12 @@
 package kirillzhdanov.identityservice.config;
 
 import jakarta.annotation.PostConstruct;
-import kirillzhdanov.identityservice.model.*;
+import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.Role;
+import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.repository.BrandRepository;
-import kirillzhdanov.identityservice.service.*;
+import kirillzhdanov.identityservice.service.RoleService;
+import kirillzhdanov.identityservice.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,6 +82,7 @@ public class DatabaseInitializer {
 				roles.add(roleMap.get(Role.RoleName.ADMIN));
 			if (i % 3 == 0)
 				roles.add(roleMap.get(Role.RoleName.OWNER));
+
 			// Привязать несколько брендов
 			Set<Brand> userBrands = new HashSet<>();
 			userBrands.add(brands.get(i % brands.size()));
@@ -86,7 +90,7 @@ public class DatabaseInitializer {
 				userBrands.add(brands.get((i + 1) % brands.size()));
 			User user = userRepository.saveNewUser(User.builder()
 													   .username(username)
-													   .password("password" + i)
+					.password("user" + i)
 													   .build());
 			user.setBrands(userBrands);
 			user.setRoles(roles);
