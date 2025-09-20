@@ -85,6 +85,10 @@ public class UserProfileService {
         if (request.getPatronymic() != null) user.setPatronymic(request.getPatronymic());
         if (request.getDateOfBirth() != null) user.setDateOfBirth(request.getDateOfBirth());
         if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getEmail() != null && user.getEmail() == null) {
+            user.setEmail(request.getEmail());
+            user.setEmailVerified(false);
+        }// Добавляем email только если он не указан и помечаем что он не подтвержден
         // Email меняется только через успешную верификацию (verifyCode), здесь не трогаем
 
         user = userRepository.save(user);
