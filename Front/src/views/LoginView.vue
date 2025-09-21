@@ -27,16 +27,19 @@
     <div class="separator">или войти через</div>
 
     <div class="social-login">
-      <button class="social-btn">
+      <button class="social-btn" type="button" @click="console.log('[OAuth] Click Yandex (not configured)')">
         <svg><use xlink:href="#logo_yandex_color_circle_24"></use></svg>
       </button>
-      <a class="social-btn" href="/oauth2/authorization/google" aria-label="Войти через Google">
+      <a class="social-btn" href="/oauth2/authorization/google" aria-label="Войти через Google"
+         @click.prevent="goGoogle"
+         rel="noopener"
+         target="_self">
         <svg><use xlink:href="#logo_google_color_24"></use></svg>
       </a>
-      <button class="social-btn">
+      <button class="social-btn" type="button" @click="console.log('[OAuth] Click VK (not configured)')">
         <svg><use xlink:href="#logo_vk_color_24"></use></svg>
       </button>
-      <button class="social-btn">
+      <button class="social-btn" type="button" @click="console.log('[OAuth] Click Telegram (not configured)')">
         <svg><use xlink:href="#logo_telegram_color_24"></use></svg>
       </button>
     </div>
@@ -62,7 +65,20 @@ onMounted(() => {
     const field = document.getElementById('login-field');
     if (field) field.focus();
   }, 100);
+  try {
+    console.log('[OAuth] location', {
+      href: window.location.href,
+      referrer: document.referrer,
+    });
+  } catch(_) {}
 });
+
+function goGoogle() {
+  try {
+    console.log('[OAuth] Navigate to /oauth2/authorization/google');
+  } catch(_) {}
+  window.location.assign('/oauth2/authorization/google');
+}
 
 async function onSubmit(values) {
   // Reset errors on each submission attempt
