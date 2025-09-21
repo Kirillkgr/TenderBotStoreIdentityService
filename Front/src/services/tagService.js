@@ -58,6 +58,34 @@ export const tagService = {
     }
   },
 
+  // Единый апдейт: бренд/родитель/имя одним запросом
+  async updateFull(tagId, payload) {
+    try {
+      const body = {
+        name: payload?.name ?? null,
+        parentId: payload?.parentId ?? null,
+        brandId: payload?.brandId ?? null
+      };
+      const response = await api.put(`${API_PREFIX}/${tagId}/full`, body, { retryCount: 0 });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'Не удалось обновить тег');
+    }
+  },
+
+  // Смена бренда у тега (и его поддерева)
+  async changeGroupBrand(tagId, brandId) {
+    try {
+      const response = await api.patch(`${API_PREFIX}/${tagId}/brand`, null, {
+        params: { brandId },
+        retryCount: 0
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'Не удалось сменить бренд у тега');
+    }
+  },
+
   // ПУБЛИЧНЫЕ ЗАПРОСЫ ДЛЯ ГЛАВНОЙ (menu/v1)
   async getPublicTagsByBrand(brandId, parentId = null) {
     try {
@@ -103,17 +131,12 @@ export const tagService = {
     }
   },
 
-  // Получение полного дерева тегов для бренда
+  // Получение полного дерева тегов для бренда (быстрый бэкенд-эндпоинт)
   async getTagTree(brandId) {
     try {
-      console.log(`Получение дерева тегов для бренда ${brandId}`);
-      const response = await api.get(`${API_PREFIX}/tree/${brandId}`, {
-        retryCount: 0
-      });
-      return response.data;
+      const response = await api.get(`${API_PREFIX}/tree/${brandId}/full`, { retryCount: 0 });
+      return Array.isArray(response.data) ? response.data : (response.data?.data ?? []);
     } catch (error) {
-      console.warn('Не удалось загрузить дерево тегов, загружаем только корневые теги', error);
-      // В случае ошибки возвращаем пустой массив, чтобы не ломать UI
       return [];
     }
   },
@@ -135,13 +158,46 @@ export const tagService = {
   async updateTag(tagId, tagData) {
     try {
       console.log(`Обновление тега ${tagId}:`, tagData);
-      const response = await api.put(`${API_PREFIX}/${tagId}`, tagData, {
-        retryCount: 0
-      });
-      console.log('Тег успешно обновлен:', response.data);
-      return response.data;
+      // ВНИМАНИЕ: Бэкенд разделяет операции: переименование (PUT с query) и перенос (PATCH /move)
+      // Этот метод сохранён для обратной совместимости, но рекомендуется вызывать renameTag/moveTag явно.
+      let last;
+      if (typeof tagData.name === 'string' && tagData.name.trim().length > 0) {
+        last = await this.renameTag(tagId, tagData.name);
+      }
+      if (tagData.parentId !== undefined && tagData.parentId !== null) {
+        last = await this.moveTag(tagId, tagData.parentId);
+      }
+      return last;
     } catch (error) {
       return handleApiError(error, 'Не удалось обновить тег');
+    }
+  },
+
+  // Переименование тега (совместимо с бэкендом: PUT /{id}?name=)
+  async renameTag(tagId, name) {
+    try {
+      const response = await api.put(`${API_PREFIX}/${tagId}`, null, {
+        params: { name },
+        retryCount: 0
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'Не удалось переименовать тег');
+    }
+  },
+
+  // Перемещение тега (совместимо с бэкендом: PATCH /{id}/move?parentId=)
+  async moveTag(tagId, parentId) {
+    try {
+      const params = {};
+      if (parentId !== undefined && parentId !== null) params.parentId = parentId;
+      const response = await api.patch(`${API_PREFIX}/${tagId}/move`, null, {
+        params,
+        retryCount: 0
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'Не удалось переместить тег');
     }
   },
 

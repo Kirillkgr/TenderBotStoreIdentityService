@@ -15,6 +15,15 @@
       @saved="handleTagCreated"
   />
 
+  <EditGroupModal
+      v-if="showEditGroupModal && selectedTag"
+      :brands="brands"
+      :tag="selectedTag"
+      :brandId="selectedBrand"
+      @close="() => { showEditGroupModal = false; selectedTag = null; }"
+      @saved="handleTagCreated"
+  />
+
   <CreateProductModal
       v-if="showCreateProductModal"
       :brands="brands"
@@ -230,7 +239,16 @@
           >
             <div class="d-flex align-items-center">
               <i :class="['me-2', tag.icon || 'bi-tag']"></i>
-              <span class="tag-title">{{ tag.name }}</span>
+              <span class="tag-title">
+                {{ tag.name }}
+                <button
+                  class="btn btn-sm btn-outline-secondary ms-2"
+                  @click.stop="editTag(tag)"
+                  title="Изменить тег"
+                >
+                  Изменить
+                </button>
+              </span>
 
               <span v-if="tag.childrenCount > 0" class="badge bg-secondary rounded-pill ms-2">
                 {{ tag.childrenCount }}
@@ -376,6 +394,7 @@ import { useProductStore } from '@/store/product';
 import { getBrands, createBrand } from '../services/brandService';
 import CreateBrandModal from '../components/modals/CreateBrandModal.vue';
 import CreateGroupModal from '../components/modals/CreateGroupModal.vue';
+import EditGroupModal from '../components/modals/EditGroupModal.vue';
 import CreateProductModal from '../components/modals/CreateProductModal.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import EditProductModal from '../components/modals/EditProductModal.vue';
@@ -390,6 +409,7 @@ const error = ref(null);
 const selectedTag = ref(null);
 const tagToDelete = ref(null);
 const showDeleteConfirm = ref(false);
+const showEditGroupModal = ref(false);
 const deleting = ref(false);
 const currentParentId = ref(0);
 const currentTagPath = ref([]);
@@ -665,7 +685,9 @@ const fetchTags = async (brandId, parentId = null) => {
       return {
         id: tag.id || tag.tagId,
         name: tag.name || tag.tagName || 'Без названия',
-        parentId: parentId || tag.parentId || 0,
+        // ВАЖНО: не затираем фактический parentId текущим уровнем.
+        // Берём parentId из самого тега, если есть; иначе используем контекстный уровень.
+        parentId: (tag.parentId ?? (tag.parent?.id)) ?? (parentId ?? 0),
         brandId: tag.brandId || brandId,
         childrenCount: tag.childrenCount || (tag.children ? tag.children.length : 0),
         hasChildren: hasChildren,
@@ -967,9 +989,8 @@ const addChildTag = async (parentTag) => {
 };
 
 const editTag = (tag) => {
-  // We'll reuse the same modal for editing
-  showCreateGroupModal.value = true;
-  // The tag data will be passed to the modal via a prop
+  selectedTag.value = tag;
+  showEditGroupModal.value = true;
 };
 
 const confirmDeleteTag = (tag) => {

@@ -3,15 +3,25 @@ package kirillzhdanov.identityservice.service;
 import jakarta.transaction.Transactional;
 import kirillzhdanov.identityservice.dto.group.CreateGroupTagRequest;
 import kirillzhdanov.identityservice.dto.group.GroupTagResponse;
+import kirillzhdanov.identityservice.dto.group.UpdateGroupTagRequest;
+import kirillzhdanov.identityservice.dto.group.GroupTagTreeResponse;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
+import kirillzhdanov.identityservice.model.tags.GroupTagArchive;
 import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.GroupTagRepository;
+import kirillzhdanov.identityservice.repository.GroupTagArchiveRepository;
+import kirillzhdanov.identityservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +30,9 @@ public class GroupTagService {
 
     private final GroupTagRepository groupTagRepository;
     private final BrandRepository brandRepository;
+    private final GroupTagArchiveRepository groupTagArchiveRepository;
+    private final ProductRepository productRepository;
+    private final ProductService productService;
 
     @Transactional
     public GroupTagResponse createGroupTag(CreateGroupTagRequest request) {
@@ -41,6 +54,38 @@ public class GroupTagService {
         groupTag = groupTagRepository.save(groupTag);
 
         return convertToDto(groupTag);
+    }
+
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public java.util.List<GroupTagTreeResponse> tree(Long brandId) {
+        Brand brand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
+
+        java.util.List<GroupTag> all = groupTagRepository.findAllByBrandOrdered(brand);
+
+        java.util.Map<Long, GroupTagTreeResponse> map = new java.util.HashMap<>();
+        for (GroupTag gt : all) {
+            map.put(gt.getId(), new GroupTagTreeResponse(
+                    gt.getId(), gt.getName(), brand.getId(),
+                    gt.getParent() != null ? gt.getParent().getId() : null,
+                    gt.getLevel()
+            ));
+        }
+
+        java.util.List<GroupTagTreeResponse> roots = new java.util.ArrayList<>();
+        for (GroupTag gt : all) {
+            GroupTagTreeResponse dto = map.get(gt.getId());
+            Long pid = gt.getParent() != null ? gt.getParent().getId() : null;
+            if (pid == null || pid == 0L) {
+                roots.add(dto);
+            } else {
+                GroupTagTreeResponse parent = map.get(pid);
+                if (parent != null) parent.getChildren().add(dto);
+                else roots.add(dto); // на случай неконсистентности
+            }
+        }
+
+        return roots;
     }
 
     public List<GroupTagResponse> getGroupTagsByBrandAndParent(Long brandId, Long parentId) {
@@ -67,6 +112,187 @@ public class GroupTagService {
         return rootGroups.stream()
                 .map(this::convertToDtoWithChildren)
                 .collect(Collectors.toList());
+    }
+
+    public Page<GroupTagResponse> getGroupTagsPaged(Long brandId, Long parentId, Pageable pageable) {
+        Brand brand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
+
+        Page<GroupTag> page;
+        if (parentId == null || parentId == 0) {
+            page = groupTagRepository.findByBrandAndParentIsNull(brand, pageable);
+        } else {
+            page = groupTagRepository.findByBrandAndParentId(brand, parentId, pageable);
+        }
+        return page.map(this::convertToDto);
+    }
+
+    @Transactional
+    public GroupTagResponse rename(Long groupTagId, String newName) {
+        GroupTag groupTag = groupTagRepository.findById(groupTagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        // uniqueness within same parent and brand
+        if (groupTagRepository.existsByBrandAndNameAndParent(groupTag.getBrand(), newName, groupTag.getParent())) {
+            throw new IllegalArgumentException("Group tag with this name already exists in the specified location");
+        }
+        groupTag.setName(newName);
+        GroupTag saved = groupTagRepository.save(groupTag);
+        return convertToDto(saved);
+    }
+
+    @Transactional
+    public GroupTagResponse updateGroupTag(Long groupTagId, UpdateGroupTagRequest request) {
+        GroupTag current = groupTagRepository.findById(groupTagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+
+        // 1) Change brand if requested and different
+        if (request.getBrandId() != null && !request.getBrandId().equals(current.getBrand().getId())) {
+            changeBrand(groupTagId, request.getBrandId());
+            // reload after brand change
+            current = groupTagRepository.findById(groupTagId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Group tag not found after brand change: " + groupTagId));
+        }
+
+        // 2) Move if requested (including to root when parentId = 0)
+        if (request.getParentId() != null) {
+            long desiredParent = request.getParentId();
+            Long currentParentId = current.getParent() != null ? current.getParent().getId() : 0L;
+            if (desiredParent != (currentParentId == null ? 0L : currentParentId)) {
+                move(groupTagId, desiredParent == 0 ? null : desiredParent);
+                current = groupTagRepository.findById(groupTagId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Group tag not found after move: " + groupTagId));
+            }
+        }
+
+        // 3) Rename if requested and changed
+        if (request.getName() != null && !request.getName().isBlank() && !request.getName().equals(current.getName())) {
+            return rename(groupTagId, request.getName());
+        }
+
+        return convertToDto(current);
+    }
+
+    @Transactional
+    public GroupTagResponse changeBrand(Long groupTagId, Long newBrandId) {
+        GroupTag root = groupTagRepository.findById(groupTagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        Brand newBrand = brandRepository.findById(newBrandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + newBrandId));
+        Brand oldBrand = root.getBrand();
+
+        // Collect subtree including root
+        String subtreePrefix = root.getPath() + root.getId() + "/";
+        List<GroupTag> subtree = new java.util.ArrayList<>();
+        subtree.add(root);
+        subtree.addAll(groupTagRepository.findSubtreeByPathPrefix(oldBrand, subtreePrefix));
+
+        // Move all nodes to new brand; detach parent for root (moves subtree accordingly via entity logic)
+        root.setParent(null);
+        root.setBrand(newBrand);
+        groupTagRepository.save(root);
+
+        // For children: just set brand; their path/level recalculation relies on entity logic if needed
+        for (GroupTag gt : subtree) {
+            if (gt.getId().equals(root.getId())) continue;
+            gt.setBrand(newBrand);
+            groupTagRepository.save(gt);
+        }
+
+        // Now move products under each group to the new brand too (select by OLD brand)
+        for (GroupTag gt : subtree) {
+            List<kirillzhdanov.identityservice.model.product.Product> prods =
+                    productRepository.findByBrandAndGroupTagId(oldBrand, gt.getId());
+            for (kirillzhdanov.identityservice.model.product.Product p : prods) {
+                // Use service to apply business rules (keeps groupTag if same brand)
+                productService.changeBrand(p.getId(), newBrand.getId());
+            }
+        }
+
+        return convertToDto(root);
+    }
+
+    @Transactional
+    public GroupTagResponse move(Long groupTagId, Long newParentId) {
+        GroupTag groupTag = groupTagRepository.findById(groupTagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+
+        GroupTag newParent = null;
+        if (newParentId != null && newParentId != 0) {
+            newParent = groupTagRepository.findById(newParentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent group not found: " + newParentId));
+            if (!newParent.getBrand().getId().equals(groupTag.getBrand().getId())) {
+                throw new IllegalArgumentException("Parent belongs to different brand");
+            }
+        }
+
+        // Check uniqueness under new parent
+        if (groupTagRepository.existsByBrandAndNameAndParent(groupTag.getBrand(), groupTag.getName(), newParent)) {
+            throw new IllegalArgumentException("Group tag with this name already exists in the target location");
+        }
+
+        groupTag.setParent(newParent); // updates path/level and children via entity logic
+        GroupTag saved = groupTagRepository.save(groupTag);
+        return convertToDto(saved);
+    }
+
+    public List<GroupTagResponse> breadcrumbs(Long groupTagId) {
+        GroupTag node = groupTagRepository.findById(groupTagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        List<GroupTagResponse> result = new ArrayList<>();
+        GroupTag cur = node;
+        while (cur != null) {
+            result.addFirst(convertToDto(cur));
+            cur = cur.getParent();
+        }
+        return result;
+    }
+
+    @Transactional
+    public void deleteWithArchive(Long groupTagId) {
+        GroupTag root = groupTagRepository.findById(groupTagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+
+        Brand brand = root.getBrand();
+        String subtreePrefix = root.getPath() + root.getId() + "/";
+
+        // Collect all subtree nodes including root; ensure children first (by level desc)
+        List<GroupTag> subtree = new ArrayList<>();
+        subtree.add(root);
+        subtree.addAll(groupTagRepository.findSubtreeByPathPrefix(brand, subtreePrefix));
+        subtree.sort(Comparator.comparingInt(GroupTag::getLevel).reversed());
+
+        // Archive products for each group in subtree
+        for (GroupTag gt : subtree) {
+            List<kirillzhdanov.identityservice.model.product.Product> prods =
+                    productRepository.findByBrandAndGroupTagId(brand, gt.getId());
+            for (kirillzhdanov.identityservice.model.product.Product p : prods) {
+                productService.deleteToArchive(p.getId());
+            }
+        }
+
+        // Archive group tags (snapshot) bottom-up
+        LocalDateTime now = LocalDateTime.now();
+        for (GroupTag gt : subtree) {
+            GroupTagArchive a = new GroupTagArchive();
+            a.setOriginalGroupTagId(gt.getId());
+            a.setBrandId(brand.getId());
+            a.setParentId(gt.getParent() != null ? gt.getParent().getId() : null);
+            a.setName(gt.getName());
+            a.setPath(gt.getPath());
+            a.setLevel(gt.getLevel());
+            a.setArchivedAt(now);
+            groupTagArchiveRepository.save(a);
+        }
+
+        // Finally delete root; children will be removed via cascade
+        groupTagRepository.delete(root);
+    }
+
+    @Transactional
+    public long purgeArchive(int olderThanDays) {
+        int days = olderThanDays <= 0 ? 90 : olderThanDays;
+        LocalDateTime threshold = LocalDateTime.now().minusDays(days);
+        return groupTagArchiveRepository.deleteByArchivedAtBefore(threshold);
     }
 
     private GroupTagResponse convertToDto(GroupTag groupTag) {
