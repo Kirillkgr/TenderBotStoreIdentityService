@@ -65,6 +65,11 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest()
                         .authenticated())
+                // Important for REST: return 401/403 instead of redirecting to login page
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> response.sendError(401))
+                        .accessDeniedHandler((request, response, accessDeniedException) -> response.sendError(403))
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .oauth2Login(o -> o
