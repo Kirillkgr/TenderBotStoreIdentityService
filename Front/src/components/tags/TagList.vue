@@ -11,29 +11,24 @@
           <div class="tag-content">
             <span class="tag-title">
               {{ tag.name }}
-              <button
-                class="btn btn-link btn-sm ms-2"
-                @click="$emit('edit', tag)"
-                title="Изменить тег"
-              >
-                Изменить
-              </button>
             </span>
+            <button
+              class="float-edit-btn"
+              @click.stop="$emit('edit', tag)"
+              title="Изменить тег"
+              aria-label="Изменить тег"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
             <div class="tag-actions">
-              <button 
-                v-if="canAddChildren" 
+              <button
+                v-if="canAddChildren"
                 @click="$emit('add-child', tag)"
                 class="btn btn-sm btn-outline-primary"
               >
                 + Добавить дочерний
               </button>
-              <button 
-                @click="$emit('edit', tag)"
-                class="btn btn-sm btn-outline-secondary"
-              >
-                Редактировать
-              </button>
-              <button 
+              <button
                 @click="$emit('delete', tag)"
                 class="btn btn-sm btn-outline-danger"
                 :disabled="tag.childrenCount > 0"
@@ -60,6 +55,7 @@
 <script>
 import { ref, onMounted, watch } from 'vue';
 import { useTagStore } from '@/store/tag';
+import pencilIcon from '@/assets/pencil.svg';
 
 export default {
   name: 'TagList',
@@ -91,10 +87,10 @@ export default {
 
     const loadTags = async () => {
       if (!props.brandId) return;
-      
+
       loading.value = true;
       error.value = null;
-      
+
       try {
         tags.value = await tagStore.fetchTagsByBrand(props.brandId, props.parentId);
         // Автоматически разворачиваем родительский тег, если есть дочерние
@@ -143,7 +139,8 @@ export default {
       tags,
       expandedTags,
       handleTagUpdated,
-      handleTagDeleted
+      handleTagDeleted,
+      pencilIcon
     };
   }
 };
@@ -170,6 +167,7 @@ export default {
   border-radius: 8px;
   border: 1px solid var(--border);
   color: var(--text);
+  position: relative; /* для абсолютного позиционирования кнопки */
 }
 
 .tag-title {
@@ -200,9 +198,47 @@ export default {
 }
 
 .btn-sm {
-  padding: 2px 6px;
+  padding: 10px 6px;
   font-size: 12px;
 }
+
+/* Плавающая кнопка редактирования в правом верхнем углу */
+.float-edit-btn {
+  all: unset;
+  box-sizing: border-box;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-color, #0a84ff);
+  border: 1px solid var(--primary-color, #0a84ff);
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 2;
+}
+.float-edit-btn:hover { background-color: var(--primary-color-dark, #0066cc); }
+
+/* Универсальный белый значок-карандаш через CSS mask */
+.icon-pencil {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-color: #ffffff; /* цвет иконки */
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* Размер и цвет bootstrap-иконки внутри кнопки */
+.float-edit-btn i { color: #fff; font-size: 16px; line-height: 1; }
 
 .btn-outline-primary { color: var(--primary); border-color: var(--primary); background-color: transparent; }
 

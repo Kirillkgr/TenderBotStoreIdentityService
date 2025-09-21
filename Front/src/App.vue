@@ -7,7 +7,7 @@
       @open-edit-profile-modal="openModal('ProfileEditModal')"
     />
     <main class="main-content">
-      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>
+<!--      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>-->
       <router-view />
     </main>
 

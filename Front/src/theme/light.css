@@ -1,0 +1,16 @@
+/* Light (дневная/белая) тема: применяются только при наличии класса .theme-light на <html> */
+html.theme-light {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: rgba(17,24,39,0.12);
+  --input-bg: #ffffff;
+  --input-bg-hover: #f3f4f6;
+
+  /* Совместимость с текущими переменными компонентов */
+  --primary-color: #0a84ff;
+  --primary-color-dark: #0066cc;
+  --success-color: #16a34a;
+}
