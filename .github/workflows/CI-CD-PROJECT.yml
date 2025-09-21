@@ -87,4 +87,9 @@ jobs:
 
       - name: start update script starts3.sh
         run: |
-          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "YC_SA_JSON_CREDENTIALS='${{ secrets.YC_SA_JSON_CREDENTIALS }}' /home/user/starts3.sh"
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "\
+            YC_SA_JSON_CREDENTIALS='${{ secrets.YC_SA_JSON_CREDENTIALS }}' \
+            GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}' \
+            GOOGLE_CLIENT_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}' \
+            GOOGLE_REDIRECT_URI='${{ secrets.GOOGLE_REDIRECT_URI }}' \
+            /home/user/starts3.sh"

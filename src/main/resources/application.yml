@@ -1,5 +1,9 @@
 server:
   port: ${SERVER_PORT:9900}
+  servlet:
+    session:
+      cookie:
+        domain: ${APP_COOKIE_DOMAIN:}
 
 spring:
   datasource:
@@ -8,10 +12,29 @@ spring:
     password: ${PASSWORD_DB:postgres}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     open-in-view: false
 
     show-sql: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope: openid,profile,email
+            redirect-uri: ${GOOGLE_REDIRECT_URI:https://kirillkgr.ru/login/oauth2/code/google}
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
+
+app:
+  front:
+    success-redirect: "https://kirillkgr.ru"
+    failure-redirect: "https://kirillkgr.ru"
+
 
 # JWT Configuration
 jwt:

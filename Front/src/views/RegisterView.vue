@@ -61,9 +61,9 @@
       <button type="button" class="social-btn">
         <svg><use xlink:href="#logo_yandex_color_circle_24"></use></svg>
       </button>
-      <button type="button" class="social-btn">
+      <a class="social-btn" href="/oauth2/authorization/google" aria-label="Зарегистрироваться через Google">
         <svg><use xlink:href="#logo_google_color_24"></use></svg>
-      </button>
+      </a>
       <button type="button" class="social-btn">
         <svg><use xlink:href="#logo_vk_color_24"></use></svg>
       </button>
@@ -75,12 +75,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import {computed, ref, watch} from 'vue';
 
-import { useForm, Field, ErrorMessage } from 'vee-validate';
+import {ErrorMessage, Field, useForm} from 'vee-validate';
 import * as Yup from 'yup';
-import { useAuthStore } from '@/store/auth';
-import { useToast } from 'vue-toastification';
+import {useAuthStore} from '@/store/auth';
+import {useToast} from 'vue-toastification';
 
 const authStore = useAuthStore();
 const isSubmitting = ref(false);

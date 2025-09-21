@@ -5,8 +5,8 @@ import kirillzhdanov.identityservice.dto.EmailVerificationRequest;
 import kirillzhdanov.identityservice.dto.EmailVerifiedResponse;
 import kirillzhdanov.identityservice.dto.UpdateUserRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
-import kirillzhdanov.identityservice.security.JwtTokenExtractor;
 import kirillzhdanov.identityservice.security.JwtAuthenticator;
+import kirillzhdanov.identityservice.security.JwtTokenExtractor;
 import kirillzhdanov.identityservice.service.UserProfileService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,16 +17,25 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(UserController.class)
+@WebMvcTest(value = UserController.class,
+        excludeAutoConfiguration = {
+                org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration.class
+        })
 @Import(UserControllerTest.TestConfig.class)
 class UserControllerTest {
 
@@ -54,6 +63,22 @@ class UserControllerTest {
         @Bean
         JwtAuthenticator jwtAuthenticator() {
             return Mockito.mock(JwtAuthenticator.class);
+        }
+
+        // Minimal security for tests: 401/403 instead of redirects, no OAuth2 login
+        @Bean
+        SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
+            http
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(reg -> reg
+                    .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint((req, res, e) -> res.sendError(401))
+                    .accessDeniedHandler((req, res, e) -> res.sendError(403))
+                )
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            return http.build();
         }
     }
 
