@@ -1,7 +1,7 @@
 <template>
   <div class="epm-overlay" @click.self="onClose">
-    <div class="epm-card" role="dialog" aria-modal="true">
-      <header class="epm-header">
+    <div class="epm-card" role="dialog" aria-modal="true" :style="cardStyle">
+      <header class="epm-header" @mousedown.prevent="onHeaderDown">
         <h3 class="epm-title">Редактирование товара</h3>
         <button class="epm-close" aria-label="Закрыть" @click="onClose">×</button>
       </header>
@@ -27,6 +27,16 @@
         </div>
 
         <div class="epm-right">
+          <div class="form-row two-cols">
+            <div class="vis-row">
+              <label>Видимость</label>
+              <label class="switch">
+                <input type="checkbox" v-model="form.visible" />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
           <div class="form-row">
             <label>Название</label>
             <input class="input" v-model.trim="form.name" type="text" placeholder="Название товара" />
@@ -123,6 +133,7 @@ const form = reactive({
   brandId: props.product?.brandId || props.product?.brand?.id || null,
   groupTagId: props.product?.groupTagId ?? 0,
   tagIds: Array.isArray(props.product?.tagIds) ? [...props.product.tagIds] : [],
+  visible: props.product?.visible ?? true,
   imageFile: null,
   imageUrl: props.product?.imageUrl || null,
 });
@@ -139,6 +150,7 @@ watch(() => props.product, (p) => {
   form.tagIds = Array.isArray(p.tagIds) ? [...p.tagIds] : [];
   form.imageUrl = p.imageUrl || null;
   form.imageFile = null;
+  form.visible = p.visible ?? true;
 }, { immediate: true });
 
 const errors = reactive({ name: '' });
@@ -195,6 +207,38 @@ async function onSave() {
     saving.value = false;
   }
 }
+
+// ====== Перетаскивание (drag) по заголовку ======
+const drag = reactive({ dx: 0, dy: 0, startX: 0, startY: 0, dragging: false });
+
+function onHeaderDown(e) {
+  drag.dragging = true;
+  drag.startX = e.clientX;
+  drag.startY = e.clientY;
+  window.addEventListener('mousemove', onDragMove);
+  window.addEventListener('mouseup', onDragUp);
+}
+
+function onDragMove(e) {
+  if (!drag.dragging) return;
+  drag.dx += (e.clientX - drag.startX);
+  drag.dy += (e.clientY - drag.startY);
+  drag.startX = e.clientX;
+  drag.startY = e.clientY;
+}
+
+function onDragUp() {
+  drag.dragging = false;
+  window.removeEventListener('mousemove', onDragMove);
+  window.removeEventListener('mouseup', onDragUp);
+}
+
+const cardStyle = computed(() => ({
+  position: 'fixed',
+  top: '50%',
+  left: '50%',
+  transform: `translate(calc(-50% + ${drag.dx}px), calc(-50% + ${drag.dy}px))`,
+}));
 </script>
 
 <style scoped>
@@ -216,8 +260,6 @@ async function onSave() {
   border-radius: 20px;
   box-shadow: 0 20px 48px var(--shadow-color);
   overflow: hidden;
-  transform: scale(.98);
-  animation: scale-in 200ms ease forwards;
   background: var(--card);
   color: var(--text);
 }
@@ -229,6 +271,7 @@ async function onSave() {
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
+  cursor: move;
 }
 .epm-title { margin: 0; font-size: 1.05rem; font-weight: 700; }
 .epm-close { border: none; background: transparent; color: var(--text); font-size: 20px; cursor: pointer; }
@@ -297,8 +340,15 @@ async function onSave() {
 
 /* Animations */
 @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
-@keyframes scale-in { to { transform: scale(1) } }
 @keyframes spin { to { transform: rotate(360deg) } }
 
 @media (max-width: 640px) { .epm-content { grid-template-columns: 1fr; } }
+
+/* Toggle switch */
+.switch { position: relative; display: inline-block; width: 42px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; inset: 0; background: var(--input-bg); border: 1px solid var(--border); border-radius: 999px; transition: background .18s ease; }
+.slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; top: 50%; transform: translateY(-50%); background: #fff; border-radius: 50%; transition: transform .18s ease; }
+.switch input:checked + .slider { background: var(--primary); border-color: var(--primary); }
+.switch input:checked + .slider:before { transform: translate(18px, -50%); }
 </style>

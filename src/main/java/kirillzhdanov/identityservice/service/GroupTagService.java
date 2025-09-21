@@ -315,4 +315,32 @@ public class GroupTagService {
         }
         return dto;
     }
+
+    /**
+     * Проверяет, есть ли ВИДИМЫЕ товары в поддереве данной группы (включая саму группу).
+     * Используется для публичного меню, чтобы скрывать пустые ветки.
+     */
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public boolean hasVisibleProductsInSubtree(Long brandId, Long groupTagId) {
+        Brand brand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
+
+        GroupTag node = groupTagRepository.findById(groupTagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+
+        // Сначала проверим саму группу
+        if (!productRepository.findByBrandAndGroupTagIdAndVisibleIsTrue(brand, node.getId()).isEmpty()) {
+            return true;
+        }
+
+        // Затем проверим дочерние группы через path-префикс
+        String prefix = node.getPath() + node.getId() + "/";
+        List<GroupTag> subtree = groupTagRepository.findSubtreeByPathPrefix(brand, prefix);
+        for (GroupTag gt : subtree) {
+            if (!productRepository.findByBrandAndGroupTagIdAndVisibleIsTrue(brand, gt.getId()).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

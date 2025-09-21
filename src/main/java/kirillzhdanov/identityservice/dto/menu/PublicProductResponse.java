@@ -15,4 +15,5 @@ public class PublicProductResponse {
     private String description; // добавлено описание для модалки
     private BigDecimal price;
     private BigDecimal promoPrice;
+    private boolean visible;
 }

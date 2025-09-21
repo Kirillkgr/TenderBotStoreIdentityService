@@ -1,0 +1,18 @@
+:root {
+  /* Brand palette defaults */
+  --primary-color: #0a84ff;
+  --primary-color-dark: #0066cc;
+  --success-color: #22c55e;
+  --text: #f3f4f6;
+  --text-primary: #111827;
+  --muted: #9aa3af;
+  --border: #3a3a3a;
+  --input-bg: #1f1f1f;
+}
+
+/* Optional brand scope example (can be overridden by brand CSS) */
+html.brand-default {
+  --primary-color: #0a84ff;
+  --primary-color-dark: #0066cc;
+  --success-color: #22c55e;
+}

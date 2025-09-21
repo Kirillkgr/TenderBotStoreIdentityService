@@ -1,6 +1,5 @@
 import {defineStore} from 'pinia';
 import * as productService from '../services/productService';
-import {getPublicProductsByBrandAndGroup} from "../services/productService";
 
 export const useProductStore = defineStore('product', {
     state: () => ({
@@ -18,7 +17,8 @@ export const useProductStore = defineStore('product', {
             this.loading = true;
             this.error = null;
             try {
-                const res = await productService.getPublicProductsByBrandAndGroup(brandId, groupTagId, visibleOnly);
+                // В админке используем админ-эндпоинт, чтобы при visibleOnly=false видеть скрытые товары
+                const res = await productService.getAdminProductsByBrandAndGroup(brandId, groupTagId, visibleOnly);
                 const arr = Array.isArray(res) ? res : (res?.data ?? res?.data?.data ?? []);
                 this.products = arr || [];
                 return this.products;

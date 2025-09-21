@@ -11,8 +11,21 @@ import { useAuthStore } from './store/auth';
 
 import './style.css';
 import './theme.css';
+import './theme/light.css';
+import './theme/dark.css';
 import './brand/default.css';
 import './admin.css';
+
+// Set initial theme class to avoid flashes (sync with AppHeader THEME_KEY)
+try {
+    const THEME_KEY = 'admin_theme_mode'; // 'auto' | 'light' | 'dark'
+    const saved = localStorage.getItem(THEME_KEY);
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = (saved === 'light' || saved === 'dark') ? saved : (prefersDark ? 'dark' : 'light');
+    const html = document.documentElement;
+    html.classList.remove('theme-light', 'theme-dark');
+    html.classList.add(initial === 'dark' ? 'theme-dark' : 'theme-light');
+} catch (_) {}
 
 const app = createApp(App);
 const pinia = createPinia();

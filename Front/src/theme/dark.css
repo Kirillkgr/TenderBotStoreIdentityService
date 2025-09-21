@@ -1,0 +1,16 @@
+/* Dark (тёмная) тема: применяются только при наличии класса .theme-dark на <html> */
+html.theme-dark {
+  --bg: #0f0f10;
+  --surface: #1e1e1f;
+  --card: #232326;
+  --text: #e6e7ea;
+  --muted: #a0a3ab;
+  --border: rgba(255,255,255,0.12);
+  --input-bg: rgba(255,255,255,.06);
+  --input-bg-hover: rgba(255,255,255,.10);
+
+  /* Совместимость с текущими переменными компонентов */
+  --primary-color: #0a84ff;
+  --primary-color-dark: #0066cc;
+  --success-color: #22c55e;
+}

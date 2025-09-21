@@ -213,6 +213,11 @@ export default {
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
+.edit-fab{
+  resize: block;
+  width: 100px;
+  width: 200px;
+}
 
 .form-control,
 .form-select {

@@ -2,8 +2,8 @@
   <div class="tag-manager">
     <div class="tag-manager-header">
       <h2>Управление тегами</h2>
-      <button 
-        v-if="!showForm" 
+      <button
+        v-if="!showForm"
         class="btn btn-primary"
         @click="openCreateForm"
       >

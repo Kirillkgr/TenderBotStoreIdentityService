@@ -57,17 +57,7 @@
   />
 
   <div class="admin-panel admin-scope">
-    <h1>Панель администратора</h1>
-
-    <!-- Переключатель темы: Авто / День / Ночь -->
-    <div class="theme-toggle">
-      <span class="tt-label">Тема:</span>
-      <div class="tt-group">
-        <button class="tt-btn" :class="{ active: themeMode === 'auto' }" @click="setTheme('auto')">Авто</button>
-        <button class="tt-btn" :class="{ active: themeMode === 'light' }" @click="setTheme('light')">День</button>
-        <button class="tt-btn" :class="{ active: themeMode === 'dark' }" @click="setTheme('dark')">Ночь</button>
-      </div>
-    </div>
+    <h2>Панель администратора</h2>
 
     <div v-if="loading" class="loading">
       <div class="spinner-border text-primary" role="status">
@@ -116,15 +106,10 @@
 
     <div v-if="!loading && !brandsError" class="brand-selector-container">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="brand-selector-title mb-0">Бренды ({{ brands.length }})</h2>
-        <button
-            class="btn btn-sm btn-outline-primary"
-            @click="fetchBrands"
-            :disabled="loading"
-            title="Обновить список брендов"
-        >
-          <i class="bi bi-arrow-repeat"></i>
-        </button>
+        <h2 class="brand-selector-title mb-0">Доступные бренды ({{ brands.length }})</h2>
+        <h2 class="brand-selector-title mb-0">Дочерние ({{ tags.length }}
+          {{ formatWord(tags.length, ['тег', 'тега', 'тегов']) }})</h2>
+
       </div>
 
       <div v-if="brands.length === 0" class="alert alert-info">
@@ -137,7 +122,7 @@
             :key="brand.id"
             :class="[
             'brand-chip',
-            { 
+            {
               'active': selectedBrand === brand.id,
               'owner': brand.role === 'OWNER' || brand.role === 'ROLE_OWNER'
             }
@@ -172,12 +157,7 @@
 
     <div v-if="selectedBrand" class="tag-manager-container mt-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">
-          Управление тегами
-          <span v-if="!tagLoading" class="badge bg-secondary ms-2">
-            {{ tags.length }} {{ formatWord(tags.length, ['тег', 'тега', 'тегов']) }}
-          </span>
-        </h2>
+
 
         <div class="d-flex gap-2">
           <button
@@ -193,7 +173,6 @@
               @click="addChildTag()"
               :disabled="tagLoading"
           >
-            <i class="bi bi-plus-circle me-1"></i> Создать тег
           </button>
         </div>
       </div>
@@ -241,19 +220,22 @@
               <i :class="['me-2', tag.icon || 'bi-tag']"></i>
               <span class="tag-title">
                 {{ tag.name }}
-                <button
-                  class="btn btn-sm btn-outline-secondary ms-2"
-                  @click.stop="editTag(tag)"
-                  title="Изменить тег"
-                >
-                  Изменить
-                </button>
               </span>
 
               <span v-if="tag.childrenCount > 0" class="badge bg-secondary rounded-pill ms-2">
                 {{ tag.childrenCount }}
               </span>
             </div>
+
+            <!-- Плавающая кнопка редактирования в правом верхнем углу строки -->
+            <button
+                class="edit-fab"
+                @click.stop="editTag(tag)"
+                title="Изменить тег"
+                aria-label="Изменить тег"
+            >
+              <img src="@/assets/pencil.svg" alt="Изменить" style="width: 16px; height: 16px;" />
+            </button>
 
             <div class="btn-group btn-group-sm">
               <button
@@ -297,7 +279,7 @@
       <!-- Товары текущего уровня -->
       <div class="products-section mt-4">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="mb-0">Товары в этом разделе</h5>
+          <!--          <h5 class="mb-0">Товары в этом разделе</h5>-->
           <button class="btn btn-sm btn-outline-secondary" :disabled="productsLoading" @click="loadProductsForCurrentLevel()" title="Обновить товары">
             <i class="bi bi-arrow-repeat"></i>
           </button>
@@ -306,18 +288,19 @@
         <div v-else-if="products.length === 0" class="text-muted">Товаров нет</div>
         <div v-else class="product-grid-admin">
           <div v-for="p in products" :key="p.id" class="product-card-admin" @click.stop.prevent="openPreview(p)">
+            <span class="pc-status-dot" :class="p.visible ? 'on' : 'off'" title="Статус видимости"></span>
             <div class="pc-header">
               <span class="pc-title" :title="p.name">{{ p.name }}</span>
               <div class="d-flex align-items-center gap-2">
-                <span class="badge" :class="p.visible ? 'bg-success' : 'bg-secondary'">{{ p.visible ? 'Видим' : 'Скрыт' }}</span>
-                <button class="btn btn-sm btn-outline-secondary" @click.stop="openEdit(p)" title="Редактировать">
-                  <i class="bi bi-pencil"></i>
-                </button>
                 <button class="btn btn-sm btn-outline-primary pc-cart-btn" @click.stop="addToCartStub(p)" title="Добавить в корзину">
                   <i class="bi bi-cart-plus"></i>
                 </button>
               </div>
             </div>
+            <!-- Плавающая кнопка редактирования в правом верхнем углу карточки товара -->
+            <button class="pc-edit-fab" @click.stop="openEdit(p)" title="Редактировать товар" aria-label="Редактировать товар">
+              <img src="@/assets/pencil.svg" alt="Редактировать" style="width: 16px; height: 16px;" />
+            </button>
             <div class="pc-price">
               <template v-if="p.promoPrice && p.promoPrice < p.price">
                 <span class="old">{{ formatPrice(p.price) }}</span>
@@ -340,16 +323,16 @@
         </div>
       </div>
 
-      <!-- Действия с тегами -->
-      <div class="tag-actions mt-3">
-        <button
-            class="btn btn-sm btn-primary"
-            @click="addChildTag()"
-            :disabled="tagLoading"
-        >
-          + Создать корневой тег
-        </button>
-      </div>
+      <!--      &lt;!&ndash; Действия с тегами &ndash;&gt;-->
+      <!--      <div class="tag-actions mt-3">-->
+      <!--        <button-->
+      <!--            class="btn btn-sm btn-primary"-->
+      <!--            @click="addChildTag()"-->
+      <!--            :disabled="tagLoading"-->
+      <!--        >-->
+      <!--          + Создать корневой тег-->
+      <!--        </button>-->
+      <!--      </div>-->
 
 
     </div>
@@ -387,11 +370,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import { useToast } from 'vue-toastification';
-import { useTagStore } from '@/store/tag';
-import { useProductStore } from '@/store/product';
-import { getBrands, createBrand } from '../services/brandService';
+import {computed, onMounted, ref, watch} from 'vue';
+import {useToast} from 'vue-toastification';
+import {useTagStore} from '@/store/tag';
+import {useProductStore} from '@/store/product';
+import {createBrand, getBrands} from '../services/brandService';
 import CreateBrandModal from '../components/modals/CreateBrandModal.vue';
 import CreateGroupModal from '../components/modals/CreateGroupModal.vue';
 import EditGroupModal from '../components/modals/EditGroupModal.vue';
@@ -478,9 +461,6 @@ function applyTheme() {
   html.classList.add(computedTheme.value === 'dark' ? 'theme-dark' : 'theme-light');
 }
 
-function setTheme(mode) {
-  themeMode.value = mode;
-}
 
 onMounted(() => {
   const saved = localStorage.getItem(THEME_KEY);
@@ -504,7 +484,7 @@ const productsLoading = computed(() => productStore.loading);
 const loadProductsForCurrentLevel = async () => {
   if (!selectedBrand.value && selectedBrand.value !== 0) return;
   try {
-    await productStore.fetchByBrandAndGroup(Number(selectedBrand.value), Number(currentParentId.value || 0), true);
+    await productStore.fetchByBrandAndGroup(Number(selectedBrand.value), Number(currentParentId.value || 0), false);
   } catch (e) {
     console.error('Не удалось загрузить товары:', e);
     toast.error(e?.message || 'Не удалось загрузить товары');
@@ -558,7 +538,7 @@ async function openEditFromPreview() {
   }
 }
 
-function addToCartStub(p) {
+function addToCartStub() {
   toast.info('Корзина будет реализована позже');
 }
 
@@ -566,7 +546,15 @@ function formatPrice(val) {
   if (val === null || val === undefined || val === '') return '';
   const num = Number(val);
   if (Number.isNaN(num)) return String(val);
-  return num.toFixed(2);
+  try {
+    return new Intl.NumberFormat('ru-RU', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+  } catch (e) {
+    // Фолбэк
+    return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
 }
 
 // Выбор тега одной строкой списка
@@ -792,14 +780,14 @@ const updateBreadcrumbPath = async (brandId, parentId) => {
 // Navigate to a specific tag
 const navigateToTag = async (tagId = null) => {
   if (!selectedBrand.value) return;
-  
+
   // If no tagId provided, go to root
   if (!tagId) {
     await fetchTags(selectedBrand.value, 0);
     await loadProductsForCurrentLevel();
     return;
   }
-  
+
   // Otherwise, navigate to the specified tag
   selectedTag.value = null; // сбрасываем выделение при переходе
   await fetchTags(selectedBrand.value, tagId);
@@ -1265,12 +1253,16 @@ const onBrandSelect = async () => {
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
-/* Tag list styles */
-.tag-list {
-  margin-top: 15px;
-  max-height: 500px;
-  overflow-y: auto;
-  padding-right: 10px;
+.tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative; /* для плавающей кнопки редактирования */
+  overflow: visible; /* не обрезать edit-fab */
 }
 
 .tag-actions {
@@ -1331,137 +1323,124 @@ const onBrandSelect = async () => {
 .tag-row .btn-outline-secondary { border-color: #94a3b8; color: #475569; }
 .tag-row .btn-outline-danger { border-color: #ef4444; color: #dc2626; }
 
-.tag-item {
+.edit-fab,
+.pc-edit-btn {
+  /* Сброс почти всех стилей, чтобы не тянуть лишние правила */
+  all: unset;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background-color: var(--primary-color, #4a6cf7); /* как у кнопок Создать бренд/тег */
+  border: 1px solid var(--primary-color, #4a6cf7);
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 1; /* поднять над строкой */
+  position: absolute; /* абсолютное позиционирование */
+  top: 8px; /* расстояние от верхнего края */
+  right: 8px; /* расстояние от правого края */
+}
+
+.edit-fab:hover,
+.pc-edit-btn:hover {
+  background-color: var(--primary-color-dark, #3a5bd9);
+}
+
+.edit-fab {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+}
+
+/* Размер изображения внутри кнопок (локальный pencil.svg) */
+.edit-fab img,
+.pc-edit-btn img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* Товары: читаемый тёмный текст на белом фоне */
+.products-section h5 {
+  color: #111827;
+  font-weight: 700;
+}
+
+.product-grid-admin {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.product-card-admin {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.product-card-admin .pc-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
   margin-bottom: 8px;
-  background-color: white;
-  border: 1px solid #e2e8f0;
-  border-left: 4px solid #4a6cf7;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+}
+
+.product-card-admin .pc-title {
+  color: #111827;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.product-card-admin .pc-price {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-card-admin .pc-price .old {
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+.product-card-admin .pc-price .new {
+  color: #111827;
+  font-weight: 800;
+}
+
+.product-card-admin .promo-badge {
+  background: #fde68a;
+  color: #92400e;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.product-card-admin .pc-desc {
+  margin-top: 8px;
+  color: #1f2937;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.product-card-admin .btn-link-more {
+  background: transparent;
+  border: 0;
+  color: #4a6cf7;
+  font-weight: 700;
   cursor: pointer;
-  color: #1e293b;
-}
-
-.tag-item.has-children {
-  border-left-color: #4CAF50;
-  background-color: #f8fafc;
-}
-
-.tag-item.has-children:hover {
-  background-color: #f0f7ff;
-}
-
-.tag-item .tag-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-}
-
-.tag-item .tag-name i {
-  color: #64748b;
-  font-size: 1.1em;
-}
-
-.tag-item.has-children .tag-name i {
-  color: #4CAF50;
-}
-
-.tag-item:hover {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.tag-item .tag-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #1e293b;
-  font-weight: 500;
-}
-
-.tag-item .tag-actions {
-  display: flex;
-  gap: 8px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.tag-item:hover .tag-actions {
-  opacity: 1;
-}
-
-.brand-sel.error-message {
-  color: #ef4444;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  background-color: #fef2f2;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border-left: 3px solid #ef4444;
-}
-
-.alert-danger {
-  background-color: #fef2f2;
-  color: #b91c1c;
-  padding: 1rem 1.25rem;
-  border-radius: 0.5rem;
-  margin: 1rem 0;
-  border-left: 4px solid #dc2626;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.alert-danger strong {
-  font-weight: 600;
-}
-
-a.loading {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary);
-  background: white;
-  border-radius: 0.75rem;
-  margin: 1rem 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.loading .spinner-border {
-  display: inline-block;
-  width: 2.5rem;
-  height: 2.5rem;
-  vertical-align: middle;
-  border: 0.25em solid rgba(74, 108, 247, 0.2);
-  border-right-color: var(primary-color);
-  border-radius: 50%;
-  animation: 0.75s linear infinite spinner-border;
-  margin-bottom: 1rem;
-}
-
-.loading p {
-  margin: 0.75rem 0 0 0;
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-@keyframes spinner-border {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.admin-actions-container {
-  margin: 20px 0;
-  display: flex;
-  gap: 10px;
+  padding: 0;
 }
 
 .admin-action-btn {
@@ -1508,41 +1487,81 @@ a.loading {
   gap: 12px;
 }
 .product-card-admin {
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border, #e5e7eb);
   border-radius: 10px;
   padding: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  position: relative; /* для плавающей кнопки редактирования */
 }
-.product-card-admin .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.product-card-admin .pc-title { color: #111827; font-weight: 700; font-size: 14px; line-height: 1.2; }
-.product-card-admin .pc-price { margin-top: 4px; display: flex; align-items: center; gap: 8px; }
-.product-card-admin .pc-price .old { color: #6b7280; text-decoration: line-through; }
-.product-card-admin .pc-price .new { color: #111827; font-weight: 800; }
+.product-card-admin .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-right: 40px; }
+.product-card-admin .pc-title {
+  color: var(--text) !important;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.product-card-admin .pc-price {
+  margin-top: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+}
+.product-card-admin .pc-price .old { color: var(--muted, #6b7280); text-decoration: line-through; font-weight: 600; }
+.product-card-admin .pc-price .new { color: var(--text); font-weight: 900; font-size: 16px; }
 .product-card-admin .promo-badge { background: #fde68a; color: #92400e; font-size: 11px; padding: 2px 6px; border-radius: 8px; }
-.product-card-admin .pc-desc { margin-top: 8px; color: #1f2937; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.product-card-admin .pc-desc {
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .product-card-admin .btn-link-more { background: transparent; border: 0; color: #4a6cf7; font-weight: 700; cursor: pointer; padding: 0; }
 
-.btn-edit {
-  padding: 4px 10px;
-  background-color: #4a6cf7;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
+.product-card-admin .pc-status-dot {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #ffffff; /* обводка на белой карточке */
 }
+.product-card-admin .pc-status-dot.on { background: #16a34a; } /* зелёный */
+.product-card-admin .pc-status-dot.off { background: #ef4444; } /* красный */
 
-.btn-delete {
-  padding: 4px 10px;
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 4px;
+.pc-edit-fab {
+  all: unset;
+  box-sizing: border-box;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-color, #4a6cf7);
+  border: 1px solid var(--primary-color, #4a6cf7);
+  color: #fff;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  z-index: 2;
 }
+.pc-edit-fab:hover { background-color: var(--primary-color-dark, #3a5bd9); }
+.pc-edit-fab img { width: 16px; height: 16px; display: block; }
+
 
 .admin-action-btn:hover:not(:disabled) {
   background-color: #3a5bd9;
