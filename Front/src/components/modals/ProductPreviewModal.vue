@@ -26,6 +26,7 @@
       </div>
 
       <div class="footer-actions mt-3">
+        <button class="btn btn-primary" @click="$emit('edit', product)">Изменить</button>
         <button class="btn btn-outline-secondary" @click="$emit('close')">Закрыть</button>
         <button class="icon-square" title="Добавить в корзину" aria-label="Добавить в корзину">
           <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 96 96" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -50,7 +51,7 @@ const props = defineProps({
   height: { type: [String, Number], default: '480px' }
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close','edit']);
 
 const FALLBACK_IMG = 'https://img1.reactor.cc/pics/post/mlp-neuroart-mlp-art-my-little-pony-Lyra-Heartstrings-9077295.jpeg';
 const imageUrl = computed(() => props.product?.imageUrl || FALLBACK_IMG);

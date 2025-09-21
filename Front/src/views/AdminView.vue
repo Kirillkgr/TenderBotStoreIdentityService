@@ -29,6 +29,7 @@
       width="720px"
       height="480px"
       @close="showProductPreview = false"
+      @edit="openEditFromPreview"
   />
 
   <!-- Модалка редактирования товара (админ) -->
@@ -43,6 +44,7 @@
       :theme="computedTheme"
       @close="showEditProductModal = false"
       @save="onProductSave"
+      @delete="onProductDelete"
   />
 
   <div class="admin-panel admin-scope">
@@ -489,9 +491,51 @@ const loadProductsForCurrentLevel = async () => {
   }
 };
 
+// Удаление (архивирование) товара из модалки
+const onProductDelete = async () => {
+  try {
+    if (!editProduct.value?.id) return;
+    const id = editProduct.value.id;
+    await productStore.delete(id);
+    toast.success('Товар перемещён в архив');
+    showEditProductModal.value = false;
+    editProduct.value = null;
+    await loadProductsForCurrentLevel();
+  } catch (e) {
+    console.error('Ошибка при удалении товара:', e);
+    toast.error(e?.message || 'Не удалось удалить товар');
+  }
+};
+
 function openPreview(p) {
   previewProduct.value = p;
   showProductPreview.value = true;
+}
+
+async function openEdit(p) {
+  try {
+    const id = p?.id;
+    if (!id) return;
+    const full = await productStore.getById(id);
+    editProduct.value = Array.isArray(full?.data) ? full.data : (full?.data ?? full);
+    showEditProductModal.value = true;
+  } catch (e) {
+    console.error('Не удалось открыть редактирование товара:', e);
+    toast.error(e?.message || 'Не удалось открыть редактирование');
+  }
+}
+
+async function openEditFromPreview() {
+  try {
+    if (!previewProduct.value) return;
+    const full = await productStore.getById(previewProduct.value.id);
+    editProduct.value = Array.isArray(full?.data) ? full.data : (full?.data ?? full);
+    showProductPreview.value = false;
+    showEditProductModal.value = true;
+  } catch (e) {
+    console.error('Не удалось открыть редактирование товара:', e);
+    toast.error(e?.message || 'Не удалось открыть редактирование');
+  }
 }
 
 function addToCartStub(p) {
@@ -832,6 +876,43 @@ const handleCreateProduct = async (productData) => {
   } catch (err) {
     console.error('Ошибка при создании продукта:', err);
     toast.error('Не удалось создать продукт.');
+  }
+};
+
+// Сохранение из модалки редактирования
+const onProductSave = async (payload) => {
+  try {
+    if (!editProduct.value?.id) return;
+    const id = editProduct.value.id;
+
+    // Смена бренда при необходимости
+    if (payload.brandId && payload.brandId !== editProduct.value.brandId) {
+      await productStore.changeBrand(id, Number(payload.brandId));
+    }
+
+    // Перемещение между группами при необходимости
+    const newGroup = payload.groupTagId ?? 0;
+    const oldGroup = editProduct.value.groupTagId ?? 0;
+    if (newGroup !== oldGroup) {
+      await productStore.move(id, Number(newGroup));
+    }
+
+    // Обновление полей товара
+    await productStore.update(id, {
+      name: payload.name,
+      description: payload.description,
+      price: payload.price,
+      promoPrice: payload.promoPrice,
+      visible: payload.visible ?? true,
+    });
+
+    toast.success('Товар обновлён');
+    showEditProductModal.value = false;
+    editProduct.value = null;
+    await loadProductsForCurrentLevel();
+  } catch (e) {
+    console.error('Ошибка при сохранении товара:', e);
+    toast.error(e?.message || 'Не удалось сохранить изменения');
   }
 };
 
