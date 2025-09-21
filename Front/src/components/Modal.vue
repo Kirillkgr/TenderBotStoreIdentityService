@@ -1,6 +1,17 @@
 <template>
-  <div class="modal-backdrop" v-if="isModalVisible" @click.self="close">
-    <div class="modal" ref="modal" :class="{ 'is-dragging': isDragging }" :style="modalStyle">
+  <div
+    class="modal-backdrop"
+    v-if="isModalVisible"
+    :style="backdropStyle"
+    @click.self="handleBackdropClick"
+  >
+    <div
+      class="modal"
+      ref="modal"
+      :class="{ 'is-dragging': isDragging }"
+      :style="modalStyle"
+      @mousedown.capture="emitFocus"
+    >
       <div class="modal-header" @mousedown="startDrag" @touchstart.prevent="startDrag">
 
         <slot name="header">
@@ -15,9 +26,9 @@
 </template>
 
 <script setup>
-import {computed, onUnmounted, ref} from 'vue';
+import {computed, onMounted, onUnmounted, ref} from 'vue';
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close','focus']);
 
 const close = () => {
   emit('close');
@@ -38,6 +49,35 @@ const props = defineProps({
   height: {
     type: [String, Number],
     default: null
+  },
+  // Allow consumer to disable closing by clicking on backdrop area
+  closeOnBackdrop: {
+    type: Boolean,
+    default: true
+  },
+  // Allow consumer to disable closing with ESC
+  closeOnEsc: {
+    type: Boolean,
+    default: true
+  },
+  // z-index to support stacked modals
+  zIndex: {
+    type: Number,
+    default: 9999
+  },
+  // Make backdrop fully transparent (no dimming)
+  transparentBackdrop: {
+    type: Boolean,
+    default: false
+  },
+  // Visual offset for stacked modals (px)
+  offsetX: {
+    type: Number,
+    default: 0
+  },
+  offsetY: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -51,7 +91,8 @@ const modalStyle = computed(() => {
   const { x, y } = position.value;
   const scale = isDragging.value ? 1.02 : 1;
   const style = {
-    transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${scale})`
+    transform: `translate(calc(-50% + ${x + (props.offsetX || 0)}px), calc(-50% + ${y + (props.offsetY || 0)}px)) scale(${scale})`,
+    zIndex: String(props.zIndex)
   };
   if (props.width != null) {
     style.width = typeof props.width === 'number' ? `${props.width}px` : props.width;
@@ -61,6 +102,20 @@ const modalStyle = computed(() => {
   }
   return style;
 });
+
+const backdropStyle = computed(() => ({
+  zIndex: String(props.zIndex - 1),
+  backgroundColor: props.transparentBackdrop ? 'transparent' : 'var(--overlay)',
+  pointerEvents: props.closeOnBackdrop ? 'auto' : 'none'
+}));
+
+function handleBackdropClick() {
+  if (props.closeOnBackdrop) close();
+}
+
+function emitFocus() {
+  emit('focus');
+}
 
 const onDrag = (event) => {
   if (!isDragging.value || !modal.value) return;
@@ -112,6 +167,18 @@ const startDrag = (event) => {
 
 onUnmounted(() => {
   stopDrag();
+  window.removeEventListener('keydown', onKeyDown);
+});
+
+function onKeyDown(e) {
+  if (e.key === 'Escape' && props.closeOnEsc) {
+    e.stopPropagation();
+    close();
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown);
 });
 </script>
 
@@ -123,11 +190,13 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   background-color: var(--overlay);
-  z-index: 9998;
+  z-index: 9998; /* will be overridden by inline style */
   /* This is the new centering method */
   display: flex;
   align-items: center;
   justify-content: center;
+  /* allow clicks to pass through backdrop so user can open additional modals */
+  pointer-events: none;
 }
 
 .modal {
@@ -135,7 +204,7 @@ onUnmounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 9999;
+  z-index: 9999; /* will be overridden by inline style */
 
   width: 380px;
   max-width: 95vw;
@@ -151,6 +220,8 @@ onUnmounted(() => {
   flex-direction: column;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   user-select: none;
+  /* re-enable events for the modal content */
+  pointer-events: auto;
 }
 
 .modal.is-dragging {
@@ -192,7 +263,7 @@ onUnmounted(() => {
 
 .modal-body {
   padding: 0 24px 24px;
-  overflow-y: auto;
+  overflow: visible; /* внешний скролл выключен, прокрутка только у внутренних областей */
   flex-grow: 1;
 }
 </style>
