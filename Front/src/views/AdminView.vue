@@ -292,14 +292,15 @@
               <span class="pc-title" :title="p.name">{{ p.name }}</span>
               <div class="d-flex align-items-center gap-2">
                 <span class="badge" :class="p.visible ? 'bg-success' : 'bg-secondary'">{{ p.visible ? 'Видим' : 'Скрыт' }}</span>
-                <button class="pc-edit-btn" @click.stop="openEdit(p)" title="Редактировать" aria-label="Редактировать">
-                  <img :src="pencilIcon" alt="Редактировать" />
-                </button>
                 <button class="btn btn-sm btn-outline-primary pc-cart-btn" @click.stop="addToCartStub(p)" title="Добавить в корзину">
                   <i class="bi bi-cart-plus"></i>
                 </button>
               </div>
             </div>
+            <!-- Плавающая кнопка редактирования в правом верхнем углу карточки товара -->
+            <button class="pc-edit-fab" @click.stop="openEdit(p)" title="Редактировать товар" aria-label="Редактировать товар">
+              <img src="@/assets/pencil.svg" alt="Редактировать" style="width: 16px; height: 16px;" />
+            </button>
             <div class="pc-price">
               <template v-if="p.promoPrice && p.promoPrice < p.price">
                 <span class="old">{{ formatPrice(p.price) }}</span>
@@ -1348,18 +1349,12 @@ const onBrandSelect = async () => {
   z-index: 3;
 }
 
-/* Белая иконка-карандаш через CSS mask */
-.icon-pencil {
-  display: block;
+/* Размер изображения внутри кнопок (локальный pencil.svg) */
+.edit-fab img,
+.pc-edit-btn img {
   width: 16px;
   height: 16px;
-  background-color: #ffffff;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+  display: block;
 }
 
 /* Товары: читаемый тёмный текст на белом фоне */
@@ -1490,6 +1485,7 @@ const onBrandSelect = async () => {
   border-radius: 10px;
   padding: 12px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  position: relative; /* для плавающей кнопки редактирования */
 }
 .product-card-admin .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .product-card-admin .pc-title { color: #111827; font-weight: 700; font-size: 14px; line-height: 1.2; }
@@ -1500,6 +1496,26 @@ const onBrandSelect = async () => {
 .product-card-admin .pc-desc { margin-top: 8px; color: #1f2937; font-size: 13px; display: flex; align-items: center; gap: 6px; }
 .product-card-admin .btn-link-more { background: transparent; border: 0; color: #4a6cf7; font-weight: 700; cursor: pointer; padding: 0; }
 
+.pc-edit-fab {
+  all: unset;
+  box-sizing: border-box;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-color, #4a6cf7);
+  border: 1px solid var(--primary-color, #4a6cf7);
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 2;
+}
+.pc-edit-fab:hover { background-color: var(--primary-color-dark, #3a5bd9); }
+.pc-edit-fab img { width: 16px; height: 16px; display: block; }
 
 
 .admin-action-btn:hover:not(:disabled) {
