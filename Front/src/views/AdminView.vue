@@ -212,9 +212,8 @@
               :key="tag.id"
               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center tag-row"
               :class="{ active: selectedTag?.id === tag.id }"
-              @click="selectTagRow(tag)"
-              @dblclick.stop="navigateToTag(tag.id)"
-              :title="tag.hasChildren ? 'Двойной клик: открыть. Один клик: выбрать для вложенного' : 'Один клик: выбрать для вложенного'"
+              @click.stop="navigateToTag(tag.id)"
+              :title="'Открыть категорию'"
           >
             <div class="d-flex align-items-center">
               <i :class="['me-2', tag.icon || 'bi-tag']"></i>
@@ -284,14 +283,36 @@
             <i class="bi bi-arrow-repeat"></i>
           </button>
         </div>
-        <div v-if="productsLoading" class="text-muted">Загрузка товаров...</div>
+        <div v-if="productsLoading && (products?.length ?? 0) === 0" class="product-grid-admin">
+          <div v-for="n in 6" :key="n" class="product-card-admin skeleton">
+            <div class="pc-header">
+              <span class="pc-title">&nbsp;</span>
+            </div>
+            <div class="pc-price">
+              <span class="old">&nbsp;</span>
+              <span class="new">&nbsp;</span>
+            </div>
+            <div class="pc-desc">&nbsp;</div>
+          </div>
+        </div>
         <div v-else-if="products.length === 0" class="text-muted">Товаров нет</div>
         <div v-else class="product-grid-admin">
-          <div v-for="p in products" :key="p.id" class="product-card-admin" @click.stop.prevent="openPreview(p)">
+          <div
+            v-for="p in visibleProducts"
+            :key="p.id"
+            class="product-card-admin"
+            tabindex="0"
+            @click.stop.prevent="openPreview(p)"
+            @keydown.enter.prevent="openPreview(p)"
+            @keydown.e.stop.prevent="openEdit(p)"
+          >
             <span class="pc-status-dot" :class="p.visible ? 'on' : 'off'" title="Статус видимости"></span>
             <div class="pc-header">
               <span class="pc-title" :title="p.name">{{ p.name }}</span>
               <div class="d-flex align-items-center gap-2">
+                <button class="pc-copy-btn" @click.stop="copyId(p)" :title="`Скопировать ID: ${p.id}`" aria-label="Скопировать ID">
+                  ID
+                </button>
                 <button class="btn btn-sm btn-outline-primary pc-cart-btn" @click.stop="addToCartStub(p)" title="Добавить в корзину">
                   <i class="bi bi-cart-plus"></i>
                 </button>
@@ -303,13 +324,16 @@
             </button>
             <div class="pc-price">
               <template v-if="p.promoPrice && p.promoPrice < p.price">
-                <span class="old">{{ formatPrice(p.price) }}</span>
-                <span class="new">{{ formatPrice(p.promoPrice) }}</span>
-                <span class="promo-badge">Промо</span>
+                <span class="old"><span class="value">{{ formatPrice(p.price) }}</span><span class="cur"> ₽</span></span>
+                <span class="new promo"><span class="value">{{ formatPrice(p.promoPrice) }}</span><span class="cur"> ₽</span></span>
               </template>
               <template v-else>
-                <span class="new">{{ formatPrice(p.price) }}</span>
+                <span class="new"><span class="value">{{ formatPrice(p.price) }}</span><span class="cur"> ₽</span></span>
               </template>
+            </div>
+            <div class="pc-updated" v-if="p.updatedAt" :title="new Date(p.updatedAt).toLocaleString()">
+              <span class="date">{{ formatDateShortRU(p.updatedAt) }}</span>
+              <span class="ago">{{ timeAgoShort(p.updatedAt) }}</span>
             </div>
             <div class="pc-desc">
               <span>
@@ -370,7 +394,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref, watch} from 'vue';
+import {computed, onMounted, ref, watch, onUnmounted} from 'vue';
 import {useToast} from 'vue-toastification';
 import {useTagStore} from '@/store/tag';
 import {useProductStore} from '@/store/product';
@@ -461,6 +485,67 @@ function applyTheme() {
   html.classList.add(computedTheme.value === 'dark' ? 'theme-dark' : 'theme-light');
 }
 
+// Метка "изменён N ч/мин назад"
+function timeAgo(dateLike) {
+  try {
+    const d = new Date(dateLike);
+    const now = new Date();
+    const diffMs = now - d;
+    const sec = Math.floor(diffMs / 1000);
+    const min = Math.floor(sec / 60);
+    const hr = Math.floor(min / 60);
+    const day = Math.floor(hr / 24);
+    if (day > 0) return `изменён ${day} дн назад`;
+    if (hr > 0) return `изменён ${hr} ч назад`;
+    if (min > 0) return `изменён ${min} мин назад`;
+    return 'изменён только что';
+  } catch (e) {
+    return '';
+  }
+}
+
+// Копировать ID товара в буфер обмена
+async function copyId(p) {
+  try {
+    await navigator.clipboard.writeText(String(p.id));
+    toast.success(`ID ${p.id} скопирован`);
+  } catch (err) {
+    console.error('Не удалось скопировать ID', err);
+    toast.error('Не удалось скопировать ID');
+  }
+}
+
+// Короткая метка времени: "1 ч" / "15 мин" / "2 дн" / "только что"
+function timeAgoShort(dateLike) {
+  try {
+    const d = new Date(dateLike);
+    const now = new Date();
+    const diffMs = now - d;
+    const sec = Math.floor(diffMs / 1000);
+    const min = Math.floor(sec / 60);
+    const hr = Math.floor(min / 60);
+    const day = Math.floor(hr / 24);
+    if (day > 0) return `${day} дн`;
+    if (hr > 0) return `${hr} ч`;
+    if (min > 0) return `${min} мин`;
+    return 'только что';
+  } catch (e) {
+    return '';
+  }
+}
+
+// Формат даты: ДД.ММ.ГГГГ
+function formatDateShortRU(dateLike) {
+  try {
+    const d = new Date(dateLike);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  } catch (e) {
+    return '';
+  }
+}
 
 onMounted(() => {
   const saved = localStorage.getItem(THEME_KEY);
@@ -470,16 +555,77 @@ onMounted(() => {
     media.addEventListener('change', () => { if (themeMode.value === 'auto') applyTheme(); });
   }
   applyTheme();
+
+  // Глобальные клавиши навигации: Backspace — вверх по папке
+  window.addEventListener('keydown', handleGlobalKeys);
+
+  // Инициализируем IntersectionObserver для ленивой подгрузки
+  if ('IntersectionObserver' in window) {
+    observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          // Увеличиваем видимое количество
+          visibleCount.value += pageStep;
+        }
+      }
+    }, { root: null, rootMargin: '200px 0px 200px 0px', threshold: 0.1 });
+    if (productsSentry.value) observer.observe(productsSentry.value);
+  }
 });
 
 watch(themeMode, (v) => {
   localStorage.setItem(THEME_KEY, v);
   applyTheme();
 });
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeys);
+  if (observer && productsSentry.value) observer.unobserve(productsSentry.value);
+  if (observer) observer.disconnect();
+});
+
+function handleGlobalKeys(e) {
+  // Игнорируем ввод в формах/инпутах
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.isComposing) return;
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    // перейти к родителю, если есть
+    if (currentTagPath.value && currentTagPath.value.length > 0) {
+      const parent = currentTagPath.value[currentTagPath.value.length - 2] || { id: 0 };
+      const pid = parent ? parent.id : 0;
+      fetchTags(Number(selectedBrand.value), pid || 0);
+      currentParentId.value = pid || 0;
+      loadProductsForCurrentLevel();
+    } else {
+      // уже корень — просто обновим список
+      loadProductsForCurrentLevel();
+    }
+  }
+}
 
 // Товары текущего уровня
 const products = computed(() => productStore.products || []);
 const productsLoading = computed(() => productStore.loading);
+
+// Виртуализация: порционно показываем карточки
+const pageSize = 24; // стартовое количество
+const pageStep = 24; // добавляем по 24 при прокрутке
+const visibleCount = ref(pageSize);
+const visibleProducts = computed(() => (products.value || []).slice(0, visibleCount.value));
+const productsSentry = ref(null);
+let observer;
+
+// При смене списка товаров — сбрасываем окно и переинициализируем наблюдатель
+watch(products, (list) => {
+  visibleCount.value = pageSize;
+  // переинициализируем наблюдение (на случай, если ref пересоздан)
+  if (observer) {
+    if (productsSentry.value) {
+      try { observer.unobserve(productsSentry.value); } catch (e) {}
+      observer.observe(productsSentry.value);
+    }
+  }
+});
 
 const loadProductsForCurrentLevel = async () => {
   if (!selectedBrand.value && selectedBrand.value !== 0) return;
@@ -1374,7 +1520,7 @@ const onBrandSelect = async () => {
 .product-grid-admin {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  gap: 16px; /* ровные gutter 16px */
 }
 
 .product-card-admin {
@@ -1487,45 +1633,94 @@ const onBrandSelect = async () => {
   gap: 12px;
 }
 .product-card-admin {
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border, #e5e7eb);
+  /* Центральные настройки карточки — правятся здесь и прокидываются вниз */
+  --pc-bg: var(--card);
+  --pc-text: var(--text);
+  --pc-text-strong: var(--text-strong, var(--text));
+  --pc-muted: var(--muted, #6b7280);
+  --pc-border: var(--border, #e5e7eb);
+  --pc-radius: 10px;
+  --pc-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  --pc-shadow-hover: 0 4px 14px rgba(0,0,0,0.18);
+  --pc-title-size: 16px;
+  --pc-title-weight: 800;
+  --pc-price-size: 18px;
+  --pc-price-weight: 900;
+
+  background: var(--pc-bg);
+  color: var(--pc-text);
+  border: 1px solid var(--pc-border);
   border-radius: 10px;
-  padding: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  padding: 12px 12px 28px 12px; /* место внизу под метку обновления */
+  box-shadow: var(--pc-shadow);
   position: relative; /* для плавающей кнопки редактирования */
+  min-height: 190px; /* стабильная сетка при разной длине контента */
 }
-.product-card-admin .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-right: 40px; }
+.product-card-admin:hover {
+  box-shadow: var(--pc-shadow-hover);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--pc-border));
+}
+.product-card-admin .pc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-right: 40px; /* место под кнопку редактирования */
+  padding-left: 22px;  /* резерв под индикатор статуса слева */
+  position: relative;
+  z-index: 2;          /* текст шапки над индикатором */
+  min-height: 44px;    /* фиксированная высота заголовка (2 строки) */
+}
 .product-card-admin .pc-title {
-  color: var(--text) !important;
-  font-weight: 800;
-  font-size: 16px;
-  line-height: 1.25;
+  color: var(--pc-text-strong) !important;
+  font-weight: var(--pc-title-weight);
+  font-size: var(--pc-title-size);
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  margin-bottom: 4px;
+  /* лёгкая тень на тёмной теме для читаемости */
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
 .product-card-admin .pc-price {
   margin-top: 6px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;      /* вертикально: старая → новая → чип */
+  align-items: center;          /* по центру */
+  text-align: center;
+  gap: 4px;
   font-size: 15px;
+  min-height: 56px;            /* фиксированная высота зоны цены */
 }
-.product-card-admin .pc-price .old { color: var(--muted, #6b7280); text-decoration: line-through; font-weight: 600; }
-.product-card-admin .pc-price .new { color: var(--text); font-weight: 900; font-size: 16px; }
-.product-card-admin .promo-badge { background: #fde68a; color: #92400e; font-size: 11px; padding: 2px 6px; border-radius: 8px; }
+.product-card-admin .pc-price .old { color: var(--pc-muted); text-decoration: line-through; font-weight: 600; order: 1; }
+.product-card-admin .pc-price .new { color: var(--pc-text-strong); font-weight: var(--pc-price-weight); font-size: var(--pc-price-size); order: 2; }
+.product-card-admin .pc-price .new.promo { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.product-card-admin .pc-price .cur { color: var(--pc-muted); margin-left: 4px; font-weight: 600; }
+/* Чип промо удалён по требованию — визуальная логика читается по старой/новой цене */
 .product-card-admin .pc-desc {
   margin-top: 8px;
-  color: var(--text);
+  color: var(--pc-text);
   font-size: 13px;
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: 54px; /* 3 строки × 1.4 × 13px ≈ 54.6px */
+}
+.product-card-admin .pc-updated {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  font-size: 11px;
+  color: var(--pc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* дата слева, прошло времени справа */
 }
 .product-card-admin .btn-link-more { background: transparent; border: 0; color: #4a6cf7; font-weight: 700; cursor: pointer; padding: 0; }
 
@@ -1536,7 +1731,8 @@ const onBrandSelect = async () => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px #ffffff; /* обводка на белой карточке */
+  box-shadow: 0 0 0 2px var(--pc-bg); /* адаптивная обводка под тему */
+  z-index: 1; /* индикатор под текстом шапки */
 }
 .product-card-admin .pc-status-dot.on { background: #16a34a; } /* зелёный */
 .product-card-admin .pc-status-dot.off { background: #ef4444; } /* красный */
@@ -1552,14 +1748,15 @@ const onBrandSelect = async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--primary-color, #4a6cf7);
-  border: 1px solid var(--primary-color, #4a6cf7);
+  background-color: var(--primary, #4a6cf7);
+  border: 1px solid var(--primary, #4a6cf7);
   color: #fff;
   border-radius: 8px;
   cursor: pointer;
   z-index: 2;
 }
-.pc-edit-fab:hover { background-color: var(--primary-color-dark, #3a5bd9); }
+.pc-edit-fab:hover { background-color: var(--primary-dark, var(--primary-600, #3a5bd9)); }
+.pc-edit-fab:focus-visible { outline: 2px solid var(--primary, #4a6cf7); outline-offset: 2px; }
 .pc-edit-fab img { width: 16px; height: 16px; display: block; }
 
 

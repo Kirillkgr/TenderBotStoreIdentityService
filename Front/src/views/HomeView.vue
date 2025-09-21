@@ -53,25 +53,33 @@
     </div>
 
     <ProductPreviewModal
-      v-if="showProductPreview"
-      :product="previewProduct"
-      width="640px"
-      height="560px"
-      @close="showProductPreview = false"
+        v-for="(item, i) in openPreviews"
+        :key="'pp-'+i+'-'+item.product?.id"
+        :product="item.product"
+        width="720px"
+        height="540px"
+        :close-on-backdrop="false"
+        :close-on-esc="false"
+        :z-index="item.z"
+        :offset-x="item.offsetX || 0"
+        :offset-y="item.offsetY || 0"
+        @focus="focusPreview(i)"
+        @close="closePreview(i)"
     />
+
   </div>
   
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
-import { useProductStore } from '../store/product';
+import {onMounted, onUnmounted, ref} from 'vue';
+import {useProductStore} from '../store/product';
 import ProductCard from '../components/ProductCard.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import GroupCard from '../components/cards/GroupCard.vue';
-import { getPublicBrands } from '../services/brandService';
+import {getPublicBrands} from '../services/brandService';
 import tagService from '../services/tagService';
-import { useTagStore } from '@/store/tag';
+import {useTagStore} from '@/store/tag';
 
 const productStore = useProductStore();
 const tagStore = useTagStore();
@@ -87,13 +95,51 @@ const tagLoading = ref(false);
 const currentParentId = ref(0);
 const currentPath = ref([]); // массив объектов {id, name}
 
-// Предпросмотр товара (модалка)
-const showProductPreview = ref(false);
-const previewProduct = ref(null);
+// Стек предпросмотров товаров (несколько модалок одновременно)
+const openPreviews = ref([]);
+const zCounter = ref(10000);
 function openProductPreview(p) {
-  previewProduct.value = p;
-  showProductPreview.value = true;
+  // Если модалка для этого товара уже открыта — просто поднимем её наверх
+  const idx = openPreviews.value.findIndex(item => item.product?.id === p?.id);
+  if (idx !== -1) {
+    focusPreview(idx);
+    return;
+  }
+  zCounter.value += 1;
+  const count = openPreviews.value.length;
+  const offsetStep = 12;
+  openPreviews.value.push({product: p, z: zCounter.value, offsetX: count * offsetStep, offsetY: count * offsetStep});
 }
+
+function closePreview(index) {
+  openPreviews.value.splice(index, 1);
+}
+
+function focusPreview(index) {
+  if (index < 0 || index >= openPreviews.value.length) return;
+  zCounter.value += 1;
+  openPreviews.value[index].z = zCounter.value;
+}
+
+// Закрываем верхнюю модалку по ESC (первая открытая — последняя закрывается)
+function onKey(e) {
+  if (e.key !== 'Escape') return;
+  if (!openPreviews.value.length) return;
+  e.preventDefault();
+  // Находим элемент с максимальным z
+  let maxIdx = 0;
+  let maxZ = -Infinity;
+  openPreviews.value.forEach((it, i) => {
+    if (it.z > maxZ) {
+      maxZ = it.z;
+      maxIdx = i;
+    }
+  });
+  closePreview(maxIdx);
+}
+
+onMounted(() => window.addEventListener('keydown', onKey));
+onUnmounted(() => window.removeEventListener('keydown', onKey));
 
 // Товары как было
 onMounted(async () => {
@@ -252,21 +298,12 @@ const navigateToCrumb = async (parentId, index) => {
   gap: 18px;
   margin-bottom: 2rem;
 }
-.group-card {
-  background: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  box-shadow: 0 6px 16px var(--shadow-color);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-  width: 200px;   /* фиксируем ширину трека */
+
+.group-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-.group-card:hover { transform: translateY(-3px); box-shadow: 0 10px 22px var(--shadow-color); border-color: var(--border); }
-.group-image { aspect-ratio: 1 / 1; background: var(--surface); display: flex; align-items: center; justify-content: center; }
-.group-image img { width: 100%; height: 100%; object-fit: cover; }
-.image-placeholder { font-size: 28px; font-weight: 800; color: var(--muted); letter-spacing: .5px; }
-.group-title { text-align: center; padding: 12px 10px; color: var(--text); font-weight: 700; }
 
 /* Товары */
 .product-grid {

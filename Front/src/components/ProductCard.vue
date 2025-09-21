@@ -22,11 +22,13 @@
       <div class="price-row">
         <div class="prices">
           <template v-if="product.promoPrice && product.promoPrice < product.price">
-            <span class="old-price">{{ formatPrice(product.price) }}</span>
-            <span class="current-price">{{ formatPrice(product.promoPrice) }}</span>
+            <span class="old-price"><span class="val">{{ formatPrice(product.price) }}</span><span class="cur"> ₽</span></span>
+            <span class="current-price promo"><span class="val">{{ formatPrice(product.promoPrice) }}</span><span
+                class="cur"> ₽</span></span>
           </template>
           <template v-else>
-            <span class="current-price">{{ formatPrice(product.price) }}</span>
+            <span class="current-price"><span class="val">{{ formatPrice(product.price) }}</span><span
+                class="cur"> ₽</span></span>
           </template>
         </div>
         <button
@@ -35,7 +37,8 @@
           aria-label="Добавить в корзину"
           @click.stop="addToCart"
         >
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 96 96" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 96 96"
+               xmlns="http://www.w3.org/2000/svg">
             <path d="M84,74.34H43.05a6.36,6.36,0,0,1-6.12-4.68L20.87,10.51A8.84,8.84,0,0,0,12.36,4H3A1,1,0,0,1,3,2h9.32A10.84,10.84,0,0,1,22.8,10L38.86,69.13a4.35,4.35,0,0,0,4.19,3.21H84a1,1,0,1,1,0,2Z"/>
             <path d="M79.41,61.73H35.54a1,1,0,0,1-1-.74L25.26,26.68a1,1,0,0,1,1-1.27H87.62a6.34,6.34,0,0,1,6,8.42L85.4,57.47A6.35,6.35,0,0,1,79.41,61.73Zm-43.1-2h43.1a4.34,4.34,0,0,0,4.1-2.91l8.21-23.65a4.35,4.35,0,0,0-4.1-5.76H27.53Z"/>
             <path d="M44,94a8.57,8.57,0,1,1,8.56-8.56A8.57,8.57,0,0,1,44,94Zm0-15.13a6.57,6.57,0,1,0,6.56,6.57A6.58,6.58,0,0,0,44,78.87Z"/>
@@ -48,10 +51,10 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
-import { useRouter } from 'vue-router';
-import { useCartStore } from '../store/cart';
-import { useToast } from 'vue-toastification';
+import {defineEmits, defineProps} from 'vue';
+import {useRouter} from 'vue-router';
+import {useCartStore} from '../store/cart';
+import {useToast} from 'vue-toastification';
 
 const props = defineProps({
   product: {
@@ -90,8 +93,16 @@ async function addToCart() {
   }
 }
 
-function formatPrice(price) {
-  return `${price} ₽`;
+function formatPrice(val) {
+  try {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = Number(val);
+    if (!Number.isFinite(num)) return String(val);
+    return new Intl.NumberFormat('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(num);
+  } catch (e) {
+    const s = String(val ?? '');
+    return s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
 }
 </script>
 
@@ -211,6 +222,18 @@ function formatPrice(price) {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+
+.current-price.promo {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 2px;
+}
+
+.prices .cur {
+  color: var(--muted);
+  margin-left: 4px;
+  font-weight: 600;
 }
 
 .add-to-cart-btn {

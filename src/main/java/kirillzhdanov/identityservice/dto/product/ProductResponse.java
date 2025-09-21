@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -20,4 +21,5 @@ public class ProductResponse {
     private Long brandId;
     private Long groupTagId; // null означает корень
     private boolean visible;
+    private LocalDateTime updatedAt;
 }
