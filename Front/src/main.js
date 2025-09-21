@@ -2,7 +2,6 @@ import {createApp} from 'vue';
 import {createPinia} from 'pinia';
 
 import Toast from 'vue-toastification';
-import 'vue-toastification/dist/index.css';
 import 'vue-datepicker-next/index.css';
 
 import App from './App.vue';
