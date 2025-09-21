@@ -288,10 +288,10 @@
         <div v-else-if="products.length === 0" class="text-muted">Товаров нет</div>
         <div v-else class="product-grid-admin">
           <div v-for="p in products" :key="p.id" class="product-card-admin" @click.stop.prevent="openPreview(p)">
+            <span class="pc-status-dot" :class="p.visible ? 'on' : 'off'" title="Статус видимости"></span>
             <div class="pc-header">
               <span class="pc-title" :title="p.name">{{ p.name }}</span>
               <div class="d-flex align-items-center gap-2">
-                <span class="badge" :class="p.visible ? 'bg-success' : 'bg-secondary'">{{ p.visible ? 'Видим' : 'Скрыт' }}</span>
                 <button class="btn btn-sm btn-outline-primary pc-cart-btn" @click.stop="addToCartStub(p)" title="Добавить в корзину">
                   <i class="bi bi-cart-plus"></i>
                 </button>
@@ -484,7 +484,7 @@ const productsLoading = computed(() => productStore.loading);
 const loadProductsForCurrentLevel = async () => {
   if (!selectedBrand.value && selectedBrand.value !== 0) return;
   try {
-    await productStore.fetchByBrandAndGroup(Number(selectedBrand.value), Number(currentParentId.value || 0), true);
+    await productStore.fetchByBrandAndGroup(Number(selectedBrand.value), Number(currentParentId.value || 0), false);
   } catch (e) {
     console.error('Не удалось загрузить товары:', e);
     toast.error(e?.message || 'Не удалось загрузить товары');
@@ -546,7 +546,15 @@ function formatPrice(val) {
   if (val === null || val === undefined || val === '') return '';
   const num = Number(val);
   if (Number.isNaN(num)) return String(val);
-  return num.toFixed(2);
+  try {
+    return new Intl.NumberFormat('ru-RU', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+  } catch (e) {
+    // Фолбэк
+    return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
 }
 
 // Выбор тега одной строкой списка
@@ -1479,22 +1487,59 @@ const onBrandSelect = async () => {
   gap: 12px;
 }
 .product-card-admin {
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border, #e5e7eb);
   border-radius: 10px;
   padding: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
   position: relative; /* для плавающей кнопки редактирования */
 }
-.product-card-admin .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.product-card-admin .pc-title { color: #111827; font-weight: 700; font-size: 14px; line-height: 1.2; }
-.product-card-admin .pc-price { margin-top: 4px; display: flex; align-items: center; gap: 8px; }
-.product-card-admin .pc-price .old { color: #6b7280; text-decoration: line-through; }
-.product-card-admin .pc-price .new { color: #111827; font-weight: 800; }
+.product-card-admin .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-right: 40px; }
+.product-card-admin .pc-title {
+  color: var(--text) !important;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.product-card-admin .pc-price {
+  margin-top: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+}
+.product-card-admin .pc-price .old { color: var(--muted, #6b7280); text-decoration: line-through; font-weight: 600; }
+.product-card-admin .pc-price .new { color: var(--text); font-weight: 900; font-size: 16px; }
 .product-card-admin .promo-badge { background: #fde68a; color: #92400e; font-size: 11px; padding: 2px 6px; border-radius: 8px; }
-.product-card-admin .pc-desc { margin-top: 8px; color: #1f2937; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.product-card-admin .pc-desc {
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .product-card-admin .btn-link-more { background: transparent; border: 0; color: #4a6cf7; font-weight: 700; cursor: pointer; padding: 0; }
+
+.product-card-admin .pc-status-dot {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #ffffff; /* обводка на белой карточке */
+}
+.product-card-admin .pc-status-dot.on { background: #16a34a; } /* зелёный */
+.product-card-admin .pc-status-dot.off { background: #ef4444; } /* красный */
 
 .pc-edit-fab {
   all: unset;

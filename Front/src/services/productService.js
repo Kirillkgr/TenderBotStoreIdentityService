@@ -77,3 +77,13 @@ export const getPublicProductsByBrandAndGroup = (brandId, groupTagId = 0, visibl
         }
     });
 };
+
+// Админ: товары по бренду и группе, с возможностью включать скрытые
+export const getAdminProductsByBrandAndGroup = (brandId, groupTagId = 0, visibleOnly = false) => {
+    return apiClient.get(`/auth/v1/products/by-brand/${brandId}`, {
+        params: {
+            groupTagId: groupTagId ?? 0,
+            visibleOnly: !!visibleOnly
+        }
+    });
+};

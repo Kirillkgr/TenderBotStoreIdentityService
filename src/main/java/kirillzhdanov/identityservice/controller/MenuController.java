@@ -49,7 +49,9 @@ public class MenuController {
             @RequestParam(required = false, defaultValue = "0") Long parentId
     ) {
         List<GroupTagResponse> tags = groupTagService.getGroupTagsByBrandAndParent(brandId, parentId);
+        // Публичное меню: скрываем пустые группы (нет видимых товаров ни в самой группе, ни глубже)
         List<PublicGroupTagResponse> response = tags.stream()
+                .filter(t -> groupTagService.hasVisibleProductsInSubtree(brandId, t.getId()))
                 .map(t -> new PublicGroupTagResponse(t.getId(), t.getName(), t.getParentId(), t.getLevel()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
@@ -63,7 +65,7 @@ public class MenuController {
     ) {
         List<ProductResponse> products = productService.getByBrandAndGroup(brandId, groupTagId, true);
         List<PublicProductResponse> response = products.stream()
-                .map(p -> new PublicProductResponse(p.getId(), p.getName(), p.getDescription(), p.getPrice(), p.getPromoPrice()))
+                .map(p -> new PublicProductResponse(p.getId(), p.getName(), p.getDescription(), p.getPrice(), p.getPromoPrice(), p.isVisible()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
