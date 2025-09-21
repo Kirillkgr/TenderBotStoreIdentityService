@@ -70,13 +70,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ErrorMessage, Field, Form } from 'vee-validate';
 import * as yup from 'yup';
 import Modal from '@/components/Modal.vue';
 import { useToast } from 'vue-toastification';
-import { useTagStore } from '@/store/tag';
 import { useProductStore } from '@/store/product';
+import tagService from '@/services/tagService';
 
 const props = defineProps({ 
   brands: { type: Array, required: true },
@@ -85,7 +85,6 @@ const props = defineProps({
 });
 const emit = defineEmits(['close', 'saved']);
 const toast = useToast();
-const tagStore = useTagStore();
 const productStore = useProductStore();
 
 const tagGroups = ref([]); // плоский список с отступами
@@ -106,30 +105,13 @@ const loadAvailableGroups = async (brandId) => {
   if (!brandId) { tagGroups.value = []; return; }
   tagGroupsLoading.value = true;
   try {
-    // BFS по всем уровням: собираем все группы
-    const queue = [0];
-    const visited = new Set();
-    const collected = [];
-    while (queue.length) {
-      const parentId = queue.shift();
-      if (visited.has(parentId)) continue;
-      visited.add(parentId);
-      const level = await tagStore.fetchTagsByBrand(Number(brandId), parentId);
-      (level || []).forEach(t => {
-        collected.push(t);
-        queue.push(t.id);
-      });
-    }
-    // строим дерево и плоский список с отступами
-    const buildTree = (pid = 0) => collected
-      .filter(t => (t.parentId ?? 0) === pid)
-      .map(t => ({ ...t, children: buildTree(t.id) }));
-    const tree = buildTree(0);
-    const flatten = (items, depth = 0) => items.flatMap(it => [
+    // Быстрый путь: получаем всё дерево одним запросом
+    const tree = await tagService.getTagTree(Number(brandId));
+    const flatten = (items, depth = 0) => (items || []).flatMap(it => [
       { id: it.id, name: `${'— '.repeat(depth)}${it.name}` },
       ...(it.children?.length ? flatten(it.children, depth + 1) : [])
     ]);
-    tagGroups.value = flatten(tree);
+    tagGroups.value = flatten(Array.isArray(tree) ? tree : []);
   } catch (error) {
     console.error('Ошибка при загрузке групп тегов:', error);
     toast.error('Не удалось загрузить группы тегов.');

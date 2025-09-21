@@ -199,12 +199,7 @@ onMounted(async () => {
       brandId: props.tag.brandId || props.brandId || '',
       parentId: String(props.tag.parentId || 0)
     };
-    
-    if (props.tag.brandId) {
-      await loadAvailableTags(props.tag.brandId, props.tag.id);
-      // Гарантируем автоподстановку текущего родителя
-      formData.value.parentId = String(props.tag.parentId || 0);
-    }
+    // Загрузка доступных родителей выполняется watcher'ом brandId (immediate: true)
   } else if (props.brandId) {
     // Создание нового тега с предвыбранным брендом
     formData.value.brandId = props.brandId;
@@ -212,7 +207,7 @@ onMounted(async () => {
     if (props.parentId !== null && props.parentId !== undefined) {
       formData.value.parentId = String(props.parentId);
     }
-    await loadAvailableTags(Number(props.brandId));
+    // Загрузка доступных родителей выполняется watcher'ом brandId (immediate: true)
   }
   
   // Если передан parentId, устанавливаем его как родительский
