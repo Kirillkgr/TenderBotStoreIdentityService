@@ -86,6 +86,7 @@
 
       <footer class="epm-footer">
         <button class="btn btn-secondary" type="button" @click="onClose">Отмена</button>
+        <button class="btn btn-secondary" type="button" @click="$emit('delete')" style="margin-right:auto;color:#b91c1c;border-color:#b91c1c;">Удалить</button>
         <button class="btn btn-primary" type="button" :disabled="saving" @click="onSave">
           <span v-if="saving" class="loader"></span>
           Сохранить
@@ -107,7 +108,7 @@ const props = defineProps({
   theme: { type: String, default: 'auto' },         // 'light' | 'dark' | 'auto'
 });
 
-const emit = defineEmits(['update:modelValue', 'close', 'save']);
+const emit = defineEmits(['update:modelValue', 'close', 'save', 'delete']);
 
 const fileInput = ref(null);
 const isDragOver = ref(false);

@@ -11,6 +11,7 @@ import AdminView from '../views/AdminView.vue';
 import TagsView from '../views/TagsView.vue';
 import ProfileEditView from '../views/ProfileEditView.vue';
 import StaffManagementView from '../views/StaffManagementView.vue';
+import ArchiveProductsView from '../views/ArchiveProductsView.vue';
 
 const routes = [
     {
@@ -18,6 +19,12 @@ const routes = [
         name: 'Home',
         meta: { title: 'Главная' },
         component: HomeView,
+    },
+    {
+        path: '/admin/archive',
+        name: 'AdminArchive',
+        meta: { title: 'Архив товаров', requiresAuth: true, requiresAdmin: true },
+        component: ArchiveProductsView,
     },
     {
         path: '/login',

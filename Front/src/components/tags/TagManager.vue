@@ -22,6 +22,7 @@
         :available-parents="availableParents"
         :show-parent-select="showParentSelect"
         @submit="handleSubmit"
+        @archive="handleArchive"
         @cancel="closeForm"
       />
     </div>
@@ -64,9 +65,9 @@
           <button type="button" class="btn-close" @click="showDeleteConfirm = false"></button>
         </div>
         <div class="modal-body">
-          <p>Вы уверены, что хотите удалить тег "{{ tagToDelete?.name }}"?</p>
-          <p v-if="tagToDelete?.childrenCount > 0" class="text-warning">
-            Внимание! Этот тег содержит дочерние теги. Все дочерние теги также будут удалены.
+          <p>Вы уверены, что хотите отправить тег "{{ tagToDelete?.name }}" в архив?</p>
+          <p class="text-warning">
+            Внимание! Все вложенные теги и товары внутри них будут отправлены в архив каскадно.
           </p>
         </div>
         <div class="modal-footer">
@@ -163,6 +164,21 @@ export default {
         toast.error('Ошибка при загрузке тегов');
       } finally {
         loading.value = false;
+      }
+    };
+
+    // Архивирование текущего тега из формы редактирования
+    const handleArchive = async () => {
+      if (!currentTag.value) return;
+      try {
+        await tagStore.deleteTag(currentTag.value.id);
+        toast.success('Тег и вложенные элементы отправлены в архив');
+        await loadTags();
+        closeForm();
+      } catch (error) {
+        console.error('Ошибка при архивировании тега:', error);
+        const errorMessage = error.response?.data?.message || 'Произошла ошибка при архивировании тега';
+        toast.error(errorMessage);
       }
     };
     
@@ -341,6 +357,7 @@ export default {
       handleAddChild,
       closeForm,
       handleSubmit,
+      handleArchive,
       confirmDeleteTag,
       deleteTag,
       handleTagSelected,

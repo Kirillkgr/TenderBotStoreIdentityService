@@ -15,6 +15,15 @@
       @saved="handleTagCreated"
   />
 
+  <EditGroupModal
+      v-if="showEditGroupModal && selectedTag"
+      :brands="brands"
+      :tag="selectedTag"
+      :brandId="selectedBrand"
+      @close="() => { showEditGroupModal = false; selectedTag = null; }"
+      @saved="handleTagCreated"
+  />
+
   <CreateProductModal
       v-if="showCreateProductModal"
       :brands="brands"
@@ -29,6 +38,7 @@
       width="720px"
       height="480px"
       @close="showProductPreview = false"
+      @edit="openEditFromPreview"
   />
 
   <!-- Модалка редактирования товара (админ) -->
@@ -43,6 +53,7 @@
       :theme="computedTheme"
       @close="showEditProductModal = false"
       @save="onProductSave"
+      @delete="onProductDelete"
   />
 
   <div class="admin-panel admin-scope">
@@ -228,7 +239,16 @@
           >
             <div class="d-flex align-items-center">
               <i :class="['me-2', tag.icon || 'bi-tag']"></i>
-              <span class="tag-title">{{ tag.name }}</span>
+              <span class="tag-title">
+                {{ tag.name }}
+                <button
+                  class="btn btn-sm btn-outline-secondary ms-2"
+                  @click.stop="editTag(tag)"
+                  title="Изменить тег"
+                >
+                  Изменить
+                </button>
+              </span>
 
               <span v-if="tag.childrenCount > 0" class="badge bg-secondary rounded-pill ms-2">
                 {{ tag.childrenCount }}
@@ -374,6 +394,7 @@ import { useProductStore } from '@/store/product';
 import { getBrands, createBrand } from '../services/brandService';
 import CreateBrandModal from '../components/modals/CreateBrandModal.vue';
 import CreateGroupModal from '../components/modals/CreateGroupModal.vue';
+import EditGroupModal from '../components/modals/EditGroupModal.vue';
 import CreateProductModal from '../components/modals/CreateProductModal.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import EditProductModal from '../components/modals/EditProductModal.vue';
@@ -388,6 +409,7 @@ const error = ref(null);
 const selectedTag = ref(null);
 const tagToDelete = ref(null);
 const showDeleteConfirm = ref(false);
+const showEditGroupModal = ref(false);
 const deleting = ref(false);
 const currentParentId = ref(0);
 const currentTagPath = ref([]);
@@ -489,9 +511,51 @@ const loadProductsForCurrentLevel = async () => {
   }
 };
 
+// Удаление (архивирование) товара из модалки
+const onProductDelete = async () => {
+  try {
+    if (!editProduct.value?.id) return;
+    const id = editProduct.value.id;
+    await productStore.delete(id);
+    toast.success('Товар перемещён в архив');
+    showEditProductModal.value = false;
+    editProduct.value = null;
+    await loadProductsForCurrentLevel();
+  } catch (e) {
+    console.error('Ошибка при удалении товара:', e);
+    toast.error(e?.message || 'Не удалось удалить товар');
+  }
+};
+
 function openPreview(p) {
   previewProduct.value = p;
   showProductPreview.value = true;
+}
+
+async function openEdit(p) {
+  try {
+    const id = p?.id;
+    if (!id) return;
+    const full = await productStore.getById(id);
+    editProduct.value = Array.isArray(full?.data) ? full.data : (full?.data ?? full);
+    showEditProductModal.value = true;
+  } catch (e) {
+    console.error('Не удалось открыть редактирование товара:', e);
+    toast.error(e?.message || 'Не удалось открыть редактирование');
+  }
+}
+
+async function openEditFromPreview() {
+  try {
+    if (!previewProduct.value) return;
+    const full = await productStore.getById(previewProduct.value.id);
+    editProduct.value = Array.isArray(full?.data) ? full.data : (full?.data ?? full);
+    showProductPreview.value = false;
+    showEditProductModal.value = true;
+  } catch (e) {
+    console.error('Не удалось открыть редактирование товара:', e);
+    toast.error(e?.message || 'Не удалось открыть редактирование');
+  }
 }
 
 function addToCartStub(p) {
@@ -621,7 +685,9 @@ const fetchTags = async (brandId, parentId = null) => {
       return {
         id: tag.id || tag.tagId,
         name: tag.name || tag.tagName || 'Без названия',
-        parentId: parentId || tag.parentId || 0,
+        // ВАЖНО: не затираем фактический parentId текущим уровнем.
+        // Берём parentId из самого тега, если есть; иначе используем контекстный уровень.
+        parentId: (tag.parentId ?? (tag.parent?.id)) ?? (parentId ?? 0),
         brandId: tag.brandId || brandId,
         childrenCount: tag.childrenCount || (tag.children ? tag.children.length : 0),
         hasChildren: hasChildren,
@@ -835,6 +901,43 @@ const handleCreateProduct = async (productData) => {
   }
 };
 
+// Сохранение из модалки редактирования
+const onProductSave = async (payload) => {
+  try {
+    if (!editProduct.value?.id) return;
+    const id = editProduct.value.id;
+
+    // Смена бренда при необходимости
+    if (payload.brandId && payload.brandId !== editProduct.value.brandId) {
+      await productStore.changeBrand(id, Number(payload.brandId));
+    }
+
+    // Перемещение между группами при необходимости
+    const newGroup = payload.groupTagId ?? 0;
+    const oldGroup = editProduct.value.groupTagId ?? 0;
+    if (newGroup !== oldGroup) {
+      await productStore.move(id, Number(newGroup));
+    }
+
+    // Обновление полей товара
+    await productStore.update(id, {
+      name: payload.name,
+      description: payload.description,
+      price: payload.price,
+      promoPrice: payload.promoPrice,
+      visible: payload.visible ?? true,
+    });
+
+    toast.success('Товар обновлён');
+    showEditProductModal.value = false;
+    editProduct.value = null;
+    await loadProductsForCurrentLevel();
+  } catch (e) {
+    console.error('Ошибка при сохранении товара:', e);
+    toast.error(e?.message || 'Не удалось сохранить изменения');
+  }
+};
+
 const selectBrand = async (brandId) => {
   const nextId = Number(brandId);
   const prevId = selectedBrand.value != null ? Number(selectedBrand.value) : null;
@@ -886,9 +989,8 @@ const addChildTag = async (parentTag) => {
 };
 
 const editTag = (tag) => {
-  // We'll reuse the same modal for editing
-  showCreateGroupModal.value = true;
-  // The tag data will be passed to the modal via a prop
+  selectedTag.value = tag;
+  showEditGroupModal.value = true;
 };
 
 const confirmDeleteTag = (tag) => {

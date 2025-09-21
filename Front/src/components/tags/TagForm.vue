@@ -47,14 +47,26 @@
         >
           Отмена
         </button>
-        <button 
-          type="submit" 
-          class="btn btn-primary"
-          :disabled="loading"
-        >
-          <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-          {{ submitButtonText }}
-        </button>
+        <div class="d-flex gap-2">
+          <button 
+            v-if="props.tag"
+            type="button"
+            class="btn btn-danger"
+            @click="$emit('archive')"
+            :disabled="loading"
+            title="Отправить тег (и товары внутри) в архив"
+          >
+            Архивировать
+          </button>
+          <button 
+            type="submit" 
+            class="btn btn-primary"
+            :disabled="loading"
+          >
+            <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            {{ submitButtonText }}
+          </button>
+        </div>
       </div>
     </form>
   </div>
@@ -62,7 +74,6 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useTagStore } from '@/store/tag';
 
 export default {
   name: 'TagForm',
@@ -88,7 +99,7 @@ export default {
       default: () => []
     }
   },
-  emits: ['submit', 'cancel'],
+  emits: ['submit', 'cancel', 'archive'],
   setup(props, { emit }) {
     // const tagStore = useTagStore();
     const loading = ref(false);

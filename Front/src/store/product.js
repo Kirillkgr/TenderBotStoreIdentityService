@@ -94,5 +94,47 @@ export const useProductStore = defineStore('product', {
                 throw error;
             }
         },
+
+        // ================= Расширение для полной управляемости =================
+        async getById(productId) {
+            const res = await productService.getProductById(productId);
+            return res?.data ?? res;
+        },
+
+        async update(productId, payload) {
+            const res = await productService.updateProduct(productId, payload);
+            const updated = res?.data ?? res;
+            const idx = this.products.findIndex(p => p.id === productId);
+            if (idx !== -1) this.products[idx] = { ...this.products[idx], ...updated };
+            return updated;
+        },
+
+        async changeBrand(productId, brandId) {
+            const res = await productService.changeProductBrand(productId, brandId);
+            const updated = res?.data ?? res;
+            const idx = this.products.findIndex(p => p.id === productId);
+            if (idx !== -1) this.products[idx] = { ...this.products[idx], ...updated };
+            return updated;
+        },
+
+        async getArchiveByBrand(brandId, params = {}) {
+            const res = await productService.getArchivedProductsByBrand(brandId, params);
+            return res?.data ?? res;
+        },
+
+        async restoreFromArchive(archiveId, targetGroupTagId = null) {
+            const res = await productService.restoreFromArchive(archiveId, targetGroupTagId);
+            return res?.data ?? res;
+        },
+
+        async purgeArchive(olderThanDays = 90) {
+            const res = await productService.purgeArchive(olderThanDays);
+            return res?.data ?? res;
+        },
+
+        async deleteArchived(archiveId) {
+            const res = await productService.deleteArchivedProduct(archiveId);
+            return res?.data ?? res;
+        }
     },
 });

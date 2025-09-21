@@ -40,6 +40,7 @@
             class="nav-link btn-primary"
           >Управление персоналом</router-link>
           <router-link to="/cart">Корзина ({{ cartStore.items.length }})</router-link>
+          <router-link v-if="isAdminOrOwner" to="/admin/archive">Корзина (архив)</router-link>
           <router-link v-if="isAdminOrOwner" to="/admin">Админ</router-link>
           <a @click="handleLogout" href="#">Выйти ({{ authStore.user?.username }})</a>
         </template>

@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import kirillzhdanov.identityservice.dto.product.ProductCreateRequest;
 import kirillzhdanov.identityservice.dto.product.ProductResponse;
+import kirillzhdanov.identityservice.dto.product.ProductUpdateRequest;
+import kirillzhdanov.identityservice.dto.product.ProductArchiveResponse;
 import kirillzhdanov.identityservice.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,6 +31,14 @@ public class ProductController {
     }
 
     /**
+     * Получить карточку товара по id
+     */
+    @GetMapping("/{productId}")
+    public ResponseEntity<ProductResponse> getById(@PathVariable Long productId) {
+        return ResponseEntity.ok(productService.getById(productId));
+    }
+
+    /**
      * Получение товаров по бренду и (опционально) по группе.
      * Если groupTagId = 0 или не задан, возвращаются товары в "корне" бренда.
      * visibleOnly по умолчанию true – возвращать только видимые товары.
@@ -44,6 +54,18 @@ public class ProductController {
     }
 
     /**
+     * Обновление карточки товара
+     */
+    @PutMapping("/{productId}")
+    public ResponseEntity<ProductResponse> update(
+            @PathVariable Long productId,
+            @Valid @RequestBody ProductUpdateRequest request
+    ) {
+        ProductResponse response = productService.update(productId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Обновление флага видимости товара
      */
     @PatchMapping("/{productId}/visibility")
@@ -52,6 +74,18 @@ public class ProductController {
             @RequestParam @NotNull Boolean visible
     ) {
         ProductResponse response = productService.updateVisibility(productId, visible);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Смена бренда у товара (при смене бренда группа сбрасывается, если относится к другому бренду)
+     */
+    @PatchMapping("/{productId}/brand")
+    public ResponseEntity<ProductResponse> changeBrand(
+            @PathVariable Long productId,
+            @RequestParam @NotNull Long brandId
+    ) {
+        ProductResponse response = productService.changeBrand(productId, brandId);
         return ResponseEntity.ok(response);
     }
 
@@ -74,5 +108,42 @@ public class ProductController {
     ) {
         ProductResponse response = productService.move(productId, targetGroupTagId);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Список архива по бренду
+     */
+    @GetMapping("/archive")
+    public ResponseEntity<List<ProductArchiveResponse>> listArchiveByBrand(@RequestParam @NotNull Long brandId) {
+        return ResponseEntity.ok(productService.listArchiveByBrand(brandId));
+    }
+
+    /**
+     * Восстановление из архива в исходную или указанную группу
+     */
+    @PostMapping("/archive/{archiveId}/restore")
+    public ResponseEntity<ProductResponse> restoreFromArchive(
+            @PathVariable Long archiveId,
+            @RequestParam(required = false) Long targetGroupTagId
+    ) {
+        return ResponseEntity.ok(productService.restoreFromArchive(archiveId, targetGroupTagId));
+    }
+
+    /**
+     * Удалить запись из архива
+     */
+    @DeleteMapping("/archive/{archiveId}")
+    public ResponseEntity<Void> deleteArchive(@PathVariable Long archiveId) {
+        productService.deleteArchive(archiveId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Очистка архива старше N дней (по умолчанию 90)
+     */
+    @DeleteMapping("/archive/purge")
+    public ResponseEntity<Long> purgeArchive(@RequestParam(defaultValue = "90") int olderThanDays) {
+        long deleted = productService.purgeArchive(olderThanDays);
+        return ResponseEntity.ok(deleted);
     }
 }

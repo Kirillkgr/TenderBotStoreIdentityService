@@ -9,7 +9,16 @@
       <ul v-else class="tag-items">
         <li v-for="tag in tags" :key="tag.id" class="tag-item">
           <div class="tag-content">
-            <span>{{ tag.name }}</span>
+            <span class="tag-title">
+              {{ tag.name }}
+              <button
+                class="btn btn-link btn-sm ms-2"
+                @click="$emit('edit', tag)"
+                title="Изменить тег"
+              >
+                Изменить
+              </button>
+            </span>
             <div class="tag-actions">
               <button 
                 v-if="canAddChildren" 
@@ -163,6 +172,11 @@ export default {
   color: var(--text);
 }
 
+.tag-title {
+  display: inline-flex;
+  align-items: center;
+}
+
 .tag-actions {
   display: flex;
   gap: 8px;
@@ -176,6 +190,13 @@ export default {
   font-size: 12px;
   background: var(--input-bg);
   color: var(--text);
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  text-decoration: underline;
 }
 
 .btn-sm {

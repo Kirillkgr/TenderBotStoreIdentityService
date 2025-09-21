@@ -34,7 +34,7 @@
             id="brandId" 
             class="form-control"
             v-model="formData.brandId"
-            :disabled="editing || isSubmitting"
+            :disabled="isSubmitting"
           >
             <option value="">Выберите бренд</option>
             <option v-for="brand in brands" :key="brand.id" :value="brand.id">
@@ -54,9 +54,9 @@
             v-model="formData.parentId"
             :disabled="isSubmitting || loadingParents"
           >
-            <option :value="0">Без родительского тега (корневой уровень)</option>
-            <option v-for="tag in availableTags" :key="tag.id" :value="tag.id">
-              {{ tag.name }}
+            <option :value="'0'">Без родительского тега (корневой уровень)</option>
+            <option v-for="tag in availableTags" :key="tag.id" :value="String(tag.id)">
+              {{ tag.name }}{{ editing && (props.tag?.parentId === tag.id) ? ' (текущий)' : '' }}
             </option>
           </Field>
           <div v-if="loadingParents" class="loading-hint">
@@ -64,6 +64,9 @@
             Загрузка тегов...
           </div>
           <ErrorMessage name="parentId" class="error-message"/>
+          <div v-if="editing" class="text-muted mt-1" style="font-size: 12px;">
+            Текущий родитель: {{ selectedParentName || 'Корень' }}
+          </div>
         </div>
 
         <div class="form-actions">
@@ -96,6 +99,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import Modal from '@/components/Modal.vue';
 import { useTagStore } from '@/store/tag';
+import tagService from '@/services/tagService';
 
 const props = defineProps({
   brands: {
@@ -141,11 +145,11 @@ const currentPath = computed(() => {
 const formData = ref({
   name: '',
   brandId: props.brandId || '',
-  parentId: props.parentId ?? 0
+  parentId: String(props.parentId ?? 0)
 });
 
-// Схема валидации
-const schema = yup.object({
+// Схема валидации (parentId приводим к числу; пустое => 0)
+const schema = computed(() => yup.object({
   name: yup.string()
     .required('Введите название тега')
     .max(100, 'Название не должно превышать 100 символов'),
@@ -153,22 +157,38 @@ const schema = yup.object({
     .required('Выберите бренд')
     .positive('Выберите бренд'),
   parentId: yup.number()
+    .transform((value, originalValue) => {
+      if (originalValue === '' || originalValue === null || originalValue === undefined) return 0;
+      const n = parseInt(originalValue, 10);
+      return isNaN(n) ? 0 : n;
+    })
     .nullable()
     .test(
       'not-self-parent',
       'Нельзя выбрать текущий тег как родительский',
-      value => !editing.value || value !== props.tag?.id
+      value => !editing.value || value !== (props.tag?.id ?? -1)
     )
-});
+}));
 
 // Загрузка доступных родительских тегов при изменении бренда
 watch(() => formData.value.brandId, async (newBrandId) => {
   if (newBrandId) {
     await loadAvailableTags(Number(newBrandId), props.tag?.id);
+    // После загрузки списка родителей убеждаемся, что выбран текущий родитель при редактировании
+    if (editing.value) {
+      formData.value.parentId = props.tag?.parentId ? String(props.tag.parentId) : '0';
+    }
   } else {
     availableTags.value = [];
   }
 }, { immediate: true });
+
+// Если список доступных родителей обновился позже, продублируем установку выбранного родителя
+watch(availableTags, () => {
+  if (editing.value) {
+    formData.value.parentId = props.tag?.parentId ? String(props.tag.parentId) : '0';
+  }
+});
 
 // Инициализация формы
 onMounted(async () => {
@@ -177,25 +197,27 @@ onMounted(async () => {
     formData.value = {
       name: props.tag.name,
       brandId: props.tag.brandId || props.brandId || '',
-      parentId: props.tag.parentId || 0
+      parentId: String(props.tag.parentId || 0)
     };
     
     if (props.tag.brandId) {
       await loadAvailableTags(props.tag.brandId, props.tag.id);
+      // Гарантируем автоподстановку текущего родителя
+      formData.value.parentId = String(props.tag.parentId || 0);
     }
   } else if (props.brandId) {
     // Создание нового тега с предвыбранным брендом
     formData.value.brandId = props.brandId;
     // Предварительно устанавливаем родителя из текущего контекста, если он передан
     if (props.parentId !== null && props.parentId !== undefined) {
-      formData.value.parentId = props.parentId;
+      formData.value.parentId = String(props.parentId);
     }
     await loadAvailableTags(Number(props.brandId));
   }
   
   // Если передан parentId, устанавливаем его как родительский
   if (props.parentId !== null && props.parentId !== undefined) {
-    formData.value.parentId = props.parentId;
+    formData.value.parentId = String(props.parentId);
   }
 });
 
@@ -204,7 +226,7 @@ onMounted(async () => {
  * @param {number} brandId - ID бренда
  * @param {number|null} excludeId - ID тега, который нужно исключить (например, текущий редактируемый тег)
  */
-const loadAvailableTags = async (brandId, excludeId = null) => {
+async function loadAvailableTags(brandId, excludeId = null) {
   if (!brandId) {
     availableTags.value = [];
     return;
@@ -214,51 +236,55 @@ const loadAvailableTags = async (brandId, excludeId = null) => {
   availableTags.value = [];
 
   try {
-    console.log(`Загрузка ВСЕХ тегов для бренда ${brandId}, исключая ID: ${excludeId}`);
-
-    // 1) BFS по всей иерархии: грузим детей для каждого узла независимо от childrenCount
-    const queue = [0];
-    const visitedParents = new Set();
-    const collected = [];
-
-    while (queue.length > 0) {
-      const parentId = queue.shift();
-      if (visitedParents.has(parentId)) continue;
-      visitedParents.add(parentId);
-
-      const levelTags = await tagStore.fetchTagsByBrand(brandId, parentId);
-      (levelTags || []).forEach(t => {
-        if (excludeId && (t.id === excludeId)) return; // исключаем текущий редактируемый тег
-        collected.push(t);
-        if (!visitedParents.has(t.id)) {
+    // 1) Быстрый путь: один запрос дерева
+    const tree = await tagService.getTagTree(brandId);
+    let roots;
+    if (Array.isArray(tree) && tree.length > 0) {
+      // Ответ уже в виде дерева DTO (children)
+      // Нормализуем: parentId может отсутствовать у узлов дерева
+      const annotate = (nodes, parentId = 0) => {
+        return nodes.map(n => ({
+          id: n.id,
+          name: n.name,
+          parentId: n.parentId ?? parentId,
+          level: n.level ?? 0,
+          children: Array.isArray(n.children) ? annotate(n.children, n.id) : []
+        }));
+      };
+      roots = annotate(tree, 0);
+    } else {
+      // 2) Fallback: BFS по уровням через admin API (by-brand/parentId)
+      const queue = [0];
+      const visited = new Set();
+      const collected = [];
+      while (queue.length) {
+        const pid = queue.shift();
+        if (visited.has(pid)) continue;
+        visited.add(pid);
+        const level = await tagStore.fetchTagsByBrand(brandId, pid);
+        (level || []).forEach(t => {
+          collected.push(t);
           queue.push(t.id);
-        }
+        });
+      }
+      const byId2 = new Map();
+      collected.forEach(t => byId2.set(t.id, { ...t, children: [] }));
+      byId2.forEach(t => {
+        const pid = t.parentId ?? 0;
+        if (pid && byId2.has(pid)) byId2.get(pid).children.push(t);
       });
+      roots = [...byId2.values()].filter(t => (t.parentId ?? 0) === 0);
     }
 
-    console.log('Собраны теги (все уровни):', collected);
-
-    // 3) Построим дерево из collected
-    const buildTree = (parentId = 0) => {
-      return collected
-        .filter(tag => (tag.parentId ?? 0) === parentId)
-        .map(tag => ({
-          ...tag,
-          children: buildTree(tag.id)
-        }));
-    };
-    const tagTree = buildTree(0);
-
-    // 4) Плоский список с отступами для селекта
     const flattenWithIndent = (items, level = 0) => {
       let result = [];
       items.forEach(item => {
-        const indent = '— '.repeat(level);
-        result.push({
-          ...item,
-          name: `${indent}${item.name}`,
-          level
-        });
+        if (excludeId && item.id === excludeId) {
+          // Пропускаем исключаемый id
+        } else {
+          const indent = '— '.repeat(level);
+          result.push({ ...item, name: `${indent}${item.name}`, level });
+        }
         if (item.children && item.children.length > 0) {
           result = result.concat(flattenWithIndent(item.children, level + 1));
         }
@@ -266,9 +292,7 @@ const loadAvailableTags = async (brandId, excludeId = null) => {
       return result;
     };
 
-    availableTags.value = flattenWithIndent(tagTree);
-    console.log('Доступные теги с отступами:', availableTags.value);
-
+    availableTags.value = flattenWithIndent(roots);
   } catch (error) {
     console.error('Ошибка при загрузке тегов:', error);
     const errorMessage = error.message || 'Не удалось загрузить список тегов';
@@ -284,43 +308,39 @@ const loadAvailableTags = async (brandId, excludeId = null) => {
 const onSubmit = async (values, { resetForm }) => {
   try {
     isSubmitting.value = true;
-    
-    // Подготавливаем данные тега
-    const tagData = {
-      name: values.name.trim(),
-      brandId: parseInt(values.brandId, 10),
-      parentId: values.parentId ? parseInt(values.parentId, 10) : 0
-    };
-    
-    console.log('Сохранение тега:', tagData);
-    
-    // Выполняем создание или обновление тега
+
+    const newName = values.name.trim();
+    const newParentId = values.parentId ? parseInt(values.parentId, 10) : 0;
+    const newBrandId = parseInt(values.brandId, 10);
+
+    console.log('Сохранение тега:', { newName, newParentId, newBrandId });
+
     let result;
     if (editing.value) {
-      console.log('Обновление существующего тега');
-      result = await tagStore.updateTag({
-        id: props.tag.id,
-        ...tagData
+      // Единый запрос: бренд/родитель/имя одним вызовом
+      result = await tagService.updateFull(props.tag.id, {
+        name: newName,
+        parentId: newParentId,
+        brandId: newBrandId
       });
       toast.success('Тег успешно обновлен!');
     } else {
-      console.log('Создание нового тега');
-      result = await tagStore.createTag(tagData);
+      // Создание нового тега
+      const tagData = { name: newName, brandId: newBrandId, parentId: newParentId };
+      console.log('Создание нового тега', tagData);
+      result = await tagService.createTag(tagData);
       toast.success('Тег успешно создан!');
     }
-    
-    console.log('Результат сохранения тега:', result);
-    
+
     // Обновляем список доступных тегов, если изменился бренд
     if (formData.brandId !== values.brandId) {
       await loadAvailableTags(values.brandId);
     }
-    
-    // Сбрасываем форму и закрываем модальное окно
+
     resetForm();
-    emit('saved', result); // Передаем сохраненный тег в родительский компонент
+    emit('saved', result);
     emit('close');
-    
+
   } catch (error) {
     console.error('Ошибка при сохранении тега:', error);
     const errorMessage = error.response?.data?.message || error.message || 'Произошла ошибка при сохранении тега';
