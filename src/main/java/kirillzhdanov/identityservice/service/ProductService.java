@@ -3,6 +3,8 @@ package kirillzhdanov.identityservice.service;
 import jakarta.transaction.Transactional;
 import kirillzhdanov.identityservice.dto.product.ProductCreateRequest;
 import kirillzhdanov.identityservice.dto.product.ProductResponse;
+import kirillzhdanov.identityservice.dto.product.ProductUpdateRequest;
+import kirillzhdanov.identityservice.dto.product.ProductArchiveResponse;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.product.Product;
@@ -142,5 +144,114 @@ public class ProductService {
 
         Product saved = productRepository.save(product);
         return toResponse(saved);
+    }
+
+    @Transactional
+    public ProductResponse getById(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        return toResponse(product);
+    }
+
+    @Transactional
+    public ProductResponse update(Long productId, ProductUpdateRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+
+        if (request.getName() != null) product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        if (request.getPrice() != null) product.setPrice(request.getPrice());
+        product.setPromoPrice(request.getPromoPrice());
+        if (request.getVisible() != null) product.setVisible(request.getVisible());
+
+        Product saved = productRepository.save(product);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public ProductResponse changeBrand(Long productId, Long brandId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        Brand newBrand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Бренд не найден: " + brandId));
+
+        // Если текущая группа не относится к новому бренду — сбрасываем в корень
+        if (product.getGroupTag() != null) {
+            GroupTag gt = product.getGroupTag();
+            if (!gt.getBrand().getId().equals(newBrand.getId())) {
+                product.setGroupTag(null);
+            }
+        }
+        product.setBrand(newBrand);
+        Product saved = productRepository.save(product);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public List<ProductArchiveResponse> listArchiveByBrand(Long brandId) {
+        return productArchiveRepository.findByBrandId(brandId)
+                .stream()
+                .map(a -> ProductArchiveResponse.builder()
+                        .id(a.getId())
+                        .originalProductId(a.getOriginalProductId())
+                        .name(a.getName())
+                        .description(a.getDescription())
+                        .price(a.getPrice())
+                        .promoPrice(a.getPromoPrice())
+                        .brandId(a.getBrandId())
+                        .groupTagId(a.getGroupTagId())
+                        .groupPath(a.getGroupPath())
+                        .visible(a.isVisible())
+                        .archivedAt(a.getArchivedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ProductResponse restoreFromArchive(Long archiveId, Long targetGroupTagId) {
+        ProductArchive archive = productArchiveRepository.findById(archiveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Запись архива не найдена: " + archiveId));
+
+        Brand brand = brandRepository.findById(archive.getBrandId())
+                .orElseThrow(() -> new ResourceNotFoundException("Бренд не найден: " + archive.getBrandId()));
+
+        GroupTag groupTag = null;
+        Long sourceGroupId = targetGroupTagId != null ? targetGroupTagId : archive.getGroupTagId();
+        if (sourceGroupId != null && sourceGroupId != 0) {
+            groupTag = groupTagRepository.findById(sourceGroupId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Группа не найдена: " + sourceGroupId));
+            if (!groupTag.getBrand().getId().equals(brand.getId())) {
+                // Если группа не принадлежит бренду архива — сбрасываем в корень
+                groupTag = null;
+            }
+        }
+
+        Product product = new Product();
+        product.setName(archive.getName());
+        product.setDescription(archive.getDescription());
+        product.setPrice(archive.getPrice());
+        product.setPromoPrice(archive.getPromoPrice());
+        product.setBrand(brand);
+        product.setGroupTag(groupTag);
+        product.setVisible(archive.isVisible());
+        // createdAt/updatedAt выставятся через @PrePersist
+
+        Product saved = productRepository.save(product);
+        productArchiveRepository.delete(archive);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void deleteArchive(Long archiveId) {
+        ProductArchive archive = productArchiveRepository.findById(archiveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Запись архива не найдена: " + archiveId));
+        productArchiveRepository.delete(archive);
+    }
+
+    @Transactional
+    public long purgeArchive(int olderThanDays) {
+        int days = olderThanDays <= 0 ? 90 : olderThanDays;
+        LocalDateTime threshold = LocalDateTime.now().minusDays(days);
+        return productArchiveRepository.deleteByArchivedAtBefore(threshold);
     }
 }
