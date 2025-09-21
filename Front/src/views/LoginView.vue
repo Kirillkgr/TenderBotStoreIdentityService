@@ -30,9 +30,9 @@
       <button class="social-btn">
         <svg><use xlink:href="#logo_yandex_color_circle_24"></use></svg>
       </button>
-      <button class="social-btn">
+      <a class="social-btn" href="/oauth2/authorization/google" aria-label="Войти через Google">
         <svg><use xlink:href="#logo_google_color_24"></use></svg>
-      </button>
+      </a>
       <button class="social-btn">
         <svg><use xlink:href="#logo_vk_color_24"></use></svg>
       </button>
@@ -44,10 +44,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { Form, Field } from 'vee-validate';
-import { useAuthStore } from '../store/auth';
-import { useToast } from 'vue-toastification';
+import {onMounted, ref} from 'vue';
+import {Field, Form} from 'vee-validate';
+import {useAuthStore} from '../store/auth';
+import {useToast} from 'vue-toastification';
 
 const emit = defineEmits(['success', 'close']);
 
