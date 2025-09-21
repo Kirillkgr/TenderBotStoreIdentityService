@@ -1,15 +1,39 @@
 import axios from 'axios';
-import { useAuthStore } from '../store/auth';
+import {useAuthStore} from '../store/auth';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true, // Разрешаем отправку и получение cookies
 });
 
+// Одноразовый стартовый лог диагностики HTTP-клиента
+(function bootstrapHttpDiagnostics() {
+  try {
+    const base = import.meta.env.VITE_API_BASE_URL;
+    const cookiesEnabled = navigator.cookieEnabled;
+    const hasDocCookie = typeof document !== 'undefined' && !!document.cookie;
+    console.log('[HTTP] bootstrap', {
+      baseURL: base,
+      withCredentials: true,
+      cookiesEnabled,
+      documentCookiePresent: hasDocCookie,
+    });
+  } catch (e) {
+    console.warn('[HTTP] bootstrap diagnostics failed', e);
+  }
+})();
+
 // Перехватчик для добавления токена авторизации в каждый запрос
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(`Отправка запроса: ${config.method.toUpperCase()} ${config.url}`, config);
+    try {
+      console.log(`Отправка запроса: ${config.method.toUpperCase()} ${config.url}`, {
+        url: config.url,
+        method: config.method,
+        baseURL: config.baseURL,
+        withCredentials: config.withCredentials,
+      });
+    } catch (_) {}
     const authStore = useAuthStore();
     const token = authStore.accessToken;
 
@@ -25,7 +49,7 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
       console.log('Добавлен токен авторизации в заголовок');
     } else if (!token && !hasBasicHeader && !isPublicAuthEndpoint) {
-      console.warn('Токен авторизации отсутствует');
+      console.warn('Токен авторизации отсутствует (используем HttpOnly cookie, если они установлены)');
     }
     return config;
   },
@@ -59,6 +83,13 @@ apiClient.interceptors.response.use(
     return response;
   }, // Успешные ответы логируем и пробрасываем дальше
   async (error) => {
+    try {
+      console.warn('Ошибка ответа', {
+        url: error.config?.url,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    } catch (_) {}
     const originalRequest = error.config || {};
     const authStore = useAuthStore();
 
