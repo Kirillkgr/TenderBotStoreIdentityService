@@ -1,7 +1,8 @@
 package kirillzhdanov.identityservice.security;
 
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.*;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -32,11 +33,15 @@ public class JwtTokenExtractor {
 		String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
 
 		if (authorizationHeader == null || authorizationHeader.isEmpty()) {
-			return null;
+			// Try cookies fallback
+			String fromCookie = extractFromCookies(request);
+			return fromCookie;
 		}
 
 		if (!authorizationHeader.startsWith(BEARER_PREFIX)) {
-			return null;
+			// Try cookies fallback when header present but not Bearer
+			String fromCookie = extractFromCookies(request);
+			return fromCookie;
 		}
 
 		String token = authorizationHeader.substring(BEARER_PREFIX.length())
@@ -53,5 +58,18 @@ public class JwtTokenExtractor {
 		}
 
 		return token;
+	}
+
+	private String extractFromCookies(@NonNull HttpServletRequest request) {
+		if (request.getCookies() == null) return null;
+		for (var c : request.getCookies()) {
+			if ("accessToken".equals(c.getName())) {
+				String token = c.getValue();
+				if (token != null && token.length() >= MIN_TOKEN_LENGTH && token.length() <= MAX_TOKEN_LENGTH) {
+					return token.trim();
+				}
+			}
+		}
+		return null;
 	}
 }
