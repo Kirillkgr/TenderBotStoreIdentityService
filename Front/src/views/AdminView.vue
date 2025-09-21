@@ -304,8 +304,7 @@
             <div class="pc-price">
               <template v-if="p.promoPrice && p.promoPrice < p.price">
                 <span class="old">{{ formatPrice(p.price) }}</span>
-                <span class="new">{{ formatPrice(p.promoPrice) }}</span>
-                <span class="promo-badge">Промо</span>
+                <span class="new promo">{{ formatPrice(p.promoPrice) }}</span>
               </template>
               <template v-else>
                 <span class="new">{{ formatPrice(p.price) }}</span>
@@ -1487,39 +1486,73 @@ const onBrandSelect = async () => {
   gap: 12px;
 }
 .product-card-admin {
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border, #e5e7eb);
+  /* Центральные настройки карточки — правятся здесь и прокидываются вниз */
+  --pc-bg: var(--card);
+  --pc-text: var(--text);
+  --pc-text-strong: var(--text-strong, var(--text));
+  --pc-muted: var(--muted, #6b7280);
+  --pc-border: var(--border, #e5e7eb);
+  --pc-radius: 10px;
+  --pc-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  --pc-shadow-hover: 0 4px 14px rgba(0,0,0,0.18);
+  --pc-title-size: 16px;
+  --pc-title-weight: 800;
+  --pc-price-size: 18px;
+  --pc-price-weight: 900;
+
+  background: var(--pc-bg);
+  color: var(--pc-text);
+  border: 1px solid var(--pc-border);
   border-radius: 10px;
   padding: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  box-shadow: var(--pc-shadow);
   position: relative; /* для плавающей кнопки редактирования */
+  min-height: 190px; /* стабильная сетка при разной длине контента */
 }
-.product-card-admin .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-right: 40px; }
+.product-card-admin:hover {
+  box-shadow: var(--pc-shadow-hover);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--pc-border));
+}
+.product-card-admin .pc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-right: 40px; /* место под кнопку редактирования */
+  padding-left: 22px;  /* резерв под индикатор статуса слева */
+  position: relative;
+  z-index: 2;          /* текст шапки над индикатором */
+}
 .product-card-admin .pc-title {
-  color: var(--text) !important;
-  font-weight: 800;
-  font-size: 16px;
-  line-height: 1.25;
+  color: var(--pc-text-strong) !important;
+  font-weight: var(--pc-title-weight);
+  font-size: var(--pc-title-size);
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  margin-bottom: 4px;
+  /* лёгкая тень на тёмной теме для читаемости */
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
 .product-card-admin .pc-price {
   margin-top: 6px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;      /* вертикально: старая → новая → чип */
+  align-items: center;          /* по центру */
+  text-align: center;
+  gap: 4px;
   font-size: 15px;
 }
-.product-card-admin .pc-price .old { color: var(--muted, #6b7280); text-decoration: line-through; font-weight: 600; }
-.product-card-admin .pc-price .new { color: var(--text); font-weight: 900; font-size: 16px; }
-.product-card-admin .promo-badge { background: #fde68a; color: #92400e; font-size: 11px; padding: 2px 6px; border-radius: 8px; }
+.product-card-admin .pc-price .old { color: var(--pc-muted); text-decoration: line-through; font-weight: 600; order: 1; }
+.product-card-admin .pc-price .new { color: var(--pc-text-strong); font-weight: var(--pc-price-weight); font-size: var(--pc-price-size); order: 2; }
+.product-card-admin .pc-price .new.promo { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+/* Чип промо удалён по требованию — визуальная логика читается по старой/новой цене */
 .product-card-admin .pc-desc {
   margin-top: 8px;
-  color: var(--text);
+  color: var(--pc-text);
   font-size: 13px;
   line-height: 1.4;
   display: -webkit-box;
@@ -1536,7 +1569,8 @@ const onBrandSelect = async () => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px #ffffff; /* обводка на белой карточке */
+  box-shadow: 0 0 0 2px var(--pc-bg); /* адаптивная обводка под тему */
+  z-index: 1; /* индикатор под текстом шапки */
 }
 .product-card-admin .pc-status-dot.on { background: #16a34a; } /* зелёный */
 .product-card-admin .pc-status-dot.off { background: #ef4444; } /* красный */
@@ -1552,14 +1586,15 @@ const onBrandSelect = async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--primary-color, #4a6cf7);
-  border: 1px solid var(--primary-color, #4a6cf7);
+  background-color: var(--primary, #4a6cf7);
+  border: 1px solid var(--primary, #4a6cf7);
   color: #fff;
   border-radius: 8px;
   cursor: pointer;
   z-index: 2;
 }
-.pc-edit-fab:hover { background-color: var(--primary-color-dark, #3a5bd9); }
+.pc-edit-fab:hover { background-color: var(--primary-dark, var(--primary-600, #3a5bd9)); }
+.pc-edit-fab:focus-visible { outline: 2px solid var(--primary, #4a6cf7); outline-offset: 2px; }
 .pc-edit-fab img { width: 16px; height: 16px; display: block; }
 
 
