@@ -3,6 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:13
+    restart: on-failure
     environment:
       POSTGRES_DB: identity_db
       POSTGRES_USER: postgres
@@ -14,7 +15,7 @@ services:
   backend:
     image: cr.yandex/crpp92t3gcj0he0j8nj2/tenderbotstore_server:master
     container_name: backend
-    restart: always
+    restart: on-failure
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity_db
@@ -33,7 +34,7 @@ services:
   frontend:
     image: cr.yandex/crpp92t3gcj0he0j8nj2/tenderbotstore_front:master
     container_name: frontend
-    restart: always
+    restart: on-failure
     depends_on:
       - backend
     ports:
