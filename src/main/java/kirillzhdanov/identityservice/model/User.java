@@ -1,11 +1,15 @@
 package kirillzhdanov.identityservice.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -26,6 +30,7 @@ public class User {
 
 	private String firstName;
 	private String lastName;
+
 	private String patronymic;
 	private LocalDate dateOfBirth;
 
@@ -34,13 +39,16 @@ public class User {
 
 	private String phone;
 
-	private boolean emailVerified;
+    // URL аватара (например, из Google)
+    private String avatarUrl;
 
-	private String emailVerificationCode;
+    private boolean emailVerified;
 
-	private LocalDateTime emailVerificationExpiresAt;
+    private String emailVerificationCode;
 
-	private String pendingEmail;
+    private LocalDateTime emailVerificationExpiresAt;
+
+    private String pendingEmail;
 
     // Ссылка на мастера (создателя/владельца) пользователя
     @Column(name = "master_id")

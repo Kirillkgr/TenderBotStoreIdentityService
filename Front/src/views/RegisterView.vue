@@ -8,26 +8,6 @@
       <span v-if="usernameStatus === 'checking'" class="status-icon checking">...</span>
       <ErrorMessage name="username" class="error-message" />
     </div>
-    <div class="form-group">
-      <Field name="firstName" type="text" class="form-control" :class="{ 'is-invalid': errors.firstName }" placeholder="Имя" v-model="firstName" />
-      <ErrorMessage name="firstName" class="error-message" />
-    </div>
-    <div class="form-group">
-      <Field name="lastName" type="text" class="form-control" :class="{ 'is-invalid': errors.lastName }" placeholder="Фамилия" v-model="lastName" />
-      <ErrorMessage name="lastName" class="error-message" />
-    </div>
-    <div class="form-group">
-      <Field name="patronymic" type="text" class="form-control" :class="{ 'is-invalid': errors.patronymic }" placeholder="Отчество" v-model="patronymic" />
-      <ErrorMessage name="patronymic" class="error-message" />
-    </div>
-    <div class="form-group">
-      <Field name="email" type="email" class="form-control" :class="{ 'is-invalid': errors.email }" placeholder="Email" v-model="email" />
-      <ErrorMessage name="email" class="error-message" />
-    </div>
-    <div class="form-group">
-      <Field name="phone" type="tel" class="form-control" :class="{ 'is-invalid': errors.phone }" placeholder="Телефон" v-model="phone" />
-      <ErrorMessage name="phone" class="error-message" />
-    </div>
 
                 <div class="form-group password-group">
       <Field name="password" :type="passwordFieldType" class="form-control" :class="{ 'is-invalid': errors.password, 'is-valid': passwordsMatch }" placeholder="Пароль" v-model="password" />
@@ -139,11 +119,6 @@ const schema = Yup.object().shape({
   username: Yup.string()
     .required('Логин обязателен')
     .test('is-unique', 'Этот логин уже занят', value => checkUsernameUnique(value)),
-  lastName: Yup.string().required('Фамилия обязательна'),
-  firstName: Yup.string().required('Имя обязательно'),
-  patronymic: Yup.string(),
-  email: Yup.string().required('Email обязателен').email('Неверный формат email'),
-  phone: Yup.string(),
   password: Yup.string().required('Пароль обязателен').min(6, 'Пароль должен быть не менее 6 символов'),
   passwordConfirmation: Yup.string()
     .oneOf([Yup.ref('password')], 'Пароли должны совпадать')
@@ -155,11 +130,6 @@ const { errors, handleSubmit, defineField, meta, setErrors } = useForm({
 });
 
 const [username, usernameAttrs] = defineField('username');
-const [lastName] = defineField('lastName');
-const [firstName] = defineField('firstName');
-const [patronymic] = defineField('patronymic');
-const [email] = defineField('email');
-const [phone] = defineField('phone');
 const [password] = defineField('password');
 const [passwordConfirmation] = defineField('passwordConfirmation');
 
@@ -233,8 +203,10 @@ const passwordsMatch = computed(() => {
 const onSubmit = handleSubmit(async (values) => {
   isSubmitting.value = true;
   try {
-    const registrationData = { ...values };
-    delete registrationData.passwordConfirmation;
+    const registrationData = {
+      username: values.username,
+      password: values.password,
+    };
 
     await authStore.register(registrationData);
     toast.success('Вы успешно зарегистрировались! Теперь вы можете войти.');

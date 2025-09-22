@@ -28,6 +28,8 @@ public class UserResponse {
 
     private String phone;
 
+    private String avatarUrl;
+
     private Boolean emailVerified;
 
     private Set<String> roles;

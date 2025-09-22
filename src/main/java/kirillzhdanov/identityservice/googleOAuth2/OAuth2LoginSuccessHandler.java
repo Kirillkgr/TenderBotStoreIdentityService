@@ -1,7 +1,6 @@
 package kirillzhdanov.identityservice.googleOAuth2;
 
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -26,6 +25,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${server.servlet.session.cookie.domain:}")
     private String cookieDomain;
 
+    @Value("${jwt.access.expiration:3600000}")
+    private long accessExpirationMs;
+
+    @Value("${jwt.refresh.expiration:2592000000}")
+    private long refreshExpirationMs;
+
     public OAuth2LoginSuccessHandler(GoogleOAuth2Service googleOAuth2Service) {
         this.googleOAuth2Service = googleOAuth2Service;
     }
@@ -40,27 +45,33 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         GoogleOAuth2Service.Tokens tokens = googleOAuth2Service.handleLoginOrRegister(oidcUser);
 
         // Set HttpOnly cookies for frontend to pick up via APIs
-        addCookie(response, "accessToken", tokens.accessToken(), true, "/", true, "Lax");
-        addCookie(response, "refreshToken", tokens.refreshToken(), true, "/", true, "Lax");
+        addCookie(response, "accessToken", tokens.accessToken(), true, "/", true, "None", accessExpirationMs);
+        addCookie(response, "refreshToken", tokens.refreshToken(), true, "/", true, "None", refreshExpirationMs);
 
         response.sendRedirect(successRedirectUrl);
     }
 
     private void addCookie(HttpServletResponse response, String name, String value, boolean httpOnly,
-                           String path, boolean secure, String sameSite) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(httpOnly);
-        cookie.setSecure(secure);
-        cookie.setPath(path);
+                           String path, boolean secure, String sameSite, long maxAgeMs) {
+        // Build Set-Cookie manually to include SameSite and Max-Age
+        StringBuilder sb = new StringBuilder();
+        sb.append(name).append("=").append(value)
+          .append("; Path=").append(path)
+          .append(secure ? "; Secure" : "")
+          .append(httpOnly ? "; HttpOnly" : "")
+          .append("; SameSite=").append(sameSite);
         if (cookieDomain != null && !cookieDomain.isBlank()) {
-            cookie.setDomain(cookieDomain);
+            sb.append("; Domain=").append(cookieDomain);
         }
-        // SameSite not in standard Cookie API for Java 21; set via header
-        response.addHeader("Set-Cookie", String.format("%s=%s; Path=%s; %s; %s%s%s",
-                name, value, path,
-                secure ? "Secure" : "",
-                httpOnly ? "HttpOnly" : "",
-                (cookieDomain != null && !cookieDomain.isBlank()) ? "; Domain=" + cookieDomain : "",
-                "; SameSite=" + sameSite));
+        if (maxAgeMs > 0) {
+            long seconds = Math.max(1, maxAgeMs / 1000);
+            sb.append("; Max-Age=").append(seconds);
+        }
+        String header = sb.toString();
+        log.info("Setting cookie {} (domain={}, sameSite={}, maxAgeSec={})", name,
+                (cookieDomain == null || cookieDomain.isBlank()) ? "<default>" : cookieDomain,
+                sameSite,
+                (maxAgeMs > 0 ? maxAgeMs / 1000 : -1));
+        response.addHeader("Set-Cookie", header);
     }
 }
