@@ -51,9 +51,19 @@ public class GoogleOAuth2Service {
         String sub = oidcUser.getSubject();
         String firstName = oidcUser.getGivenName();
         String lastName = oidcUser.getFamilyName();
+        // Fallback: если Google не отдал given/family, попробуем разобрать полное имя
+        if ((firstName == null || firstName.isBlank()) && oidcUser.getFullName() != null) {
+            String full = oidcUser.getFullName();
+            if (!full.isBlank()) {
+                String[] parts = full.trim().split("\\s+");
+                if (parts.length >= 1) firstName = parts[0];
+                if (parts.length >= 2) lastName = parts[parts.length - 1];
+            }
+        }
         String picture = oidcUser.getPicture(); // URL аватарки Google
+        Boolean emailVerified = oidcUser.getEmailVerified();
 
-        User user = findOrCreateAndLinkUser(email, sub, firstName, lastName, picture);
+        User user = findOrCreateAndLinkUser(email, sub, firstName, lastName, picture, emailVerified);
 
         // Revoke existing access tokens optionally, keep refresh strategy if needed
         // tokenService.revokeAllUserTokens(user);
@@ -68,7 +78,7 @@ public class GoogleOAuth2Service {
         return new Tokens(access, refresh);
     }
 
-    private User findOrCreateAndLinkUser(String email, String sub, String firstName, String lastName, String pictureUrl) {
+    private User findOrCreateAndLinkUser(String email, String sub, String firstName, String lastName, String pictureUrl, Boolean emailVerified) {
         // 1) Check link by provider+sub
         Optional<UserProvider> mapped = userProviderRepository.findByProviderAndProviderUserId(UserProvider.Provider.GOOGLE, sub);
         if (mapped.isPresent()) {
@@ -83,11 +93,20 @@ public class GoogleOAuth2Service {
         User user;
         if (byEmail.isPresent()) {
             user = byEmail.get();
-            // Обновим аватар, если он пустой
+            // Обновим недостающие поля аккуратно
             if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && pictureUrl != null && !pictureUrl.isBlank()) {
                 user.setAvatarUrl(pictureUrl);
-                user = userRepository.save(user);
             }
+            if ((user.getFirstName() == null || user.getFirstName().isBlank()) && firstName != null && !firstName.isBlank()) {
+                user.setFirstName(firstName);
+            }
+            if ((user.getLastName() == null || user.getLastName().isBlank()) && lastName != null && !lastName.isBlank()) {
+                user.setLastName(lastName);
+            }
+            if (emailVerified != null && emailVerified && !user.isEmailVerified()) {
+                user.setEmailVerified(true);
+            }
+            user = userRepository.save(user);
         } else {
             // 3) Create a new user
             String usernameBase = (email != null && email.contains("@")) ? email.substring(0, email.indexOf('@')) : "google_" + sub;
@@ -100,7 +119,7 @@ public class GoogleOAuth2Service {
                     .lastName(lastName)
                     .email(email)
                     .avatarUrl(pictureUrl)
-                    .emailVerified(true)
+                    .emailVerified(emailVerified != null ? emailVerified : false)
                     .roles(new HashSet<>())
                     .brands(new HashSet<>())
                     .createdAt(LocalDateTime.now())
