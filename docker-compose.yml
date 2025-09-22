@@ -9,13 +9,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_t:/var/lib/postgresql/data
 
 
   backend:
     image: cr.yandex/crpp92t3gcj0he0j8nj2/tenderbotstore_server:master
     container_name: backend
-    restart: on-failure
+    #    restart: on-failure
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity_db
@@ -46,4 +46,4 @@ services:
       - /home/user/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
-  postgres_data:
+  postgres_data_t:
