@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import {defineStore} from 'pinia';
 import * as authService from '../services/authService';
 import router from '../router';
 
@@ -120,6 +120,13 @@ export const useAuthStore = defineStore('auth', {
                     return false;
                 }
                 this.setAccessToken(accessToken); // только токен; профиль берём из localStorage (hydrateFromStorage)
+                // Если профиль в localStorage отсутствует — подтягиваем с сервера
+                try {
+                    const raw = localStorage.getItem('user_data');
+                    if (!raw) {
+                        await this.fetchProfile();
+                    }
+                } catch (_) {}
                 return true;
             } catch (e) {
                 await this.clearSession();
@@ -139,6 +146,17 @@ export const useAuthStore = defineStore('auth', {
                     this.setUser(parsed);
                 }
             } catch (_) { /* ignore */ }
+        }
+        ,
+        async fetchProfile() {
+            try {
+                const me = await authService.getCurrentUser();
+                if (me && typeof me === 'object') {
+                    this.setUser(me);
+                }
+            } catch (_) {
+                // игнорируем: отсутствие авторизации/ошибка сети
+            }
         }
     },
 });

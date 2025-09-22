@@ -227,6 +227,27 @@ public class AuthService {
         return UserResponse.builder().id(user.getId()).username(user.getUsername()).firstName(user.getFirstName()).lastName(user.getLastName()).patronymic(user.getPatronymic()).dateOfBirth(user.getDateOfBirth()).email(user.getEmail()).phone(user.getPhone()).emailVerified(user.isEmailVerified()).roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())).brands(user.getBrands().stream().map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet())).accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
+    @Transactional(readOnly = true)
+    public UserResponse getUserProfile(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .patronymic(user.getPatronymic())
+                .dateOfBirth(user.getDateOfBirth())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .avatarUrl(user.getAvatarUrl())
+                .emailVerified(user.isEmailVerified())
+                .roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet()))
+                .brands(user.getBrands().stream().map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet()))
+                .build();
+    }
+
     // Генерирует 6-значный код подтверждения email
     private String generateEmailCode() {
         int code = 100000 + random.nextInt(900000); // диапазон 100000-999999
