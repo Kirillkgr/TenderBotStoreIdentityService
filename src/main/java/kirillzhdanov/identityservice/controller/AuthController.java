@@ -8,7 +8,11 @@ import kirillzhdanov.identityservice.service.AuthService;
 import kirillzhdanov.identityservice.util.Base64Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,16 +26,17 @@ public class AuthController {
 
 	private final AuthService authService;
 
+	@Value("${server.servlet.session.cookie.domain:}")
+	private String cookieDomain;
+
+	@Value("${jwt.refresh.expiration:2592000000}")
+	private long refreshExpirationMs;
+
 	/* Registration endpoint */
 	@PostMapping("/checkUsername")
 	public ResponseEntity<UserResponse> checkUsername(@Valid @NotEmpty @NotBlank @RequestParam String username) {
-		log.info("Check username: {}", username);
 		boolean response;
-
 		response = authService.checkUniqUsername(username);
-		log.info("response: {}", response);
-
-		log.info("checkUsername: {}", username);
 		return ResponseEntity.status(response ? 409 : 200)
 							 .build();
 	}
@@ -39,7 +44,6 @@ public class AuthController {
 	/* Convenience GET endpoint to support clients using GET for availability check */
 	@GetMapping("/checkUsername")
 	public ResponseEntity<UserResponse> checkUsernameGet(@Valid @NotEmpty @NotBlank @RequestParam String username) {
-		log.info("[GET] Check username: {}", username);
 		boolean response = authService.checkUniqUsername(username);
 		return ResponseEntity.status(response ? 409 : 200).build();
 	}
@@ -60,15 +64,21 @@ public class AuthController {
 		
 		LoginRequest requestFromAuthHeader = Base64Utils.getUsernameAndPassword(authHeader);
 		UserResponse response = authService.login(requestFromAuthHeader);
-		
-		// Создаем куки с refresh token
-		ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
-			.httpOnly(true)
-			.secure(true)  // Только для HTTPS
-			.path("/")
-			.maxAge(30 * 24 * 60 * 60)  // 30 дней
-			.sameSite("Lax")  // Защита от CSRF
-			.build();
+
+		// Создаем куки с refresh token (унификация с OAuth2 flow)
+		ResponseCookie.ResponseCookieBuilder rcb = ResponseCookie.from("refreshToken", response.getRefreshToken())
+				.httpOnly(true)
+				.secure(true)
+				.path("/")
+				.sameSite("None");
+		if (refreshExpirationMs > 0) {
+			long seconds = Math.max(1, refreshExpirationMs / 1000);
+			rcb.maxAge(java.time.Duration.ofSeconds(seconds));
+		}
+		if (cookieDomain != null && !cookieDomain.isBlank()) {
+			rcb.domain(cookieDomain);
+		}
+		ResponseCookie refreshTokenCookie = rcb.build();
 		
 		// Удаляем refresh token из тела ответа
 		response.setRefreshToken(null);
@@ -80,8 +90,7 @@ public class AuthController {
 	}
 
 
-	    /* Refresh token endpoint */
-    /* Эндпоинт для обновления токена */
+	/* Refresh token endpoint */
     @PostMapping("/refresh")
     public ResponseEntity<TokenRefreshResponse> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
 
@@ -90,7 +99,33 @@ public class AuthController {
 		}
 
 		        TokenRefreshResponse response = authService.refreshToken(new TokenRefreshRequest(refreshToken));
-        return ResponseEntity.ok(response);
+		// Do not expose refreshToken in body (it is held in HttpOnly cookie)
+		response.setRefreshToken(null);
+
+		// Дополнительно очищаем возможный JSESSIONID (если был создан в процессе OAuth2)
+		ResponseCookie jsessionCleared = clearSession();
+		ResponseCookie jsessionClearedNoDomain = ResponseCookie.from("JSESSIONID", "")
+				.httpOnly(true)
+				.secure(true)
+				.path("/")
+				.maxAge(java.time.Duration.ZERO)
+				.sameSite("None")
+				.build();
+
+		return ResponseEntity.ok()
+				.header(HttpHeaders.SET_COOKIE, jsessionCleared.toString())
+				.header(HttpHeaders.SET_COOKIE, jsessionClearedNoDomain.toString())
+				.body(response);
+	}
+
+	@GetMapping("/whoami")
+	public ResponseEntity<UserResponse> whoami(Authentication authentication) {
+		if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
+		String username = authentication.getName();
+		UserResponse profile = authService.getUserProfile(username);
+		return ResponseEntity.ok(profile);
     }
 
     
@@ -146,19 +181,58 @@ public class AuthController {
             authService.revokeToken(refreshCookie);
         }
 
-        // Instruct client to clear refresh cookie
-        ResponseCookie cleared = ResponseCookie.from("refreshToken", "")
+		// Instruct client to clear refresh cookie (attributes must match original)
+		ResponseCookie.ResponseCookieBuilder refreshClearBuilder = ResponseCookie.from("refreshToken", "")
+				.httpOnly(true)
+				.secure(true)
+				.path("/")
+				.maxAge(java.time.Duration.ZERO)
+				.sameSite("None");
+		if (cookieDomain != null && !cookieDomain.isBlank()) {
+			refreshClearBuilder.domain(cookieDomain);
+		}
+		ResponseCookie refreshCleared = refreshClearBuilder.build();
+		// Also clear host-only variant (without Domain) in case it was set that way earlier
+		ResponseCookie refreshClearedNoDomain = ResponseCookie.from("refreshToken", "")
+				.httpOnly(true)
+				.secure(true)
+				.path("/")
+				.maxAge(java.time.Duration.ZERO)
+				.sameSite("None")
+				.build();
+
+		// Also instruct client to clear JSESSIONID if it exists
+
+		ResponseCookie jsessionCleared = clearSession();
+		// Also clear host-only variant for JSESSIONID
+		ResponseCookie jsessionClearedNoDomain = ResponseCookie.from("JSESSIONID", "")
             .httpOnly(true)
             .secure(true)
             .path("/")
             .maxAge(0)
-            .sameSite("Lax")
+				.sameSite("None")
             .build();
 
         return ResponseEntity.ok()
-                             .header(HttpHeaders.SET_COOKIE, cleared.toString())
+				.header(HttpHeaders.SET_COOKIE, refreshCleared.toString())
+				.header(HttpHeaders.SET_COOKIE, refreshClearedNoDomain.toString())
+				.header(HttpHeaders.SET_COOKIE, jsessionCleared.toString())
+				.header(HttpHeaders.SET_COOKIE, jsessionClearedNoDomain.toString())
                              .build();
     }
+
+	private ResponseCookie clearSession() {
+		ResponseCookie.ResponseCookieBuilder jSessionClearBuilder = ResponseCookie.from("JSESSIONID", "")
+				.httpOnly(true)
+				.secure(true)
+				.path("/")
+				.maxAge(java.time.Duration.ZERO)
+				.sameSite("None");
+		if (cookieDomain != null && !cookieDomain.isBlank()) {
+			jSessionClearBuilder.domain(cookieDomain);
+		}
+		return jSessionClearBuilder.build();
+	}
 
 	@DeleteMapping("/logout/all/{username}")
 	public ResponseEntity<Void> logoutAll(@PathVariable String username) {

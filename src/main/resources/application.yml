@@ -47,10 +47,6 @@ jwt:
   refresh:
     expiration: 25920000000  # 30 дней в миллисекундах
 
-logging:
-  level:
-    org.springframework.security.oauth2: DEBUG
-    org.springframework.web.client: DEBUG
 
 address:
   service:

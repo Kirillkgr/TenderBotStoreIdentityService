@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                         .requestMatchers("/menu/v1/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/menu/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/orders").permitAll()
 
                         .requestMatchers("/swagger-ui/**")
                         .permitAll()

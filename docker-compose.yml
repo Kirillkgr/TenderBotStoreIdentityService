@@ -9,6 +9,9 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Bind to localhost only for safety. Change to "5432:5432" if you need remote access.
+      - "5432:5432"
 
   backend:
     image: cr.yandex/crpp92t3gcj0he0j8nj2/tenderbotstore_server:master

@@ -1,6 +1,8 @@
 import axios from 'axios';
 import {useAuthStore} from '../store/auth';
 
+const DEBUG_HTTP = import.meta.env.VITE_DEBUG_HTTP === 'true';
+
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true, // Разрешаем отправку и получение cookies
@@ -12,28 +14,32 @@ const apiClient = axios.create({
     const base = import.meta.env.VITE_API_BASE_URL;
     const cookiesEnabled = navigator.cookieEnabled;
     const hasDocCookie = typeof document !== 'undefined' && !!document.cookie;
-    console.log('[HTTP] bootstrap', {
-      baseURL: base,
-      withCredentials: true,
-      cookiesEnabled,
-      documentCookiePresent: hasDocCookie,
-    });
+    if (DEBUG_HTTP) {
+      console.log('[HTTP] bootstrap', {
+        baseURL: base,
+        withCredentials: true,
+        cookiesEnabled,
+        documentCookiePresent: hasDocCookie,
+      });
+    }
   } catch (e) {
-    console.warn('[HTTP] bootstrap diagnostics failed', e);
+    if (DEBUG_HTTP) console.warn('[HTTP] bootstrap diagnostics failed', e);
   }
 })();
 
 // Перехватчик для добавления токена авторизации в каждый запрос
 apiClient.interceptors.request.use(
   (config) => {
-    try {
-      console.log(`Отправка запроса: ${config.method.toUpperCase()} ${config.url}`, {
-        url: config.url,
-        method: config.method,
-        baseURL: config.baseURL,
-        withCredentials: config.withCredentials,
-      });
-    } catch (_) {}
+    if (DEBUG_HTTP) {
+      try {
+        console.log(`Отправка запроса: ${config.method.toUpperCase()} ${config.url}`, {
+          url: config.url,
+          method: config.method,
+          baseURL: config.baseURL,
+          withCredentials: config.withCredentials,
+        });
+      } catch (_) {}
+    }
     const authStore = useAuthStore();
     const token = authStore.accessToken;
 
@@ -47,9 +53,9 @@ apiClient.interceptors.request.use(
 
     if (!isPublicAuthEndpoint && !hasBasicHeader && token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Добавлен токен авторизации в заголовок');
+      if (DEBUG_HTTP) console.log('Добавлен токен авторизации в заголовок');
     } else if (!token && !hasBasicHeader && !isPublicAuthEndpoint) {
-      console.warn('Токен авторизации отсутствует (используем HttpOnly cookie, если они установлены)');
+      if (DEBUG_HTTP) console.warn('Токен авторизации отсутствует (используем HttpOnly cookie, если они установлены)');
     }
     return config;
   },
@@ -76,15 +82,17 @@ const processQueue = (error, token = null) => {
 // Перехватчик для обработки ответов
 apiClient.interceptors.response.use(
   (response) => {
-    console.log(`Получен ответ от ${response.config.url}:`, {
-      status: response.status,
-      data: response.data
-    });
+    if (DEBUG_HTTP) {
+      console.log(`Получен ответ от ${response.config.url}:`, {
+        status: response.status,
+        data: response.data
+      });
+    }
     return response;
-  }, // Успешные ответы логируем и пробрасываем дальше
+  },
   async (error) => {
     try {
-      console.warn('Ошибка ответа', {
+      if (DEBUG_HTTP) console.warn('Ошибка ответа', {
         url: error.config?.url,
         status: error.response?.status,
         data: error.response?.data,
@@ -140,7 +148,7 @@ apiClient.interceptors.response.use(
 
     } catch (refreshError) {
       processQueue(refreshError, null);
-      console.error('Не удалось восстановить сессию (куки refresh отсутствует или просрочен). Локальная очистка.', refreshError);
+      console.error('Не удалось восстановить сессию (куки refresh отсутствует или просрочен). Локальная очистка.');
       // Важно: не вызываем server-side logout, просто чистим локальную сессию
       await authStore.clearSession();
       return Promise.reject(refreshError);

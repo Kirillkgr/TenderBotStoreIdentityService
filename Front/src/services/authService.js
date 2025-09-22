@@ -33,7 +33,7 @@ export const logout = (token) => {
 // Получение информации о текущем пользователе
 export const getCurrentUser = async () => {
     try {
-        const response = await apiClient.get('/auth/v1/me');
+        const response = await apiClient.get('/auth/v1/whoami');
         return response.data;
     } catch (error) {
         console.error('Ошибка при получении данных пользователя:', error);
