@@ -12,7 +12,7 @@ spring:
     password: ${PASSWORD_DB:postgres}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     open-in-view: false
 
     show-sql: false
