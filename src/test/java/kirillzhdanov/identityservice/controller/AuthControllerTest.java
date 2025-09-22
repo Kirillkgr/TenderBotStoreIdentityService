@@ -1,12 +1,11 @@
 package kirillzhdanov.identityservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import kirillzhdanov.identityservice.config.IntegrationTestBase;
-import kirillzhdanov.identityservice.dto.TokenRefreshRequest;
 import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
 import kirillzhdanov.identityservice.model.Role;
-import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -142,7 +141,8 @@ public class AuthControllerTest extends IntegrationTestBase {
                         .cookie(new Cookie("refreshToken", refresh)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", notNullValue()))
-                .andExpect(jsonPath("$.refreshToken", is(refresh)));
+                // refreshToken теперь не возвращается в теле (HttpOnly cookie), ожидаем null
+                .andExpect(jsonPath("$.refreshToken", org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
