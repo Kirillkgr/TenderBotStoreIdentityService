@@ -1,10 +1,10 @@
 package kirillzhdanov.identityservice.service;
 
 import jakarta.transaction.Transactional;
+import kirillzhdanov.identityservice.dto.product.ProductArchiveResponse;
 import kirillzhdanov.identityservice.dto.product.ProductCreateRequest;
 import kirillzhdanov.identityservice.dto.product.ProductResponse;
 import kirillzhdanov.identityservice.dto.product.ProductUpdateRequest;
-import kirillzhdanov.identityservice.dto.product.ProductArchiveResponse;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.product.Product;
@@ -15,6 +15,7 @@ import kirillzhdanov.identityservice.repository.GroupTagRepository;
 import kirillzhdanov.identityservice.repository.ProductArchiveRepository;
 import kirillzhdanov.identityservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -113,17 +114,37 @@ public class ProductService {
         archive.setPromoPrice(product.getPromoPrice());
         archive.setBrandId(product.getBrand().getId());
         archive.setGroupTagId(product.getGroupTag() != null ? product.getGroupTag().getId() : null);
-        String path = "/";
-        if (product.getGroupTag() != null) {
-            GroupTag gt = product.getGroupTag();
-            path = gt.getPath() + gt.getId() + "/";
-        }
-        archive.setGroupPath(path);
+        // Сохраняем человеко-читаемый путь из названий (Бренд/Родитель/Дочерний/...)
+        String namePath = buildNamePath(product.getBrand(), product.getGroupTag());
+        archive.setGroupPath(namePath);
         archive.setVisible(product.isVisible());
         archive.setArchivedAt(LocalDateTime.now());
+        // переносим исходные временные метки товара
+        archive.setCreatedAt(product.getCreatedAt());
+        archive.setUpdatedAt(product.getUpdatedAt());
 
         productArchiveRepository.save(archive);
         productRepository.delete(product);
+    }
+
+    // Формирует путь вида "/Brand/Parent/Child/" из названий бренда и иерархии групп
+    private String buildNamePath(Brand brand, GroupTag leaf) {
+        java.util.LinkedList<String> parts = new java.util.LinkedList<>();
+        if (leaf != null) {
+            GroupTag cur = leaf;
+            while (cur != null) {
+                parts.addFirst(safeName(cur.getName()));
+                cur = cur.getParent();
+            }
+        }
+        parts.addFirst(safeName(brand != null ? brand.getName() : ""));
+        return "/" + String.join("/", parts) + "/";
+    }
+
+    private String safeName(String s) {
+        if (s == null) return "";
+        // убираем разделители, чтобы не ломать вид пути
+        return s.replace("/", "-");
     }
 
     @Transactional
@@ -204,8 +225,30 @@ public class ProductService {
                         .groupPath(a.getGroupPath())
                         .visible(a.isVisible())
                         .archivedAt(a.getArchivedAt())
+                        .createdAt(a.getCreatedAt())
+                        .updatedAt(a.getUpdatedAt())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Page<ProductArchiveResponse> listArchiveByBrandPaged(Long brandId, org.springframework.data.domain.Pageable pageable) {
+        var page = productArchiveRepository.findByBrandId(brandId, pageable);
+        return page.map(a -> ProductArchiveResponse.builder()
+                .id(a.getId())
+                .originalProductId(a.getOriginalProductId())
+                .name(a.getName())
+                .description(a.getDescription())
+                .price(a.getPrice())
+                .promoPrice(a.getPromoPrice())
+                .brandId(a.getBrandId())
+                .groupTagId(a.getGroupTagId())
+                .groupPath(a.getGroupPath())
+                .visible(a.isVisible())
+                .archivedAt(a.getArchivedAt())
+                .createdAt(a.getCreatedAt())
+                .updatedAt(a.getUpdatedAt())
+                .build());
     }
 
     @Transactional

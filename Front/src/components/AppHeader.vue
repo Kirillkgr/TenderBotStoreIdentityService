@@ -28,12 +28,7 @@
       <div class="nav-links" :class="{ 'is-active': isMenuOpen }" @click="closeMenu">
         <router-link v-if="route.name !== 'Home'" to="/">Главная</router-link>
         <template v-if="authStore.isAuthenticated">
-          <router-link v-if="route.name !== 'Profile'" to="/profile">Профиль</router-link>
-          <router-link
-            v-if="!isModalVisible"
-            to="/profile/edit"
-            class="nav-link btn-primary"
-          >Редактировать профиль</router-link>
+          <!-- Скрыли ссылки Профиль/Редактировать/Выйти: они доступны в меню аватара -->
           <router-link
             v-if="isAdminOrOwner"
             to="/staff"
@@ -42,12 +37,29 @@
           <router-link to="/cart">Корзина ({{ cartStore.items.length }})</router-link>
           <router-link v-if="isAdminOrOwner" to="/admin/archive">Корзина (архив)</router-link>
           <router-link v-if="isAdminOrOwner" to="/admin">Админ</router-link>
-          <a @click="handleLogout" href="#">Выйти ({{ authStore.user?.username }})</a>
         </template>
         <template v-else>
           <button @click="openLogin" class="nav-link btn-primary">Войти</button>
           <a href="#" @click.prevent="openRegister">Регистрация</a>
         </template>
+      </div>
+
+      <!-- User avatar on the right side -->
+      <div v-if="authStore.isAuthenticated" class="user-chip-wrap" @mouseenter="chipHover = true"
+           @mouseleave="chipHover = false">
+        <button :title="authStore.user?.username || 'Профиль'" class="user-chip" type="button" @click.stop="goProfile">
+          <img v-if="authStore.user?.avatarUrl" :src="authStore.user.avatarUrl" alt="avatar" class="user-chip__img"
+               height="28" width="28"/>
+          <img v-else :src="userIcon" alt="user" class="user-chip__img user-chip__img--placeholder" height="28"
+               width="28"/>
+        </button>
+        <transition name="fade-scale">
+          <div v-if="chipHover" class="user-menu" @mouseenter="chipHover = true" @mouseleave="chipHover = false">
+            <button class="user-menu__item" type="button" @click="goEditProfile">Редактировать профиль</button>
+            <button class="user-menu__item" type="button" @click="goProfile">Профиль</button>
+            <button class="user-menu__item user-menu__item--danger" type="button" @click="handleLogout">Выйти</button>
+          </div>
+        </transition>
       </div>
     </nav>
     <!-- Spacer to offset fixed header height -->
@@ -76,6 +88,7 @@ import {useAuthStore} from '../store/auth';
 import {useCartStore} from '../store/cart';
 
 import qrInline from '../assets/qr-code.svg?raw';
+import userIcon from '../assets/user.svg';
 
 const props = defineProps({
   isModalVisible: {
@@ -118,6 +131,7 @@ function setTheme(mode) {
 }
 const isMenuOpen = ref(false);
 const showQr = ref(false);
+const chipHover = ref(false);
 const isProfilePage = computed(() => route.name === 'Profile');
 const isHeaderVisible = ref(true);
 let lastScrollPosition = 0;
@@ -129,10 +143,28 @@ const isAdminOrOwner = computed(() => {
   return authStore.user.roles.includes('ADMIN') || authStore.user.roles.includes('OWNER');
 });
 
+// На будущее: инициалы, если захотим показать поверх иконки
+const userInitials = computed(() => {
+  const name = authStore.user?.username || authStore.user?.firstName || '';
+  if (!name) return '';
+  const parts = String(name).trim().split(/\s+/);
+  const first = parts[0]?.[0] || '';
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : '';
+  return (first + last).toUpperCase();
+});
+
 function handleLogout() {
   authStore.logout();
   isMenuOpen.value = false;
   router.push('/login');
+}
+
+function goProfile() {
+  router.push('/profile');
+}
+
+function goEditProfile() {
+  router.push('/profile/edit');
 }
 
 function toggleMenu() {
@@ -347,6 +379,77 @@ watch(showQr, (open) => {
   z-index: 2;
 }
 
+/* User compact avatar next to logo */
+.user-chip-wrap {
+  position: relative;
+  align-self: center; /* вертикально по центру навбара */
+  margin-left: 12px; /* небольшой отступ от ссылок справа */
+}
+
+.user-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(180, 180, 180, 0.45); /* серая граница для лучшей видимости */
+  background: rgba(255, 255, 255, 0.12); /* немного светлее фон */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.user-chip:hover {
+  transform: scale(1.06);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.user-chip__img {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  display: block;
+}
+
+
+.user-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  min-width: 200px;
+  background: #333333; /* чуть светлее для контраста */
+  border: 1px solid rgba(180, 180, 180, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.30);
+  padding: 6px;
+  z-index: 1001;
+}
+
+.user-menu__item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: #eaeaea;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.user-menu__item:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.user-menu__item--danger {
+  color: #ff6b6b;
+}
+
+
+
 /* Вертикальный переключатель темы */
 .theme-toggle-vert {
   display: flex;
@@ -408,9 +511,10 @@ watch(showQr, (open) => {
 }
 
 .nav-links {
+  margin-left: auto; /* сдвигаем блок ссылок вправо */
   display: flex;
-  gap: 2rem;
-  align-items: center;
+  align-items: center; /* вертикальное выравнивание */
+  gap: 14px;
 }
 
 .nav-link {

@@ -51,4 +51,8 @@ public class ProductArchive {
 
     @Column(nullable = false)
     private LocalDateTime archivedAt;
+
+    // Оригинальные временные метки товара на момент архивации
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

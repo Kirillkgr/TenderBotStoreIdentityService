@@ -73,10 +73,15 @@
           <button type="button" class="btn btn-outline-secondary" @click="$emit('close')" :disabled="isSubmitting">
             Отмена
           </button>
-          <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-            <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-1" role="status"></span>
-            Сохранить изменения
-          </button>
+          <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+            <button :disabled="isSubmitting" class="btn btn-danger" type="button" @click="onDelete">
+              Удалить
+            </button>
+            <button :disabled="isSubmitting" class="btn btn-primary" type="submit">
+              <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-1" role="status"></span>
+              Сохранить изменения
+            </button>
+          </div>
         </div>
       </Form>
     </template>
@@ -84,13 +89,13 @@
 </template>
 
 <script setup>
-import { ErrorMessage, Field, Form } from 'vee-validate';
+import {ErrorMessage, Field, Form} from 'vee-validate';
 import * as yup from 'yup';
-import { ref, computed, onMounted, watch } from 'vue';
-import { useToast } from 'vue-toastification';
+import {computed, onMounted, ref, watch} from 'vue';
+import {useToast} from 'vue-toastification';
 import Modal from '@/components/Modal.vue';
 import tagService from '@/services/tagService';
-import { useTagStore } from '@/store/tag';
+import {useTagStore} from '@/store/tag';
 
 const props = defineProps({
   brands: { type: Array, required: true, default: () => [] },
@@ -98,7 +103,7 @@ const props = defineProps({
   brandId: { type: [Number, String], default: null }
 });
 
-const emit = defineEmits(['close', 'saved']);
+const emit = defineEmits(['close', 'saved', 'deleted']);
 const toast = useToast();
 
 const isSubmitting = ref(false);
@@ -216,7 +221,7 @@ async function loadAvailableTags(brandId, excludeId = null) {
   } finally {
     loadingParents.value = false;
   }
-};
+}
 
 const onSubmit = async (values) => {
   try {
@@ -237,6 +242,24 @@ const onSubmit = async (values) => {
     isSubmitting.value = false;
   }
 };
+
+async function onDelete() {
+  if (!props.tag?.id) return;
+  const confirmed = window.confirm('Удалить тег и его поддерево? Это действие необратимо.');
+  if (!confirmed) return;
+  try {
+    isSubmitting.value = true;
+    await tagService.deleteTag(props.tag.id);
+    toast.success('Тег удалён');
+    emit('deleted', props.tag.id);
+    emit('close');
+  } catch (e) {
+    console.error('Ошибка при удалении тега:', e);
+    toast.error(e?.message || 'Не удалось удалить тег');
+  } finally {
+    isSubmitting.value = false;
+  }
+}
 </script>
 
 <style scoped>

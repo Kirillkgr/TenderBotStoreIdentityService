@@ -1,27 +1,24 @@
 package kirillzhdanov.identityservice.service;
 
 import jakarta.transaction.Transactional;
-import kirillzhdanov.identityservice.dto.group.CreateGroupTagRequest;
-import kirillzhdanov.identityservice.dto.group.GroupTagResponse;
-import kirillzhdanov.identityservice.dto.group.UpdateGroupTagRequest;
-import kirillzhdanov.identityservice.dto.group.GroupTagTreeResponse;
+import kirillzhdanov.identityservice.dto.group.*;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
 import kirillzhdanov.identityservice.model.tags.GroupTagArchive;
 import kirillzhdanov.identityservice.repository.BrandRepository;
-import kirillzhdanov.identityservice.repository.GroupTagRepository;
 import kirillzhdanov.identityservice.repository.GroupTagArchiveRepository;
+import kirillzhdanov.identityservice.repository.GroupTagRepository;
 import kirillzhdanov.identityservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -278,7 +275,8 @@ public class GroupTagService {
             a.setBrandId(brand.getId());
             a.setParentId(gt.getParent() != null ? gt.getParent().getId() : null);
             a.setName(gt.getName());
-            a.setPath(gt.getPath());
+            // человеко-читаемый путь по названиям (Бренд/Родитель/Дочерний/...)
+            a.setPath(buildNamePath(brand, gt));
             a.setLevel(gt.getLevel());
             a.setArchivedAt(now);
             groupTagArchiveRepository.save(a);
@@ -293,6 +291,86 @@ public class GroupTagService {
         int days = olderThanDays <= 0 ? 90 : olderThanDays;
         LocalDateTime threshold = LocalDateTime.now().minusDays(days);
         return groupTagArchiveRepository.deleteByArchivedAtBefore(threshold);
+    }
+
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public List<GroupTagArchiveResponse> listArchiveByBrand(Long brandId) {
+        List<GroupTagArchive> list = groupTagArchiveRepository.findByBrandId(brandId);
+        return list.stream()
+                .sorted(Comparator.comparing(GroupTagArchive::getArchivedAt).reversed())
+                .map(a -> GroupTagArchiveResponse.builder()
+                        .id(a.getId())
+                        .originalGroupTagId(a.getOriginalGroupTagId())
+                        .brandId(a.getBrandId())
+                        .parentId(a.getParentId())
+                        .name(a.getName())
+                        .path(a.getPath())
+                        .level(a.getLevel())
+                        .archivedAt(a.getArchivedAt())
+                        .build())
+                .toList();
+    }
+
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public org.springframework.data.domain.Page<GroupTagArchiveResponse> listArchiveByBrandPaged(Long brandId, org.springframework.data.domain.Pageable pageable) {
+        var page = groupTagArchiveRepository.findByBrandId(brandId, pageable);
+        return page.map(a -> GroupTagArchiveResponse.builder()
+                .id(a.getId())
+                .originalGroupTagId(a.getOriginalGroupTagId())
+                .brandId(a.getBrandId())
+                .parentId(a.getParentId())
+                .name(a.getName())
+                .path(a.getPath())
+                .level(a.getLevel())
+                .archivedAt(a.getArchivedAt())
+                .build());
+    }
+
+    @Transactional
+    public GroupTagResponse restoreGroupFromArchive(Long archiveId, Long targetParentId) {
+        GroupTagArchive a = groupTagArchiveRepository.findById(archiveId)
+                .orElseThrow(() -> new ResourceNotFoundException("GroupTag archive not found: " + archiveId));
+
+        Brand brand = brandRepository.findById(a.getBrandId())
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + a.getBrandId()));
+
+        GroupTag parent = null;
+        Long parentIdToUse = targetParentId != null ? targetParentId : a.getParentId();
+        if (parentIdToUse != null && parentIdToUse != 0) {
+            parent = groupTagRepository.findById(parentIdToUse)
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent group not found: " + parentIdToUse));
+            if (!parent.getBrand().getId().equals(brand.getId())) parent = null; // безопасность
+        }
+
+        GroupTag restored = new GroupTag(a.getName(), brand, parent);
+        restored = groupTagRepository.save(restored);
+
+        groupTagArchiveRepository.delete(a);
+        return convertToDto(restored);
+    }
+
+    @Transactional
+    public void deleteGroupArchive(Long archiveId) {
+        GroupTagArchive a = groupTagArchiveRepository.findById(archiveId)
+                .orElseThrow(() -> new ResourceNotFoundException("GroupTag archive not found: " + archiveId));
+        groupTagArchiveRepository.delete(a);
+    }
+
+    // Формирует путь вида "/Brand/Parent/Child/" по названиям
+    private String buildNamePath(Brand brand, GroupTag leaf) {
+        java.util.LinkedList<String> parts = new java.util.LinkedList<>();
+        GroupTag cur = leaf;
+        while (cur != null) {
+            parts.addFirst(safeName(cur.getName()));
+            cur = cur.getParent();
+        }
+        parts.addFirst(safeName(brand != null ? brand.getName() : ""));
+        return "/" + String.join("/", parts) + "/";
+    }
+
+    private String safeName(String s) {
+        if (s == null) return "";
+        return s.replace("/", "-");
     }
 
     private GroupTagResponse convertToDto(GroupTag groupTag) {

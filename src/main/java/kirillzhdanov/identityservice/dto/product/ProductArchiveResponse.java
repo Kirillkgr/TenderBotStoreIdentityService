@@ -20,4 +20,6 @@ public class ProductArchiveResponse {
     private String groupPath;
     private boolean visible;
     private LocalDateTime archivedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
