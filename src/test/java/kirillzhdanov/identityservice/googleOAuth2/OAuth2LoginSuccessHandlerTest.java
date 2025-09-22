@@ -46,9 +46,9 @@ public class OAuth2LoginSuccessHandlerTest {
         // Execute
         handler.onAuthenticationSuccess(request, response, authentication);
 
-        // Assert Set-Cookie headers present for both tokens
+        // Assert Set-Cookie header present only for refresh token (universal logic)
         String setCookieHeader = String.join("\n", response.getHeaders("Set-Cookie"));
-        assertThat(setCookieHeader).contains("accessToken=access.jwt");
+        assertThat(setCookieHeader).doesNotContain("accessToken=");
         assertThat(setCookieHeader).contains("refreshToken=refresh.jwt");
         assertThat(setCookieHeader).contains("HttpOnly");
         assertThat(setCookieHeader).contains("Secure");
