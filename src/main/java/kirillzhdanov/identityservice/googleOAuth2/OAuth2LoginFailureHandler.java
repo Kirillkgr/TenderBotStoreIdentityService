@@ -27,7 +27,17 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
     public void onAuthenticationFailure(HttpServletRequest request,
                                         HttpServletResponse response,
                                         AuthenticationException exception) throws IOException, ServletException {
-        log.warn("OAuth2 failure: {}", exception.getMessage());
-        response.sendRedirect(failureRedirectUrl);
+        String msg = exception.getMessage();
+        log.warn("OAuth2 failure: {}", msg, exception);
+        // Добавим короткую метку ошибки, чтобы на фронте было видно, что именно случилось
+        String marker = "oauth2=error";
+        if (msg != null) {
+            if (msg.contains("invalid_token_response")) marker = "oauth2=invalid_token_response";
+            else if (msg.contains("invalid_grant")) marker = "oauth2=invalid_grant";
+            else if (msg.contains("unauthorized_client")) marker = "oauth2=unauthorized_client";
+            else if (msg.contains("redirect_uri_mismatch")) marker = "oauth2=redirect_uri_mismatch";
+        }
+        String sep = failureRedirectUrl.contains("?") ? "&" : "?";
+        response.sendRedirect(failureRedirectUrl + sep + marker);
     }
 }
