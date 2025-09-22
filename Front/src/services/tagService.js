@@ -72,6 +72,9 @@ export const tagService = {
       const response = await api.post(`${API_PREFIX}/archive/${archiveId}/restore`, null, config);
       return response.data;
     } catch (error) {
+      if (error?.response?.status === 404) {
+        return Promise.reject(new Error('Запись архива тега не найдена (возможно, уже восстановлена или удалена). Обновите список.'));
+      }
       return handleApiError(error, 'Не удалось восстановить тег из архива');
     }
   },

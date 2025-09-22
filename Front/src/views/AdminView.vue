@@ -394,7 +394,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref, watch, onUnmounted} from 'vue';
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
 import {useToast} from 'vue-toastification';
 import {useTagStore} from '@/store/tag';
 import {useProductStore} from '@/store/product';
@@ -1141,7 +1141,16 @@ const deleteTag = async () => {
     await tagStore.deleteTag(tagToDelete.value.id);
     toast.success('Тег успешно удален');
     if (selectedBrand.value) {
-      await fetchTags(selectedBrand.value);
+      // Определяем родителя для перезагрузки уровня: если удалили текущий parent — уходим на уровень выше
+      const deletedParentId = tagToDelete.value.parentId ?? 0;
+      const isDeletedCurrentParent = (currentParentId.value ?? 0) === (tagToDelete.value.id ?? -1);
+      const parentForReload = isDeletedCurrentParent
+          ? (deletedParentId || 0)
+          : (currentParentId.value || 0);
+
+      await fetchTags(selectedBrand.value, parentForReload);
+      await updateBreadcrumbPath(selectedBrand.value, parentForReload);
+      await loadProductsForCurrentLevel();
     }
   } catch (error) {
     console.error('Ошибка при удалении тега:', error);

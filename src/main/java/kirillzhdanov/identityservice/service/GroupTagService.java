@@ -41,7 +41,6 @@ public class GroupTagService {
             parent = groupTagRepository.findByIdAndBrand(request.getParentId(), brand)
                     .orElseThrow(() -> new ResourceNotFoundException("Parent group tag not found with id: " + request.getParentId()));
         }
-
         // Check if group tag with same name already exists under the same parent
         if (groupTagRepository.existsByBrandAndNameAndParent(brand, request.getName(), parent)) {
             throw new IllegalArgumentException("Group tag with this name already exists in the specified location");
@@ -337,9 +336,18 @@ public class GroupTagService {
         GroupTag parent = null;
         Long parentIdToUse = targetParentId != null ? targetParentId : a.getParentId();
         if (parentIdToUse != null && parentIdToUse != 0) {
+            // Если указали конкретный parentId — пытаемся найти. Если не нашли или бренд не совпадает — позже попробуем по path.
             parent = groupTagRepository.findById(parentIdToUse)
-                    .orElseThrow(() -> new ResourceNotFoundException("Parent group not found: " + parentIdToUse));
-            if (!parent.getBrand().getId().equals(brand.getId())) parent = null; // безопасность
+                    .orElse(null);
+            if (parent != null && !parent.getBrand().getId().equals(brand.getId())) {
+                parent = null;
+            }
+        }
+
+        // Если родитель не найден, сначала пробуем восстановить цепочку родителей из архива по path; если нет записей — по именам
+        if (parent == null) {
+            String path = a.getPath();
+            parent = ensureParentsArchiveFirst(brand, path);
         }
 
         GroupTag restored = new GroupTag(a.getName(), brand, parent);
@@ -347,6 +355,73 @@ public class GroupTagService {
 
         groupTagArchiveRepository.delete(a);
         return convertToDto(restored);
+    }
+
+    /**
+     * Идём по именам внутри бренда, находя или создавая недостающие группы. Возвращает последний узел в цепочке.
+     * names: [Parent, Child, ...] — без имени бренда и без имени восстанавливаемого тега.
+     */
+    private GroupTag ensurePathByNames(Brand brand, java.util.List<String> names) {
+        GroupTag currentParent = null;
+        for (String rawName : names) {
+            String name = (rawName == null) ? "" : rawName.trim();
+            if (name.isBlank()) continue;
+            java.util.Optional<GroupTag> found = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
+            if (found.isPresent()) {
+                currentParent = found.get();
+            } else {
+                GroupTag created = new GroupTag(name, brand, currentParent);
+                created = groupTagRepository.save(created);
+                currentParent = created;
+            }
+        }
+        return currentParent;
+    }
+
+    // Восстанавливает цепочку родителей по path "/Brand/Parent/Child/" по стратегии: архив-сначала, затем имена.
+    // Проходит по родительским сегментам (без самого восстанавливаемого тега),
+    // для каждого уровня пытается: 1) найти живую группу; 2) восстановить из архива по точному пути; 3) создать по имени.
+    private GroupTag ensureParentsArchiveFirst(Brand brand, String path) {
+        if (path == null || path.isBlank()) return null;
+        String trimmed = path.trim();
+        if (trimmed.startsWith("/")) trimmed = trimmed.substring(1);
+        if (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+        if (trimmed.isBlank()) return null;
+
+        String[] parts = trimmed.split("/");
+        if (parts.length < 2) return null; // нет даже бренда
+
+        GroupTag currentParent = null;
+        StringBuilder prefix = new StringBuilder("/");
+        prefix.append(parts[0]).append("/"); // бренд
+
+        for (int i = 1; i < parts.length - 1; i++) {
+            String name = parts[i];
+            if (name == null || name.isBlank()) continue;
+            // 1) живой узел
+            java.util.Optional<GroupTag> found = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
+            if (found.isPresent()) {
+                currentParent = found.get();
+                prefix.append(name).append("/");
+                continue;
+            }
+            // 2) архивный узел по точному пути
+            prefix.append(name).append("/");
+            java.util.Optional<GroupTagArchive> archived = groupTagArchiveRepository.findByBrandIdAndPath(brand.getId(), prefix.toString());
+            if (archived.isPresent()) {
+                GroupTagArchive ga = archived.get();
+                GroupTag created = new GroupTag(ga.getName(), brand, currentParent);
+                created = groupTagRepository.save(created);
+                groupTagArchiveRepository.delete(ga);
+                currentParent = created;
+            } else {
+                // 3) создать по имени
+                GroupTag created = new GroupTag(name, brand, currentParent);
+                created = groupTagRepository.save(created);
+                currentParent = created;
+            }
+        }
+        return currentParent;
     }
 
     @Transactional

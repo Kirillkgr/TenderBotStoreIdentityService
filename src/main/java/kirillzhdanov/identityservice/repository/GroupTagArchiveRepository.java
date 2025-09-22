@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface GroupTagArchiveRepository extends JpaRepository<GroupTagArchive, Long> {
     long deleteByArchivedAtBefore(LocalDateTime threshold);
@@ -14,4 +15,6 @@ public interface GroupTagArchiveRepository extends JpaRepository<GroupTagArchive
     List<GroupTagArchive> findByBrandId(Long brandId);
 
     Page<GroupTagArchive> findByBrandId(Long brandId, Pageable pageable);
+
+    Optional<GroupTagArchive> findByBrandIdAndPath(Long brandId, String path);
 }

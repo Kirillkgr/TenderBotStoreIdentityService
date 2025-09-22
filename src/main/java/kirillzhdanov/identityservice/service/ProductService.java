@@ -10,10 +10,7 @@ import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.product.Product;
 import kirillzhdanov.identityservice.model.product.ProductArchive;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
-import kirillzhdanov.identityservice.repository.BrandRepository;
-import kirillzhdanov.identityservice.repository.GroupTagRepository;
-import kirillzhdanov.identityservice.repository.ProductArchiveRepository;
-import kirillzhdanov.identityservice.repository.ProductRepository;
+import kirillzhdanov.identityservice.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -30,6 +27,7 @@ public class ProductService {
     private final BrandRepository brandRepository;
     private final GroupTagRepository groupTagRepository;
     private final ProductArchiveRepository productArchiveRepository;
+    private final GroupTagArchiveRepository groupTagArchiveRepository;
 
     @Transactional
     public ProductResponse create(ProductCreateRequest request) {
@@ -57,6 +55,67 @@ public class ProductService {
 
         Product saved = productRepository.save(product);
         return toResponse(saved);
+    }
+
+    // Восстанавливает (find-or-create) цепочку групп по именам внутри бренда и возвращает последнюю группу
+    private GroupTag ensurePathByNames(Brand brand, java.util.List<String> names) {
+        GroupTag currentParent = null;
+        for (String rawName : names) {
+            String name = (rawName == null) ? "" : rawName.trim();
+            if (name.isBlank()) continue;
+            java.util.Optional<GroupTag> found = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
+            if (found.isPresent()) {
+                currentParent = found.get();
+            } else {
+                GroupTag created = new GroupTag(name, brand, currentParent);
+                created = groupTagRepository.save(created);
+                currentParent = created;
+            }
+        }
+        return currentParent;
+    }
+
+    // Восстанавливает цепочку по пути "/Brand/Parent/Child/..." используя записи архива для каждого узла, если они есть;
+    // если нет — возвращает null (будет применён fallback по именам)
+    private GroupTag ensureParentsArchiveFirst(Brand brand, String path) {
+        if (path == null || path.isBlank()) return null;
+        String trimmed = path.trim();
+        if (trimmed.startsWith("/")) trimmed = trimmed.substring(1);
+        if (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+        if (trimmed.isBlank()) return null;
+
+        String[] parts = trimmed.split("/");
+        if (parts.length < 2) return null; // только бренд
+
+        GroupTag currentParent = null;
+        StringBuilder prefix = new StringBuilder("/");
+        prefix.append(parts[0]).append("/"); // бренд
+
+        for (int i = 1; i < parts.length; i++) {
+            String name = parts[i];
+            if (name == null || name.isBlank()) continue;
+            // если уже есть живая группа — идём дальше
+            java.util.Optional<GroupTag> existing = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
+            if (existing.isPresent()) {
+                currentParent = existing.get();
+                prefix.append(name).append("/");
+                continue;
+            }
+            // пробуем восстановить узел из архива по точному пути
+            prefix.append(name).append("/");
+            java.util.Optional<kirillzhdanov.identityservice.model.tags.GroupTagArchive> archived = groupTagArchiveRepository.findByBrandIdAndPath(brand.getId(), prefix.toString());
+            if (archived.isPresent()) {
+                var ga = archived.get();
+                GroupTag created = new GroupTag(ga.getName(), brand, currentParent);
+                created = groupTagRepository.save(created);
+                groupTagArchiveRepository.delete(ga);
+                currentParent = created;
+            } else {
+                // нет в архиве — прекращаем, пусть fallback по именам решит (вернём null)
+                return null;
+            }
+        }
+        return currentParent;
     }
 
     @Transactional
@@ -262,11 +321,32 @@ public class ProductService {
         GroupTag groupTag = null;
         Long sourceGroupId = targetGroupTagId != null ? targetGroupTagId : archive.getGroupTagId();
         if (sourceGroupId != null && sourceGroupId != 0) {
-            groupTag = groupTagRepository.findById(sourceGroupId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Группа не найдена: " + sourceGroupId));
-            if (!groupTag.getBrand().getId().equals(brand.getId())) {
-                // Если группа не принадлежит бренду архива — сбрасываем в корень
+            groupTag = groupTagRepository.findById(sourceGroupId).orElse(null);
+            if (groupTag != null && !groupTag.getBrand().getId().equals(brand.getId())) {
                 groupTag = null;
+            }
+        }
+
+        // Если группу не нашли, пробуем восстановить цепочку родителей по стратегии: архив-сначала, затем имена
+        if (groupTag == null) {
+            String path = archive.getGroupPath();
+            groupTag = ensureParentsArchiveFirst(brand, path);
+            if (groupTag == null && path != null && !path.isBlank()) {
+                java.util.List<String> names = new java.util.ArrayList<>();
+                String trimmed = path.trim();
+                if (trimmed.startsWith("/")) trimmed = trimmed.substring(1);
+                if (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+                if (!trimmed.isBlank()) {
+                    String[] parts = trimmed.split("/");
+                    // parts[0] — имя бренда; остальные — цепочка групп (включая конечную группу товара)
+                    for (int i = 1; i < parts.length; i++) {
+                        String name = parts[i];
+                        if (name != null && !name.isBlank()) names.add(name);
+                    }
+                }
+                if (!names.isEmpty()) {
+                    groupTag = ensurePathByNames(brand, names);
+                }
             }
         }
 

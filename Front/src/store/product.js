@@ -122,6 +122,11 @@ export const useProductStore = defineStore('product', {
             return res?.data ?? res;
         },
 
+        async getArchiveByBrandPaged(brandId, {page = 0, size = 25, sort = 'archivedAt,desc'} = {}) {
+            const res = await productService.getArchivedProductsByBrandPaged(brandId, {page, size, sort});
+            return res?.data ?? res; // ожидаем Page DTO
+        },
+
         async restoreFromArchive(archiveId, targetGroupTagId = null) {
             const res = await productService.restoreFromArchive(archiveId, targetGroupTagId);
             return res?.data ?? res;

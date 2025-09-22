@@ -2,11 +2,12 @@ import {createApp} from 'vue';
 import {createPinia} from 'pinia';
 
 import Toast from 'vue-toastification';
+import 'vue-toastification/dist/index.css';
 import 'vue-datepicker-next/index.css';
 
 import App from './App.vue';
 import router from './router';
-import { useAuthStore } from './store/auth';
+import {useAuthStore} from './store/auth';
 
 import './style.css';
 import './theme.css';
@@ -33,8 +34,13 @@ app.use(pinia);
 app.use(router);
 
 app.use(Toast, {
-    // Опции для уведомлений, если нужно
+    // Опции уведомлений: компактно и слева внизу
     transition: "Vue-Toastification__bounce",
+    position: "top-left",
+    timeout: 2500,
+    hideProgressBar: true,
+    closeButton: "button",
+    icon: false,
     maxToasts: 5,
     newestOnTop: true
 });

@@ -88,11 +88,11 @@
         </table>
         <!-- Pagination -->
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <div class="text-muted small">Показано {{ pagedRows.length }} из {{ filteredRows.length }}</div>
+          <div class="text-muted small">Показано {{ shownCount }} из {{ totalCount }}</div>
           <div class="pagination-wrap">
             <button :disabled="page===1" class="btn btn-sm btn-outline-secondary" @click="page=1">«</button>
             <button :disabled="page===1" class="btn btn-sm btn-outline-secondary" @click="page--">‹</button>
-            <span class="mx-2">Стр. {{ page }} / {{ totalPages }}</span>
+            <span class="mx-2">Стр. {{ page }} / {{ totalPagesUnified }}</span>
             <button :disabled="page===totalPages" class="btn btn-sm btn-outline-secondary" @click="page++">›</button>
             <button :disabled="page===totalPages" class="btn btn-sm btn-outline-secondary" @click="page=totalPages">»
             </button>
@@ -116,11 +116,15 @@
           </tr>
           </thead>
           <tbody>
-          <tr v-for="(r, idx) in pagedRows" :key="r._key">
+          <tr v-for="(r, idx) in displayRows" :key="r._key">
             <td>{{ (page - 1) * pageSize + idx + 1 }}</td>
             <td>{{ r.name }}</td>
             <td>{{ r.type }}</td>
-            <td :title="r.path" class="text-truncate" style="max-width:260px">{{ r.path }}</td>
+            <td class="path-cell">
+              <span v-if="!isPathExpanded(r._key) && (r.path && r.path.length > 6)"
+                    :title="r.path" class="path-ellipsis" @click="togglePath(r._key)">…</span>
+              <span v-else :title="r.path" class="path-full">{{ r.path || '—' }}</span>
+            </td>
             <td>{{ r.price }}</td>
             <td>{{ r.promoPrice }}</td>
             <td>{{ r.createdAt }}</td>
@@ -142,7 +146,7 @@
             </td>
           </tr>
           </tbody>
-          <tbody v-if="!pagedRows.length">
+          <tbody v-if="!displayRows.length">
           <tr>
             <td class="text-center text-muted" colspan="10">Архив пуст</td>
           </tr>
@@ -150,13 +154,15 @@
         </table>
         <!-- Pagination -->
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <div class="text-muted small">Показано {{ pagedRows.length }} из {{ filteredRows.length }}</div>
+          <div class="text-muted small">Показано {{ shownCount }} из {{ totalCount }}</div>
           <div class="pagination-wrap">
             <button :disabled="page===1" class="btn btn-sm btn-outline-secondary" @click="page=1">«</button>
             <button :disabled="page===1" class="btn btn-sm btn-outline-secondary" @click="page--">‹</button>
-            <span class="mx-2">Стр. {{ page }} / {{ totalPages }}</span>
-            <button :disabled="page===totalPages" class="btn btn-sm btn-outline-secondary" @click="page++">›</button>
-            <button :disabled="page===totalPages" class="btn btn-sm btn-outline-secondary" @click="page=totalPages">»
+            <span class="mx-2">Стр. {{ page }} / {{ totalPagesUnified }}</span>
+            <button :disabled="page===totalPagesUnified" class="btn btn-sm btn-outline-secondary" @click="page++">›
+            </button>
+            <button :disabled="page===totalPagesUnified" class="btn btn-sm btn-outline-secondary"
+                    @click="page=totalPagesUnified">»
             </button>
           </div>
         </div>
@@ -190,6 +196,21 @@ const q = ref('');
 const typeFilter = ref('all'); // all | product | group
 const page = ref(1);
 const pageSize = ref(25);
+
+// Server-side pagination state
+const productPage = ref({content: [], totalElements: 0, totalPages: 1});
+const tagPage = ref({content: [], totalElements: 0, totalPages: 1});
+
+// Локальное состояние разворота длинных путей по ключу строки
+const expandedPaths = ref(new Set());
+const isPathExpanded = (key) => expandedPaths.value.has(key);
+
+function togglePath(key) {
+  if (expandedPaths.value.has(key)) expandedPaths.value.delete(key);
+  else expandedPaths.value.add(key);
+  // триггерим реактивность
+  expandedPaths.value = new Set(expandedPaths.value);
+}
 
 async function loadBrands() {
   try {
@@ -258,6 +279,57 @@ const pagedRows = computed(() => {
   const start = (page.value - 1) * pageSize.value;
   return filteredRows.value.slice(start, start + pageSize.value);
 });
+
+// Server-mode switch: when not 'all', use server pagination
+const isServerMode = computed(() => typeFilter.value !== 'all');
+
+const displayRows = computed(() => {
+  if (!isServerMode.value) return pagedRows.value;
+  if (typeFilter.value === 'product') {
+    return (productPage.value.content || []).map(a => ({
+      _key: `p-${a.id}`,
+      _kind: 'product',
+      id: a.id,
+      name: safe(a, 'name'),
+      type: 'товар',
+      path: computePath(a),
+      price: formatPrice(a.price),
+      promoPrice: a.promoPrice ? formatPrice(a.promoPrice) : '—',
+      createdAt: formatDate(a.createdAt),
+      updatedAt: formatDate(a.updatedAt),
+      archivedAt: formatDate(a.archivedAt),
+    }));
+  } else {
+    return (tagPage.value.content || []).map(g => ({
+      _key: `g-${g.id}`,
+      _kind: 'group',
+      id: g.id,
+      name: g.name,
+      type: 'тег',
+      path: g.path || '—',
+      price: '—',
+      promoPrice: '—',
+      createdAt: '—',
+      updatedAt: '—',
+      archivedAt: formatDate(g.archivedAt),
+    }));
+  }
+});
+
+const totalCount = computed(() => {
+  if (!isServerMode.value) return filteredRows.value.length;
+  return typeFilter.value === 'product' ? (productPage.value.totalElements || 0) : (tagPage.value.totalElements || 0);
+});
+
+const totalPagesServer = computed(() => {
+  return typeFilter.value === 'product' ? (productPage.value.totalPages || 1) : (tagPage.value.totalPages || 1);
+});
+
+const totalPagesUnified = computed(() => isServerMode.value ? totalPagesServer.value : totalPages.value);
+const shownCount = computed(() => displayRows.value.length);
+
+// expose unified totalPages used in template
+const totalPagesRef = computed(() => totalPagesUnified.value);
 
 function restoreByRow(r) {
   if (r._kind === 'product') return restore({id: r.id, name: r.name});
@@ -383,14 +455,38 @@ onMounted(async () => {
 
 watch(brandId, async (v, old) => {
   if (v && v !== old) {
-    await Promise.all([loadArchive(), loadTags()]);
+    if (typeFilter.value === 'all') {
+      await Promise.all([loadArchive(), loadTags()]);
+    } else if (typeFilter.value === 'product') {
+      await loadProductPage();
+    } else {
+      await loadTagPage();
+    }
     page.value = 1;
+  }
+});
+
+watch([typeFilter, page, pageSize], async () => {
+  if (!brandId.value) return;
+  if (typeFilter.value === 'all') {
+    // Локальная пагинация — подгружаем полные списки
+    await Promise.all([loadArchive(), loadTags()]);
+  } else if (typeFilter.value === 'product') {
+    await loadProductPage();
+  } else if (typeFilter.value === 'group') {
+    await loadTagPage();
   }
 });
 
 function refreshAll() {
   page.value = 1;
-  return Promise.all([loadArchive(), loadTags()]);
+  if (typeFilter.value === 'all') {
+    return Promise.all([loadArchive(), loadTags()]);
+  } else if (typeFilter.value === 'product') {
+    return loadProductPage();
+  } else {
+    return loadTagPage();
+  }
 }
 </script>
 
@@ -565,4 +661,28 @@ function refreshAll() {
   border-color: #0d6efd;
 }
 
+.path-cell {
+  max-width: 260px;
+}
+
+.path-ellipsis {
+  cursor: pointer;
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+}
+
+.path-ellipsis:hover {
+  background: var(--input-bg-hover);
+}
+
+.path-full {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 260px;
+}
 </style>
