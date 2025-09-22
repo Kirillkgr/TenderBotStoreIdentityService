@@ -10,12 +10,14 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # Открываем порт для подключения с хоста (psql/GUI), чтобы вручную создать БД
 
 
   backend:
     image: cr.yandex/crpp92t3gcj0he0j8nj2/tenderbotstore_server:master
     container_name: backend
-    restart: on-failure
+    #    restart: on-failure
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity_db
