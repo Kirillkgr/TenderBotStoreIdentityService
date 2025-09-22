@@ -50,6 +50,13 @@ export const getArchivedProductsByBrand = (brandId, params = {}) => {
     });
 };
 
+// Архив (пагинация): по бренду, Page DTO
+export const getArchivedProductsByBrandPaged = (brandId, {page = 0, size = 25, sort = 'archivedAt,desc'} = {}) => {
+    return apiClient.get('/auth/v1/products/archive/paged', {
+        params: {brandId, page, size, sort}
+    });
+};
+
 // Архив: восстановить товар (админ)
 export const restoreFromArchive = (archiveId, targetGroupTagId = null) => {
     const config = targetGroupTagId != null ? { params: { targetGroupTagId } } : undefined;

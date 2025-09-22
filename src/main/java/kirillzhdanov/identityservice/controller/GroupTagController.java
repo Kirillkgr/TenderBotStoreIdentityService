@@ -1,21 +1,18 @@
 package kirillzhdanov.identityservice.controller;
 
 import jakarta.validation.Valid;
-import kirillzhdanov.identityservice.dto.group.CreateGroupTagRequest;
-import kirillzhdanov.identityservice.dto.group.GroupTagResponse;
-import kirillzhdanov.identityservice.dto.group.UpdateGroupTagRequest;
-import kirillzhdanov.identityservice.dto.group.GroupTagTreeResponse;
+import kirillzhdanov.identityservice.dto.group.*;
 import kirillzhdanov.identityservice.service.GroupTagService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/auth/v1/group-tags")
@@ -114,5 +111,37 @@ public class GroupTagController {
     public ResponseEntity<Long> purgeArchive(@RequestParam(defaultValue = "90") int olderThanDays) {
         long deleted = groupTagService.purgeArchive(olderThanDays);
         return ResponseEntity.ok(deleted);
+    }
+
+    @GetMapping("/archive")
+    public ResponseEntity<java.util.List<GroupTagArchiveResponse>> listArchiveByBrand(@RequestParam Long brandId) {
+        return ResponseEntity.ok(groupTagService.listArchiveByBrand(brandId));
+    }
+
+    @GetMapping("/archive/paged")
+    public ResponseEntity<Page<GroupTagArchiveResponse>> listArchiveByBrandPaged(
+            @RequestParam Long brandId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "archivedAt,desc") String sort
+    ) {
+        String[] sortParts = sort.split(",");
+        Sort.Direction dir = sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sortParts[0]));
+        return ResponseEntity.ok(groupTagService.listArchiveByBrandPaged(brandId, pageable));
+    }
+
+    @PostMapping("/archive/{archiveId}/restore")
+    public ResponseEntity<GroupTagResponse> restoreFromArchive(
+            @PathVariable Long archiveId,
+            @RequestParam(required = false) Long targetParentId
+    ) {
+        return ResponseEntity.ok(groupTagService.restoreGroupFromArchive(archiveId, targetParentId));
+    }
+
+    @DeleteMapping("/archive/{archiveId}")
+    public ResponseEntity<Void> deleteGroupArchive(@PathVariable Long archiveId) {
+        groupTagService.deleteGroupArchive(archiveId);
+        return ResponseEntity.noContent().build();
     }
 }

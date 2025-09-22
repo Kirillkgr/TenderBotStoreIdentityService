@@ -87,6 +87,36 @@ input, select, textarea {
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--text) 65%, transparent); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: var(--input-bg-hover); }
 
+/* Ensure dropdowns and list items follow theme */
+/* Native select popup options (supported in modern browsers) */
+select option, select optgroup, .form-select option, .form-select optgroup {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Bootstrap dropdown menus */
+.dropdown-menu {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.dropdown-menu .dropdown-item {
+  color: var(--text);
+}
+
+.dropdown-menu .dropdown-item:hover, .dropdown-menu .dropdown-item:focus {
+  background-color: var(--input-bg-hover);
+  color: var(--text);
+}
+
+/* List group items */
+.list-group-item {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
 /* Cards / Surfaces */
 .card, .panel, .modal, .sheet {
   background: var(--card);

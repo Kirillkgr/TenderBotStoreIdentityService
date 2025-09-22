@@ -13,8 +13,12 @@ export const useCartStore = defineStore('cart', {
             this.loading = true;
             try {
                 const response = await cartService.getCart();
-                this.items = response.data.items;
-                this.total = response.data.total;
+                // 204 No Content or empty body -> пустая корзина
+                const data = (response && typeof response.data === 'object') ? response.data : {};
+                const items = Array.isArray(data.items) ? data.items : [];
+                const total = typeof data.total === 'number' ? data.total : 0;
+                this.items = items;
+                this.total = total;
             } catch (error) {
                 console.error('Ошибка при загрузке корзины:', error);
                 this.items = [];

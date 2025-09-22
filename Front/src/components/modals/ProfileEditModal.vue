@@ -1,53 +1,97 @@
 <template>
-  <Modal :is-modal-visible="true" @close="handleClose">
+  <Modal :is-modal-visible="true" :width="757" @close="handleClose">
     <template #header>
       <h3>Редактирование профиля</h3>
     </template>
     <template #content>
-      
-      <Form @submit.prevent="onSubmit" :validation-schema="schema" class="edit-profile-form">
-        <div class="form-group">
-          <label for="lastName">Фамилия</label>
-          <Field name="lastName" type="text" id="lastName" class="form-control" :class="{ invalid: !!errors.lastName }" placeholder="Фамилия" />
-          <ErrorMessage name="lastName" class="error-message" />
-        </div>
-        <div class="form-group">
-          <label for="firstName">Имя</label>
-          <Field name="firstName" type="text" id="firstName" class="form-control" :class="{ invalid: !!errors.firstName }" placeholder="Имя" />
-          <ErrorMessage name="firstName" class="error-message" />
-        </div>
-        <div class="form-group">
-          <label for="patronymic">Отчество</label>
-          <Field name="patronymic" type="text" id="patronymic" class="form-control" :class="{ invalid: !!errors.patronymic }" placeholder="Отчество" />
-          <ErrorMessage name="patronymic" class="error-message" />
-        </div>
-        <DateOfBirthField v-model="dobModel" />
-        <div class="form-group email-group">
-          <label for="email">Email</label>
-          <div class="email-input-wrapper">
-            <Field name="email" type="email" id="email" class="form-control" :class="{ invalid: !!errors.email, 'email-warning': emailNeedsVerification, 'email-verified': emailVerified }" placeholder="Email" @input="handleEmailChange" />
-            <span v-if="emailNeedsVerification && !showEmailCode" class="email-warning-icon" @click="sendEmailVerification">
-              ⚠️
-              <span class="email-tooltip">Подтвердите email</span>
-            </span>
-            <span v-if="emailVerified" class="email-verified-icon">✔️</span>
+      <div class="dl-layout">
+        <!-- Колонка 1: Аватар + мета -->
+        <div class="dl-col avatar-col">
+          <div class="avatar-card">
+            <div class="avatar-wrap">
+              <img
+                  :src="avatarPreview || authStore.user?.avatarUrl || placeholderAvatar"
+                  alt="avatar"
+                  class="avatar-img"
+              />
+            </div>
+            <input ref="fileInput" accept="image/*" style="display:none" type="file" @change="onAvatarSelected"/>
+            <button class="btn btn-primary w-100 mt-2" type="button" @click="triggerFile">
+              <i class="bi bi-upload me-1"></i>
+              Загрузить фото
+              <span v-if="avatarPreview" class="ok-dot" title="Выбран файл"></span>
+            </button>
+            <div class="avatar-meta">
+              <div class="meta-row"><span class="label">Создан:</span><span
+                  class="val">{{ formatDate(authStore.user?.createdAt) }}</span></div>
+              <div class="meta-row"><span class="label">Обновлён:</span><span
+                  class="val">{{ formatDate(authStore.user?.updatedAt) }}</span></div>
+            </div>
           </div>
-          <ErrorMessage name="email" class="error-message" />
         </div>
-        <div v-if="showEmailCode" class="form-group">
-          <label for="emailCode">Код подтверждения Email</label>
-          <div class="email-code-wrapper">
-            <Field name="emailCode" type="text" id="emailCode" class="form-control" :class="{ invalid: !!errors.emailCode }" placeholder="Введите код из письма" maxlength="6" @input="onEmailCodeInput" />
-            <span v-if="isVerifyingCode" class="spinner"></span>
+
+        <!-- Колонки 2 и 3: единая форма-сетка 2x4 -->
+        <Form :validation-schema="schema" class="edit-profile-form-grid" @submit.prevent="onSubmit">
+          <!-- Ряд 1 -->
+          <div class="form-item" style="grid-column: 1; grid-row: 1;">
+            <Field id="lastName" :class="{ invalid: !!errors.lastName }" class="form-control" name="lastName"
+                   placeholder="Фамилия" type="text"/>
+            <ErrorMessage class="error-message" name="lastName"/>
           </div>
-          <ErrorMessage name="emailCode" class="error-message" />
-        </div>
-        <div class="form-group">
-          <label for="phone">Телефон</label>
-          <Field name="phone" type="tel" id="phone" class="form-control" :class="{ invalid: !!errors.phone }" placeholder="+7 999 999-99-99" />
-          <ErrorMessage name="phone" class="error-message" />
-        </div>
-        <button id="save-profile-btn" type="button" class="submit-btn" style="z-index: 1"
+          <div class="form-item" style="grid-column: 2; grid-row: 1;">
+            <div class="inline-controls">
+              <Field id="email" :class="{ invalid: !!errors.email, 'email-warning': emailNeedsVerification && !emailVerifiedEffective, 'email-verified': emailVerifiedEffective }" class="form-control flex-1" name="email"
+                     placeholder="Email"
+                     type="email" @input="handleEmailChange"/>
+              <span v-if="emailVerifiedEffective" class="email-verified-icon">✔️</span>
+              <button v-if="!emailVerifiedEffective && !showEmailCode" class="btn btn-sm btn-outline-primary"
+                      title="Подтвердить email" type="button" @click="sendEmailVerification">
+                Подтв.
+              </button>
+              <Field v-if="showEmailCode && !emailVerifiedEffective" id="emailCode" class="form-control code-input" maxlength="6"
+                     name="emailCode" placeholder="Код" type="text" @input="onEmailCodeInput"/>
+              <span v-if="isVerifyingCode" class="spinner"></span>
+            </div>
+            <ErrorMessage class="error-message" name="email"/>
+          </div>
+
+          <!-- Ряд 2 -->
+          <div class="form-item" style="grid-column: 1; grid-row: 2;">
+            <Field id="firstName" :class="{ invalid: !!errors.firstName }" class="form-control" name="firstName"
+                   placeholder="Имя" type="text"/>
+            <ErrorMessage class="error-message" name="firstName"/>
+          </div>
+          <div class="form-item" style="grid-column: 2; grid-row: 2;">
+            <input :placeholder="'Логин'" :value="authStore.user?.username || ''" class="form-control" disabled
+                   type="text"/>
+          </div>
+
+          <!-- Ряд 3 -->
+          <div class="form-item" style="grid-column: 1; grid-row: 3;">
+            <Field id="patronymic" :class="{ invalid: !!errors.patronymic }" class="form-control" name="patronymic"
+                   placeholder="Отчество" type="text"/>
+            <ErrorMessage class="error-message" name="patronymic"/>
+          </div>
+          <div class="form-item" style="grid-column: 2; grid-row: 3;">
+            <Field id="phone" :class="{ invalid: !!errors.phone }" class="form-control" name="phone" placeholder="Телефон"
+                   type="tel"/>
+            <ErrorMessage class="error-message" name="phone"/>
+          </div>
+
+          <!-- Ряд 4 -->
+          <div class="form-item" style="grid-column: 1; grid-row: 4;">
+            <div class="control">
+              <DateOfBirthField v-model="dobModel" class="w-100"/>
+            </div>
+          </div>
+          <div class="form-item" style="grid-column: 2; grid-row: 4;">
+            <input :placeholder="'Роли'" :value="(authStore.user?.roles || []).join(', ')" class="form-control"
+                   disabled type="text"/>
+          </div>
+        </Form>
+      </div>
+      <div class="footer-actions">
+        <button id="save-profile-btn" class="submit-btn" type="button"
                 @click.stop="onClickSubmit"
                 @mousedown.stop.prevent="onClickSubmit"
                 @pointerdown.stop.prevent="onClickSubmit"
@@ -57,27 +101,40 @@
                 :disabled="isSaving">
           Сохранить изменения
         </button>
-      </Form>
+      </div>
     </template>
   </Modal>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
-import { Form, Field, ErrorMessage, useForm } from 'vee-validate';
+import {computed, onMounted, ref, watch} from 'vue';
+import {ErrorMessage, Field, Form, useForm} from 'vee-validate';
 import * as yup from 'yup';
 import Modal from '../Modal.vue';
 import DateOfBirthField from '../fields/DateOfBirthField.vue';
-import { useAuthStore } from '../../store/auth';
-import { useToast } from 'vue-toastification';
+import {useAuthStore} from '../../store/auth';
+import {useToast} from 'vue-toastification';
 import * as userService from '../../services/userService';
+import userIcon from '../../assets/user.svg';
 
 const emit = defineEmits(['close', 'success']);
 const authStore = useAuthStore();
+const fileInput = ref(null);
+const placeholderAvatar = userIcon;
+const avatarPreview = ref('');
+const selectedAvatarFile = ref(null);
 const toast = useToast();
 
 const LOCAL_STORAGE_KEY = 'profileEditDraft';
 const user = authStore.user || {};
+
+function formatDate(val) {
+  try {
+    return val ? new Date(val).toLocaleString() : '—';
+  } catch {
+    return '—';
+  }
+}
 
 const schema = yup.object({
   lastName: yup.string()
@@ -116,6 +173,8 @@ const { handleSubmit, submitForm, setValues, setFieldValue, values, resetForm, e
 });
 
 const isSaving = ref(false);
+const isExternalProvider = computed(() => !!(authStore.user?.oauthProvider || authStore.user?.provider || authStore.user?.external));
+const emailVerifiedEffective = computed(() => !!(emailVerified.value || authStore.user?.emailVerified || isExternalProvider.value));
 
 async function onClickSubmit(evt) {
   evt?.preventDefault?.();
@@ -148,8 +207,26 @@ async function directSave() {
       else if (!snapshot.phone.startsWith('+') && digits.length >= 11) snapshot.phone = '+' + digits;
     }
     console.log('[ProfileEdit] direct save payload', snapshot);
+    // 1) Сначала сохраняем профиль
     const { data: updated } = await userService.editProfile(snapshot);
     authStore.setUser(updated);
+    // 2) Затем, если выбран новый файл аватара — загрузим и обновим профиль
+    if (selectedAvatarFile.value) {
+      try {
+        const {data} = await userService.uploadAvatar(selectedAvatarFile.value);
+        if (data?.avatarUrl) {
+          authStore.setUser({...(authStore.user || {}), avatarUrl: data.avatarUrl});
+        } else if (data && typeof data === 'object') {
+          authStore.setUser({...(authStore.user || {}), ...data});
+        }
+      } catch (e) {
+        // Не проваливаем весь сабмит из-за ошибки загрузки аватара
+        console.warn('Avatar upload failed', e);
+      }
+      // Очистим превью после попытки загрузки
+      selectedAvatarFile.value = null;
+      avatarPreview.value = '';
+    }
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     toast.success('Профиль успешно обновлён!');
     emit('success');
@@ -275,6 +352,21 @@ onMounted(() => {
   })();
 });
 
+function triggerFile() {
+  fileInput.value?.click();
+}
+
+function onAvatarSelected(evt) {
+  const file = evt?.target?.files?.[0];
+  if (!file) return;
+  selectedAvatarFile.value = file;
+  try {
+    const url = URL.createObjectURL(file);
+    avatarPreview.value = url;
+  } catch (_) {
+  }
+}
+
 function handleClose() {
   emit('close');
 }
@@ -326,90 +418,211 @@ const onSubmit = handleSubmit(async (formData) => {
 </script>
 
 <style scoped>
+
+/* Контейнер модалки под ширину карточки профиля */
+.dl-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr;
+  gap: 12px; /* стало меньше, чтобы уместиться в 757px вместе с внутренними паддингами */
+  align-items: start;
+  max-width: 757px;
+  text-align: left;
+}
+
+.avatar-col {
+  min-width: 200px;
+}
+
+.avatar-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.avatar-wrap {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-meta {
+  margin-top: 10px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.avatar-meta .meta-row {
+  display: flex;
+  gap: 6px;
+}
+
+.avatar-meta .label {
+  min-width: 70px;
+  color: var(--muted);
+}
+
+.ok-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .edit-profile-form {
   width: 100%;
-  max-width: 320px;
-  margin: 0 auto;
+  max-width: 340px;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
+
+/* Новая форма-сетка 2x4 для симметрии полей */
+.edit-profile-form-grid {
+  grid-column: 2 / 4; /* занимать обе правые колонки */
+  display: grid;
+  grid-template-columns: 240px 240px; /* фиксированные равные колонки */
+  justify-content: space-between; /* равномерно распределить */
+  column-gap: 16px; /* меньше, чтобы вписаться */
+  row-gap: 10px;
+  align-items: start;
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inline-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-controls .form-control {
+  height: 32px;
+}
+
+.inline-controls .btn {
+  height: 32px;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.inline-controls .code-input {
+  height: 32px;
+}
+
+.code-input {
+  width: 84px;
+  text-align: center;
+}
+
+.flex-1 {
+  flex: 1 1 auto;
+}
+
+.w-100 {
+  width: 100%;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.form-control {
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid #e8e8e8;
-  background: #fff;
-  color: #000;
+
+.form-group label {
+  font-size: 0.8rem;
 }
+.form-control {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border, var(--card-border, #3a3a3a));
+  background: var(--input-bg, #2b2b2b);
+  color: var(--text, #ffffff);
+  font-size: 12px;
+  height: 32px;
+}
+
+.form-control::placeholder {
+  color: var(--muted, #bdbdbd);
+  opacity: 1;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary, #0a84ff);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #0a84ff) 25%, transparent);
+}
+
 .form-control.invalid {
   border-color: #ff6b6b;
-  box-shadow: 0 0 0 1px rgba(255,107,107,.3);
+  box-shadow: 0 0 0 1px rgba(255, 107, 107, .3);
 }
+
 .form-control.email-warning {
   border-color: #ffd600;
 }
+
 .form-control.email-verified {
   border-color: #34c759;
 }
+
 .email-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
 }
-.email-warning-icon {
-  color: #ffd600;
-  margin-left: 8px;
-  cursor: pointer;
-  position: relative;
-}
-.email-warning-icon:hover .email-tooltip {
-  display: block;
-}
-.email-tooltip {
-  display: none;
-  position: absolute;
-  left: 30px;
-  top: -5px;
-  background: #222;
-  color: #ffd600;
-  border: 1px solid #ffd600;
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 0.85em;
-  white-space: nowrap;
-  z-index: 10;
-}
+
 .email-verified-icon {
   color: #34c759;
   margin-left: 8px;
 }
+
 .spinner {
   display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 3px solid #ccc;
-  border-top: 3px solid #2980b9;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ccc;
+  border-top: 2px solid #2980b9;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-left: 10px;
+  margin-left: 8px;
 }
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+
+/* Кнопка сохранения внизу по ширине контента */
+.footer-actions {
+  margin-top: 12px;
+  max-width: 900px;
 }
-.email-code-wrapper {
-  display: flex;
-  align-items: center;
-}
+
 .error-message {
   color: #ff6b6b;
   font-size: 0.9em;
 }
+
 .submit-btn {
   width: 100%;
   padding: 14px;
@@ -421,10 +634,48 @@ const onSubmit = handleSubmit(async (formData) => {
   cursor: pointer;
   pointer-events: auto;
   position: relative;
-  z-index: 1000; /* на случай перекрытий */
+  z-index: 1000;
 }
+
 .submit-btn:hover:not(:disabled) {
   background-color: #005ecb;
   transform: translateY(-1px);
+}
+
+/* Мобильная версия: одна колонка, аватар сверху */
+@media (max-width: 768px) {
+  .dl-layout {
+    grid-template-columns: 1fr;
+    max-width: 92vw;
+  }
+
+  .edit-profile-form {
+    max-width: 100%;
+  }
+
+  .footer-actions {
+    max-width: 92vw;
+  }
+
+  .avatar-wrap {
+    width: 96px;
+    height: 96px;
+  }
+
+  .edit-profile-form-grid {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+}
+
+/* Пытаемся стилизовать возможный внутренний input компонента даты под тему */
+.control :where(input, .input) {
+  background: var(--input-bg, #2b2b2b);
+  color: var(--text, #ffffff);
+  border: 1px solid var(--input-border, var(--card-border, #3a3a3a));
+}
+
+.control :where(input, .input)::placeholder {
+  color: var(--muted, #bdbdbd);
 }
 </style>

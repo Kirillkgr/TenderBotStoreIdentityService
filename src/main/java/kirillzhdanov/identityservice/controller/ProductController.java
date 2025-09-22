@@ -2,12 +2,14 @@ package kirillzhdanov.identityservice.controller;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import kirillzhdanov.identityservice.dto.product.ProductArchiveResponse;
 import kirillzhdanov.identityservice.dto.product.ProductCreateRequest;
 import kirillzhdanov.identityservice.dto.product.ProductResponse;
 import kirillzhdanov.identityservice.dto.product.ProductUpdateRequest;
-import kirillzhdanov.identityservice.dto.product.ProductArchiveResponse;
 import kirillzhdanov.identityservice.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -116,6 +118,17 @@ public class ProductController {
     @GetMapping("/archive")
     public ResponseEntity<List<ProductArchiveResponse>> listArchiveByBrand(@RequestParam @NotNull Long brandId) {
         return ResponseEntity.ok(productService.listArchiveByBrand(brandId));
+    }
+
+    /**
+     * Пагинированный список архива по бренду
+     */
+    @GetMapping("/archive/paged")
+    public ResponseEntity<Page<ProductArchiveResponse>> listArchiveByBrandPaged(
+            @RequestParam @NotNull Long brandId,
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(productService.listArchiveByBrandPaged(brandId, pageable));
     }
 
     /**

@@ -1,27 +1,24 @@
 package kirillzhdanov.identityservice.service;
 
 import jakarta.transaction.Transactional;
-import kirillzhdanov.identityservice.dto.group.CreateGroupTagRequest;
-import kirillzhdanov.identityservice.dto.group.GroupTagResponse;
-import kirillzhdanov.identityservice.dto.group.UpdateGroupTagRequest;
-import kirillzhdanov.identityservice.dto.group.GroupTagTreeResponse;
+import kirillzhdanov.identityservice.dto.group.*;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
 import kirillzhdanov.identityservice.model.tags.GroupTagArchive;
 import kirillzhdanov.identityservice.repository.BrandRepository;
-import kirillzhdanov.identityservice.repository.GroupTagRepository;
 import kirillzhdanov.identityservice.repository.GroupTagArchiveRepository;
+import kirillzhdanov.identityservice.repository.GroupTagRepository;
 import kirillzhdanov.identityservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,7 +41,6 @@ public class GroupTagService {
             parent = groupTagRepository.findByIdAndBrand(request.getParentId(), brand)
                     .orElseThrow(() -> new ResourceNotFoundException("Parent group tag not found with id: " + request.getParentId()));
         }
-
         // Check if group tag with same name already exists under the same parent
         if (groupTagRepository.existsByBrandAndNameAndParent(brand, request.getName(), parent)) {
             throw new IllegalArgumentException("Group tag with this name already exists in the specified location");
@@ -278,7 +274,8 @@ public class GroupTagService {
             a.setBrandId(brand.getId());
             a.setParentId(gt.getParent() != null ? gt.getParent().getId() : null);
             a.setName(gt.getName());
-            a.setPath(gt.getPath());
+            // человеко-читаемый путь по названиям (Бренд/Родитель/Дочерний/...)
+            a.setPath(buildNamePath(brand, gt));
             a.setLevel(gt.getLevel());
             a.setArchivedAt(now);
             groupTagArchiveRepository.save(a);
@@ -293,6 +290,162 @@ public class GroupTagService {
         int days = olderThanDays <= 0 ? 90 : olderThanDays;
         LocalDateTime threshold = LocalDateTime.now().minusDays(days);
         return groupTagArchiveRepository.deleteByArchivedAtBefore(threshold);
+    }
+
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public List<GroupTagArchiveResponse> listArchiveByBrand(Long brandId) {
+        List<GroupTagArchive> list = groupTagArchiveRepository.findByBrandId(brandId);
+        return list.stream()
+                .sorted(Comparator.comparing(GroupTagArchive::getArchivedAt).reversed())
+                .map(a -> GroupTagArchiveResponse.builder()
+                        .id(a.getId())
+                        .originalGroupTagId(a.getOriginalGroupTagId())
+                        .brandId(a.getBrandId())
+                        .parentId(a.getParentId())
+                        .name(a.getName())
+                        .path(a.getPath())
+                        .level(a.getLevel())
+                        .archivedAt(a.getArchivedAt())
+                        .build())
+                .toList();
+    }
+
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public org.springframework.data.domain.Page<GroupTagArchiveResponse> listArchiveByBrandPaged(Long brandId, org.springframework.data.domain.Pageable pageable) {
+        var page = groupTagArchiveRepository.findByBrandId(brandId, pageable);
+        return page.map(a -> GroupTagArchiveResponse.builder()
+                .id(a.getId())
+                .originalGroupTagId(a.getOriginalGroupTagId())
+                .brandId(a.getBrandId())
+                .parentId(a.getParentId())
+                .name(a.getName())
+                .path(a.getPath())
+                .level(a.getLevel())
+                .archivedAt(a.getArchivedAt())
+                .build());
+    }
+
+    @Transactional
+    public GroupTagResponse restoreGroupFromArchive(Long archiveId, Long targetParentId) {
+        GroupTagArchive a = groupTagArchiveRepository.findById(archiveId)
+                .orElseThrow(() -> new ResourceNotFoundException("GroupTag archive not found: " + archiveId));
+
+        Brand brand = brandRepository.findById(a.getBrandId())
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + a.getBrandId()));
+
+        GroupTag parent = null;
+        Long parentIdToUse = targetParentId != null ? targetParentId : a.getParentId();
+        if (parentIdToUse != null && parentIdToUse != 0) {
+            // Если указали конкретный parentId — пытаемся найти. Если не нашли или бренд не совпадает — позже попробуем по path.
+            parent = groupTagRepository.findById(parentIdToUse)
+                    .orElse(null);
+            if (parent != null && !parent.getBrand().getId().equals(brand.getId())) {
+                parent = null;
+            }
+        }
+
+        // Если родитель не найден, сначала пробуем восстановить цепочку родителей из архива по path; если нет записей — по именам
+        if (parent == null) {
+            String path = a.getPath();
+            parent = ensureParentsArchiveFirst(brand, path);
+        }
+
+        GroupTag restored = new GroupTag(a.getName(), brand, parent);
+        restored = groupTagRepository.save(restored);
+
+        groupTagArchiveRepository.delete(a);
+        return convertToDto(restored);
+    }
+
+    /**
+     * Идём по именам внутри бренда, находя или создавая недостающие группы. Возвращает последний узел в цепочке.
+     * names: [Parent, Child, ...] — без имени бренда и без имени восстанавливаемого тега.
+     */
+    private GroupTag ensurePathByNames(Brand brand, java.util.List<String> names) {
+        GroupTag currentParent = null;
+        for (String rawName : names) {
+            String name = (rawName == null) ? "" : rawName.trim();
+            if (name.isBlank()) continue;
+            java.util.Optional<GroupTag> found = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
+            if (found.isPresent()) {
+                currentParent = found.get();
+            } else {
+                GroupTag created = new GroupTag(name, brand, currentParent);
+                created = groupTagRepository.save(created);
+                currentParent = created;
+            }
+        }
+        return currentParent;
+    }
+
+    // Восстанавливает цепочку родителей по path "/Brand/Parent/Child/" по стратегии: архив-сначала, затем имена.
+    // Проходит по родительским сегментам (без самого восстанавливаемого тега),
+    // для каждого уровня пытается: 1) найти живую группу; 2) восстановить из архива по точному пути; 3) создать по имени.
+    private GroupTag ensureParentsArchiveFirst(Brand brand, String path) {
+        if (path == null || path.isBlank()) return null;
+        String trimmed = path.trim();
+        if (trimmed.startsWith("/")) trimmed = trimmed.substring(1);
+        if (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+        if (trimmed.isBlank()) return null;
+
+        String[] parts = trimmed.split("/");
+        if (parts.length < 2) return null; // нет даже бренда
+
+        GroupTag currentParent = null;
+        StringBuilder prefix = new StringBuilder("/");
+        prefix.append(parts[0]).append("/"); // бренд
+
+        for (int i = 1; i < parts.length - 1; i++) {
+            String name = parts[i];
+            if (name == null || name.isBlank()) continue;
+            // 1) живой узел
+            java.util.Optional<GroupTag> found = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
+            if (found.isPresent()) {
+                currentParent = found.get();
+                prefix.append(name).append("/");
+                continue;
+            }
+            // 2) архивный узел по точному пути
+            prefix.append(name).append("/");
+            java.util.Optional<GroupTagArchive> archived = groupTagArchiveRepository.findByBrandIdAndPath(brand.getId(), prefix.toString());
+            if (archived.isPresent()) {
+                GroupTagArchive ga = archived.get();
+                GroupTag created = new GroupTag(ga.getName(), brand, currentParent);
+                created = groupTagRepository.save(created);
+                groupTagArchiveRepository.delete(ga);
+                currentParent = created;
+            } else {
+                // 3) создать по имени
+                GroupTag created = new GroupTag(name, brand, currentParent);
+                created = groupTagRepository.save(created);
+                currentParent = created;
+            }
+        }
+        return currentParent;
+    }
+
+    @Transactional
+    public void deleteGroupArchive(Long archiveId) {
+        GroupTagArchive a = groupTagArchiveRepository.findById(archiveId)
+                .orElseThrow(() -> new ResourceNotFoundException("GroupTag archive not found: " + archiveId));
+        groupTagArchiveRepository.delete(a);
+    }
+
+    // Формирует путь вида "/Brand/Parent/Child/" по названиям
+    private String buildNamePath(Brand brand, GroupTag leaf) {
+        java.util.LinkedList<String> parts = new java.util.LinkedList<>();
+        GroupTag cur = leaf;
+        while (cur != null) {
+            parts.addFirst(safeName(cur.getName()));
+            cur = cur.getParent();
+        }
+        parts.addFirst(safeName(brand != null ? brand.getName() : ""));
+        return "/" + String.join("/", parts) + "/";
+    }
+
+    private String safeName(String s) {
+        if (s == null) return "";
+        return s.replace("/", "-");
     }
 
     private GroupTagResponse convertToDto(GroupTag groupTag) {

@@ -19,3 +19,12 @@ export const requestEmailVerification = (email) => {
 export const verifyEmailCode = (email, code) => {
   return apiClient.patch('/user/v1/verifield/email', { email, code });
 };
+
+// POST /user/v1/avatar — загрузка аватара (FormData: file)
+export const uploadAvatar = (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return apiClient.post('/user/v1/avatar', fd, {
+    headers: {'Content-Type': 'multipart/form-data'}
+  });
+};

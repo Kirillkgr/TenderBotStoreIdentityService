@@ -8,6 +8,13 @@ html.theme-dark {
   --border: rgba(255,255,255,0.12);
   --input-bg: rgba(255,255,255,.06);
   --input-bg-hover: rgba(255,255,255,.10);
+  /* Табличные переменные */
+  --table-bg: #1a1a1d;
+  --table-text: #e6e7ea;
+  --header-bg: #242428;
+  --header-text: #e6e7ea;
+  --row-alt: #1f1f23;
+  --row-hover: #26262b;
 
   /* Совместимость с текущими переменными компонентов */
   --primary-color: #0a84ff;

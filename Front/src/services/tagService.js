@@ -1,5 +1,5 @@
 import api from './api';
-import { useAuthStore } from '@/store/auth';
+import {useAuthStore} from '@/store/auth';
 
 const API_PREFIX = '/auth/v1/group-tags';
 const PUBLIC_PREFIX = '/menu/v1/group-tags';
@@ -46,6 +46,46 @@ const handleApiError = (error, defaultMessage = 'Произошла ошибка
 };
 
 export const tagService = {
+  // Архив групп по бренду
+  async getGroupArchiveByBrand(brandId) {
+    try {
+      const response = await api.get(`${API_PREFIX}/archive`, {params: {brandId}, retryCount: 0});
+      return Array.isArray(response.data) ? response.data : (response.data?.data ?? []);
+    } catch (error) {
+      return handleApiError(error, 'Не удалось загрузить архив тегов');
+    }
+  },
+  async getGroupArchiveByBrandPaged(brandId, {page = 0, size = 25, sort = 'archivedAt,desc'} = {}) {
+    try {
+      const response = await api.get(`${API_PREFIX}/archive/paged`, {
+        params: {brandId, page, size, sort},
+        retryCount: 0
+      });
+      return response.data; // ожидаем Page DTO {content, totalElements, ...}
+    } catch (error) {
+      return handleApiError(error, 'Не удалось загрузить архив тегов (пагинация)');
+    }
+  },
+  async restoreGroupFromArchive(archiveId, targetParentId = null) {
+    try {
+      const config = targetParentId != null ? {params: {targetParentId}, retryCount: 0} : {retryCount: 0};
+      const response = await api.post(`${API_PREFIX}/archive/${archiveId}/restore`, null, config);
+      return response.data;
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        return Promise.reject(new Error('Запись архива тега не найдена (возможно, уже восстановлена или удалена). Обновите список.'));
+      }
+      return handleApiError(error, 'Не удалось восстановить тег из архива');
+    }
+  },
+  async deleteGroupArchive(archiveId) {
+    try {
+      const response = await api.delete(`${API_PREFIX}/archive/${archiveId}`, {retryCount: 0});
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'Не удалось удалить запись архива тега');
+    }
+  },
   // Создание нового тега
   async createTag(tagData) {
     try {
