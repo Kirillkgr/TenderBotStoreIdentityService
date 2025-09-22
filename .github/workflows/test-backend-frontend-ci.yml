@@ -2,9 +2,11 @@ name: Monorepo CI (Frontend + Backend)
 
 on:
   push:
-    branches: [ "**" ]
-  pull_request:
-    branches: [ "**" ]
+    branches-ignore:
+      - master
+#  pull_request:
+#    branches-ignore:
+#      - master
 
 jobs:
   changes:
