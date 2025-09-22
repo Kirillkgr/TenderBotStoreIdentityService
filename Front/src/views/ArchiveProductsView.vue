@@ -1,5 +1,5 @@
 <template>
-  <div :data-theme="theme" class="archive-page py-3">
+  <div class="archive-page py-3">
     <div class="archive-wrapper">
       <h1 class="mb-3 text-center">Архив товаров</h1>
 
@@ -30,9 +30,6 @@
           </button>
           <button :disabled="!brandId || loadingAny || rows.length===0" class="btn btn-outline-danger" @click="purge">
             Очистить
-          </button>
-          <button class="btn btn-sm btn-outline-secondary theme-btn" @click="toggleTheme">Тема:
-            {{ theme === 'dark' ? 'тёмная' : 'светлая' }}
           </button>
         </div>
       </div>
@@ -186,24 +183,7 @@ const archivedTags = ref([]);
 const loadingTags = ref(false);
 const loadingAny = ref(false);
 
-// Theme (dark/light)
-const theme = ref('dark');
-
-function applyTheme(t) {
-  theme.value = t === 'light' ? 'light' : 'dark';
-  try {
-    localStorage.setItem('archive_theme', theme.value);
-    // Применяем тему ко всей странице
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', theme.value);
-    }
-  } catch {
-  }
-}
-
-function toggleTheme() {
-  applyTheme(theme.value === 'dark' ? 'light' : 'dark');
-}
+// Локальное переключение темы удалено — используется глобальная тема (theme-light/theme-dark)
 
 // UX state
 const q = ref('');
@@ -398,13 +378,7 @@ function computePath(item) {
 onMounted(async () => {
   await loadBrands();
   // Дальше загрузка архива делается через watch(brandId)
-  try {
-    const saved = localStorage.getItem('archive_theme');
-    if (saved) applyTheme(saved);
-    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) applyTheme('light');
-    else applyTheme('dark');
-  } catch {
-  }
+  // Тема управляется глобально (см. AppHeader/main.js)
 });
 
 watch(brandId, async (v, old) => {
@@ -572,50 +546,6 @@ function refreshAll() {
   }
 }
 
-/* Theming */
-.archive-page {
-  background-color: var(--bg);
-  color: var(--text);
-  min-height: calc(100vh - 80px);
-}
-
-.archive-page .form-control, .archive-page .form-select {
-  background-color: var(--input-bg);
-  color: var(--text);
-  border-color: var(--border);
-}
-
-.archive-page .form-control::placeholder {
-  color: rgba(127, 127, 127, 0.8);
-}
-
-[data-theme='dark'] {
-  /* Нейтрально-тёмная тема без синевы */
-  --bg: #121212;
-  --text: #e5e7eb;
-  --table-bg: #1a1a1d;
-  --table-text: #e5e7eb;
-  --header-bg: #242428;
-  --header-text: #e5e7eb;
-  --row-alt: #1f1f23;
-  --row-hover: #26262b;
-  --border: #3a3a3f;
-  --input-bg: #1b1b1e;
-}
-
-[data-theme='light'] {
-  --bg: #f3f4f6;
-  --text: #111827;
-  --table-bg: #ffffff;
-  --table-text: #111827;
-  --header-bg: #e5e7eb;
-  --header-text: #111827;
-  --row-alt: #f8fafc;
-  --row-hover: rgba(37, 99, 235, 0.08);
-  --border: #cbd5e1;
-  --input-bg: #ffffff;
-}
-
 .archive-table.table-bordered, .archive-table.table-bordered > :not(caption) > * {
   border-color: var(--border) !important;
 }
@@ -629,58 +559,10 @@ function refreshAll() {
   border-right: 0 !important;
 }
 
-/* Ensure primary/danger stand out in both themes */
+/* Цвета кнопок действий (используют глобальную палитру) */
 .btn.btn-primary {
   background-color: #0d6efd;
   border-color: #0d6efd;
 }
 
-.btn.btn-danger {
-  background-color: #dc3545;
-  border-color: #dc3545;
-}
-</style>
-
-<style>
-/* Глобальная тема: распространяем на всю страницу */
-html[data-theme='dark'] {
-  --bg: #121212;
-  --text: #e5e7eb;
-  --table-bg: #1a1a1d;
-  --table-text: #e5e7eb;
-  --header-bg: #242428;
-  --header-text: #e5e7eb;
-  --row-alt: #1f1f23;
-  --row-hover: #26262b;
-  --border: #3a3a3f;
-  --input-bg: #1b1b1e;
-}
-
-html[data-theme='light'] {
-  --bg: #f3f4f6;
-  --text: #111827;
-  --table-bg: #ffffff;
-  --table-text: #111827;
-  --header-bg: #e5e7eb;
-  --header-text: #111827;
-  --row-alt: #f8fafc;
-  --row-hover: rgba(37, 99, 235, 0.08);
-  --border: #cbd5e1;
-  --input-bg: #ffffff;
-}
-
-html[data-theme], html[data-theme] body, html[data-theme] {
-  background-color: var(--bg);
-  color: var(--text);
-  min-height: 100%;
-}
-
-/* Уточняем цвет текста в таблице и заголовке таблицы, чтобы всегда был контраст */
-html[data-theme] .archive-table {
-  color: var(--table-text);
-}
-
-html[data-theme] .archive-table thead th {
-  color: var(--header-text);
-}
 </style>

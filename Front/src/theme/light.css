@@ -8,6 +8,13 @@ html.theme-light {
   --border: rgba(17,24,39,0.12);
   --input-bg: #ffffff;
   --input-bg-hover: #f3f4f6;
+  /* Табличные переменные */
+  --table-bg: #ffffff;
+  --table-text: #111827;
+  --header-bg: #e5e7eb;
+  --header-text: #111827;
+  --row-alt: #f8fafc;
+  --row-hover: rgba(17, 24, 39, 0.06);
 
   /* Совместимость с текущими переменными компонентов */
   --primary-color: #0a84ff;
