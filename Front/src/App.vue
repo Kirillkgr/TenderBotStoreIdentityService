@@ -2,9 +2,8 @@
   <div id="app">
     <AppHeader
       :is-modal-visible="isModalVisible"
-      @open-login-modal="openModal('LoginView')" 
-      @open-register-modal="openModal('RegisterView')" 
-      @open-edit-profile-modal="openModal('ProfileEditModal')"
+      @open-login-modal="openModal('LoginView')"
+      @open-register-modal="openModal('RegisterView')"
     />
     <main class="main-content">
 <!--      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>-->
@@ -25,8 +24,8 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import {computed, ref, shallowRef, watch} from 'vue';
+import {useRoute} from 'vue-router';
 import AppHeader from './components/AppHeader.vue';
 import Modal from './components/Modal.vue';
 import LoginView from './views/LoginView.vue';

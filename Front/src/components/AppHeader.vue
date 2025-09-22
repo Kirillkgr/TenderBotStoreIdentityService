@@ -55,7 +55,6 @@
         </button>
         <transition name="fade-scale">
           <div v-if="chipHover" class="user-menu" @mouseenter="chipHover = true" @mouseleave="chipHover = false">
-            <button class="user-menu__item" type="button" @click="goEditProfile">Редактировать профиль</button>
             <button class="user-menu__item" type="button" @click="goProfile">Профиль</button>
             <button class="user-menu__item user-menu__item--danger" type="button" @click="handleLogout">Выйти</button>
           </div>
@@ -97,7 +96,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['open-login-modal', 'open-register-modal', 'open-edit-profile-modal']);
+const emit = defineEmits(['open-login-modal', 'open-register-modal']);
 const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
@@ -161,10 +160,6 @@ function handleLogout() {
 
 function goProfile() {
   router.push('/profile');
-}
-
-function goEditProfile() {
-  router.push('/profile/edit');
 }
 
 function toggleMenu() {

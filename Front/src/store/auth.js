@@ -39,9 +39,19 @@ export const useAuthStore = defineStore('auth', {
                 return;
             }
 
+            // Нормализация: поддержка внешних названий аватара (google picture / generic avatar / imageUrl)
+            const normalized = {...(typeof userData === 'object' ? userData : {})};
+            if (!normalized.avatarUrl) {
+                const extAvatar = normalized.picture || normalized.avatar || normalized.imageUrl || normalized.photoURL || normalized.photoUrl;
+                if (extAvatar) normalized.avatarUrl = extAvatar;
+            }
+
             // Иначе обновляем и сохраняем
-            this.user = userData;
-            try { localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData)); } catch (_) {}
+            this.user = normalized;
+            try {
+                localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalized));
+            } catch (_) {
+            }
         },
 
         async login(credentials) {
@@ -152,6 +162,7 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const me = await authService.getCurrentUser();
                 if (me && typeof me === 'object') {
+                    // Пускаем через setUser, чтобы сработала нормализация avatarUrl
                     this.setUser(me);
                 }
             } catch (_) {
