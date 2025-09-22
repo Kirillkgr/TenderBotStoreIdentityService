@@ -41,14 +41,26 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                                         Authentication authentication) throws IOException, ServletException {
         OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
         log.info("OAuth2 success for provider=GOOGLE, sub={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
+        // Диагностика запроса
+        String host = request.getHeader("Host");
+        String xfProto = request.getHeader("X-Forwarded-Proto");
+        String xfFor = request.getHeader("X-Forwarded-For");
+        log.info("OAuth2 callback request: url={}{} host={} xfp={} xff={}",
+                request.getRequestURL(),
+                request.getQueryString() != null ? ("?" + request.getQueryString()) : "",
+                host, xfProto, xfFor);
 
         GoogleOAuth2Service.Tokens tokens = googleOAuth2Service.handleLoginOrRegister(oidcUser);
 
         // Унификация с базовой авторизацией:
         // кладём только refreshToken в HttpOnly cookie.
         // accessToken фронт получит отдельным вызовом /auth/v1/refresh после редиректа
+        log.info("Will set refreshToken cookie for domain='{}' sameSite=None maxAgeMs={}",
+                (cookieDomain == null || cookieDomain.isBlank()) ? "<default>" : cookieDomain,
+                refreshExpirationMs);
         addCookie(response, "refreshToken", tokens.refreshToken(), true, "/", true, "None", refreshExpirationMs);
 
+        log.info("Redirecting to success URL: {}", successRedirectUrl);
         response.sendRedirect(successRedirectUrl);
     }
 
