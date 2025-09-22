@@ -44,8 +44,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         GoogleOAuth2Service.Tokens tokens = googleOAuth2Service.handleLoginOrRegister(oidcUser);
 
-        // Set HttpOnly cookies for frontend to pick up via APIs
-        addCookie(response, "accessToken", tokens.accessToken(), true, "/", true, "None", accessExpirationMs);
+        // Унификация с базовой авторизацией:
+        // кладём только refreshToken в HttpOnly cookie.
+        // accessToken фронт получит отдельным вызовом /auth/v1/refresh после редиректа
         addCookie(response, "refreshToken", tokens.refreshToken(), true, "/", true, "None", refreshExpirationMs);
 
         response.sendRedirect(successRedirectUrl);

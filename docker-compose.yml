@@ -23,6 +23,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      # Domain for HttpOnly cookies set by backend (used by OAuth2 success handler)
+      APP_COOKIE_DOMAIN: "kirillkgr.ru"
 
     depends_on:
       - postgres
