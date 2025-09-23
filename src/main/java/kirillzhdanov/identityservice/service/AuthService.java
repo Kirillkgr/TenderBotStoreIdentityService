@@ -154,37 +154,22 @@ public class AuthService {
         // Создаем CustomUserDetails для включения дополнительной информации в токен
         CustomUserDetails customUserDetails = new CustomUserDetails(user);
 
-		// Генерируем новый токен доступа
-		String newAccessToken = jwtUtils.generateAccessToken(customUserDetails);
+        // 1) Отзываем старый refresh-токен (ротация)
+        tokenService.revokeToken(requestRefreshToken);
 
-		// Сохраняем новый токен доступа
-		tokenService.saveToken(newAccessToken, Token.TokenType.ACCESS, user);
+        // 2) Генерируем новые токены
+        String newAccessToken = jwtUtils.generateAccessToken(customUserDetails);
+        String newRefreshToken = jwtUtils.generateRefreshToken(customUserDetails);
 
-		// Возвращаем новый токен доступа и тот же токен обновления
-		return TokenRefreshResponse.builder()
-				.accessToken(newAccessToken)
-				.refreshToken(requestRefreshToken)
-				.build();
-	}
+        // 3) Сохраняем оба токена
+        tokenService.saveToken(newAccessToken, Token.TokenType.ACCESS, user);
+        tokenService.saveToken(newRefreshToken, Token.TokenType.REFRESH, user);
 
-    @Transactional(readOnly = true)
-    public boolean validateToken(String token) {
-        try {
-            // Проверяем, что токен не отозван и не истек в нашей БД
-            boolean isTokenInDbAndValid = tokenService.findByToken(token)
-                    .map(Token::isValid)
-                    .orElse(false);
-
-            if (!isTokenInDbAndValid) {
-                return false;
-            }
-
-            // Дополнительно проверяем подпись и срок действия самого JWT
-            return jwtUtils.validateTokenSignature(token);
-        } catch (Exception e) {
-            // Любая ошибка при парсинге или валидации означает, что токен невалиден
-            return false;
-        }
+        // 4) Возвращаем новый access и новый refresh (refresh будет установлен в HttpOnly cookie на уровне контроллера)
+        return TokenRefreshResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .build();
     }
 
     @Transactional

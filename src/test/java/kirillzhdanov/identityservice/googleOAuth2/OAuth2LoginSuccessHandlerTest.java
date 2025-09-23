@@ -58,4 +58,39 @@ public class OAuth2LoginSuccessHandlerTest {
         // Assert redirect
         assertThat(response.getRedirectedUrl()).isEqualTo("/");
     }
+
+    @Test
+    @DisplayName("OAuth2SuccessHandler: Domain и Max-Age/Expires выставляются корректно")
+    void setsCookieDomainAndMaxAge() throws ServletException, IOException {
+        GoogleOAuth2Service service = Mockito.mock(GoogleOAuth2Service.class);
+        GoogleOAuth2Service.Tokens tokens = new GoogleOAuth2Service.Tokens("access.jwt", "refresh.jwt");
+        when(service.handleLoginOrRegister(Mockito.any())).thenReturn(tokens);
+
+        OidcUser oidcUser = Mockito.mock(OidcUser.class);
+        when(oidcUser.getSubject()).thenReturn("sub-789");
+        when(oidcUser.getEmail()).thenReturn("user@example.com");
+
+        Authentication authentication = Mockito.mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(oidcUser);
+
+        OAuth2LoginSuccessHandler handler = new OAuth2LoginSuccessHandler(service);
+        // Set non-empty domain and custom expirations
+        ReflectionTestUtils.setField(handler, "successRedirectUrl", "/done");
+        ReflectionTestUtils.setField(handler, "cookieDomain", "example.com");
+        ReflectionTestUtils.setField(handler, "accessExpirationMs", 3_600_000L); // 1h
+        ReflectionTestUtils.setField(handler, "refreshExpirationMs", 2_592_000_000L); // 30d
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        handler.onAuthenticationSuccess(request, response, authentication);
+
+        String setCookieHeader = String.join("\n", response.getHeaders("Set-Cookie"));
+        // Проверяем только refreshToken (access в Set-Cookie не должен попадать по текущему дизайну)
+        assertThat(setCookieHeader).contains("refreshToken=refresh.jwt");
+        assertThat(setCookieHeader).contains("Domain=example.com");
+        assertThat(setCookieHeader).contains("Max-Age=");
+        assertThat(setCookieHeader).contains("Expires=");
+        assertThat(response.getRedirectedUrl()).isEqualTo("/done");
+    }
 }

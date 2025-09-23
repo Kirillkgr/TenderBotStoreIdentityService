@@ -65,4 +65,15 @@ public class CookieAuthIntegrationTest extends IntegrationTestBase {
                 // Assert: authenticated -> 200 OK (бизнес-логика контроллера отработает)
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @DisplayName("Cookie accessToken невалиден → защищенный эндпоинт отвечает 401")
+    void cookieAccessTokenInvalid_Unauthorized() throws Exception {
+        String body = "{\"email\":\"test@example.com\",\"code\":null}";
+        mockMvc.perform(post("/user/v1/email/verified")
+                        .cookie(new Cookie("accessToken", "invalid-or-revoked-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
 }

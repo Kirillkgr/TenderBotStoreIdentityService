@@ -115,6 +115,7 @@ public class JwtUtils {
 
 		return Jwts.builder()
 				   .setClaims(claims)
+				.setId(java.util.UUID.randomUUID().toString())
 				   .setSubject(subject)
 				   .setIssuedAt(new Date(System.currentTimeMillis()))
 				   .setExpiration(new Date(System.currentTimeMillis() + expiration))

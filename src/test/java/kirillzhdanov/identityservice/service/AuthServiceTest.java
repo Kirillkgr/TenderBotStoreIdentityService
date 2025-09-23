@@ -1,15 +1,26 @@
 package kirillzhdanov.identityservice.service;
 
 import kirillzhdanov.identityservice.dto.*;
-import kirillzhdanov.identityservice.exception.*;
-import kirillzhdanov.identityservice.model.*;
-import kirillzhdanov.identityservice.repository.*;
-import kirillzhdanov.identityservice.security.*;
-import org.junit.jupiter.api.*;
+import kirillzhdanov.identityservice.exception.BadRequestException;
+import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
+import kirillzhdanov.identityservice.exception.TokenRefreshException;
+import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.Role;
+import kirillzhdanov.identityservice.model.Token;
+import kirillzhdanov.identityservice.model.User;
+import kirillzhdanov.identityservice.repository.BrandRepository;
+import kirillzhdanov.identityservice.repository.UserRepository;
+import kirillzhdanov.identityservice.security.CustomUserDetails;
+import kirillzhdanov.identityservice.security.JwtUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -308,8 +319,9 @@ public class AuthServiceTest {
 		// Подготовка
 		when(tokenService.findByToken("refresh-token-123")).thenReturn(Optional.of(refreshToken));
 		when(jwtUtils.generateAccessToken(any(CustomUserDetails.class))).thenReturn("new-access-token-123");
-		doNothing().when(tokenService)
-				   .saveToken(anyString(), any(Token.TokenType.class), any(User.class));
+		when(jwtUtils.generateRefreshToken(any(CustomUserDetails.class))).thenReturn("new-refresh-token-456");
+		doNothing().when(tokenService).revokeToken(anyString());
+		doNothing().when(tokenService).saveToken(anyString(), any(Token.TokenType.class), any(User.class));
 
 		// Выполнение
 		TokenRefreshResponse response = authService.refreshToken(refreshRequest);
@@ -317,11 +329,16 @@ public class AuthServiceTest {
 		// Проверка
 		assertNotNull(response);
 		assertEquals("new-access-token-123", response.getAccessToken());
-		assertEquals("refresh-token-123", response.getRefreshToken());
+		assertEquals("new-refresh-token-456", response.getRefreshToken());
+
+		// Старый refresh должен быть отозван (ротация)
+		verify(tokenService).revokeToken("refresh-token-123");
 
 		verify(tokenService).findByToken("refresh-token-123");
 		verify(jwtUtils).generateAccessToken(any(CustomUserDetails.class));
+		verify(jwtUtils).generateRefreshToken(any(CustomUserDetails.class));
 		verify(tokenService).saveToken(eq("new-access-token-123"), eq(Token.TokenType.ACCESS), eq(testUser));
+		verify(tokenService).saveToken(eq("new-refresh-token-456"), eq(Token.TokenType.REFRESH), eq(testUser));
 	}
 
 	@Test

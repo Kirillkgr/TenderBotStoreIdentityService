@@ -99,6 +99,22 @@ public class AuthController {
 		}
 
 		        TokenRefreshResponse response = authService.refreshToken(new TokenRefreshRequest(refreshToken));
+
+		// Set new refresh token as HttpOnly cookie (rotation)
+		ResponseCookie.ResponseCookieBuilder rcb = ResponseCookie.from("refreshToken", response.getRefreshToken())
+				.httpOnly(true)
+				.secure(true)
+				.path("/")
+				.sameSite("None");
+		if (refreshExpirationMs > 0) {
+			long seconds = Math.max(1, refreshExpirationMs / 1000);
+			rcb.maxAge(java.time.Duration.ofSeconds(seconds));
+		}
+		if (cookieDomain != null && !cookieDomain.isBlank()) {
+			rcb.domain(cookieDomain);
+		}
+		ResponseCookie refreshCookie = rcb.build();
+
 		// Do not expose refreshToken in body (it is held in HttpOnly cookie)
 		response.setRefreshToken(null);
 
@@ -113,6 +129,7 @@ public class AuthController {
 				.build();
 
 		return ResponseEntity.ok()
+				.header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
 				.header(HttpHeaders.SET_COOKIE, jsessionCleared.toString())
 				.header(HttpHeaders.SET_COOKIE, jsessionClearedNoDomain.toString())
 				.body(response);

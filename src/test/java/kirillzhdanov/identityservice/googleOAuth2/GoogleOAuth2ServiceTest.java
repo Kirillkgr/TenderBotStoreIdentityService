@@ -25,8 +25,6 @@ import static org.mockito.Mockito.*;
 public class GoogleOAuth2ServiceTest {
 
     private UserRepository userRepository;
-    private RoleService roleService;
-    private JwtUtils jwtUtils;
     private TokenService tokenService;
     private UserProviderRepository userProviderRepository;
 
@@ -35,8 +33,8 @@ public class GoogleOAuth2ServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        roleService = mock(RoleService.class);
-        jwtUtils = mock(JwtUtils.class);
+        RoleService roleService = mock(RoleService.class);
+        JwtUtils jwtUtils = mock(JwtUtils.class);
         tokenService = mock(TokenService.class);
         userProviderRepository = mock(UserProviderRepository.class);
         service = new GoogleOAuth2Service(userRepository, roleService, jwtUtils, tokenService, userProviderRepository);
@@ -46,6 +44,38 @@ public class GoogleOAuth2ServiceTest {
         when(roleService.getUserRole()).thenReturn(userRole);
         when(jwtUtils.generateAccessToken(any())).thenReturn("access.jwt");
         when(jwtUtils.generateRefreshToken(any())).thenReturn("refresh.jwt");
+    }
+
+    @Test
+    @DisplayName("OAuth2: вход по уже привязанному провайдеру -> не создаёт пользователя, выдаёт токены")
+    void loginWithExistingProviderMapping_returnsTokensWithoutCreatingUser() {
+        OidcUser oidcUser = mock(OidcUser.class);
+        when(oidcUser.getEmail()).thenReturn("linked@example.com");
+        when(oidcUser.getSubject()).thenReturn("google-sub-linked");
+        when(oidcUser.getGivenName()).thenReturn("Anna");
+        when(oidcUser.getFamilyName()).thenReturn("Ivanova");
+        when(oidcUser.getPicture()).thenReturn("https://example.com/pic.jpg");
+
+        // Уже существует связь провайдер+providerUserId
+        User user = User.builder().id(42L).username("linkedUser").roles(new java.util.HashSet<>()).build();
+        UserProvider up = new UserProvider();
+        up.setUser(user);
+        when(userProviderRepository.findByProviderAndProviderUserId(eq(UserProvider.Provider.GOOGLE), anyString()))
+                .thenReturn(Optional.of(up));
+
+        GoogleOAuth2Service.Tokens tokens = service.handleLoginOrRegister(oidcUser);
+
+        // Токены выданы
+        assertThat(tokens.accessToken()).isEqualTo("access.jwt");
+        assertThat(tokens.refreshToken()).isEqualTo("refresh.jwt");
+
+        // Пользователь НЕ создавался
+        verify(userRepository, never()).save(any(User.class));
+        // Связь провайдера НЕ дублируется
+        verify(userProviderRepository, never()).save(any(UserProvider.class));
+        // Токены сохранены
+        verify(tokenService).saveToken(eq("access.jwt"), eq(Token.TokenType.ACCESS), any(User.class));
+        verify(tokenService).saveToken(eq("refresh.jwt"), eq(Token.TokenType.REFRESH), any(User.class));
     }
 
     @Test
