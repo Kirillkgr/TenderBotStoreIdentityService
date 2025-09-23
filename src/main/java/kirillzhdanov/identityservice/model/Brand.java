@@ -3,7 +3,8 @@ package kirillzhdanov.identityservice.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "brands")
@@ -30,5 +31,6 @@ public class Brand {
 	private String telegramBotToken;
 
 	@ManyToMany(mappedBy = "brands")
+	@Builder.Default
 	private Set<User> users = new HashSet<>();
 }
