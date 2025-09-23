@@ -109,6 +109,8 @@ public class ProductService {
                 GroupTag created = new GroupTag(ga.getName(), brand, currentParent);
                 created = groupTagRepository.save(created);
                 groupTagArchiveRepository.delete(ga);
+                // Ensure deletion is visible for subsequent reads in the same test flow
+                groupTagArchiveRepository.flush();
                 currentParent = created;
             } else {
                 // нет в архиве — прекращаем, пусть fallback по именам решит (вернём null)
