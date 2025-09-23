@@ -4,8 +4,6 @@ on:
     # Publish semver tags as releases.
     tags: [ "v*.*.*" ]
 
-  schedule:
-    - cron: "* * * * 2"
 
 
 env:
