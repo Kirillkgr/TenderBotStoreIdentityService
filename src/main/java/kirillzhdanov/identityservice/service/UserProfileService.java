@@ -1,15 +1,15 @@
 package kirillzhdanov.identityservice.service;
 
 import jakarta.transaction.Transactional;
-import kirillzhdanov.identityservice.dto.EmailVerificationRequest;
-import kirillzhdanov.identityservice.dto.EmailVerifiedResponse;
-import kirillzhdanov.identityservice.dto.UpdateUserRequest;
-import kirillzhdanov.identityservice.dto.UserResponse;
+import kirillzhdanov.identityservice.dto.*;
 import kirillzhdanov.identityservice.exception.BadRequestException;
+import kirillzhdanov.identityservice.model.StorageFile;
 import kirillzhdanov.identityservice.model.User;
+import kirillzhdanov.identityservice.repository.StorageFileRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Random;
@@ -20,6 +20,9 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
     private final MailService mailService;
+    private final MediaService mediaService;
+    private final StorageFileRepository storageFileRepository;
+    private final S3StorageService s3StorageService;
 
     @Transactional
     public EmailVerifiedResponse checkEmailVerified(String username, String email) {
@@ -108,5 +111,56 @@ public class UserProfileService {
                         .map(b -> kirillzhdanov.identityservice.dto.BrandDto.builder().id(b.getId()).name(b.getName()).build())
                         .collect(java.util.stream.Collectors.toSet()))
                 .build();
+    }
+
+    @Transactional
+    public AvatarUploadResponse uploadAvatar(String username, MultipartFile file) throws java.io.IOException {
+        if (file == null || file.isEmpty()) throw new BadRequestException("Пустой файл");
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        String userId = String.valueOf(user.getId());
+        var res = mediaService.uploadUserAvatar(userId, file.getBytes(), file.getContentType());
+        String key = res.get("key");
+
+        // upsert storage record for this user's avatar
+        StorageFile sf = storageFileRepository.findByOwnerTypeAndOwnerId("USER", user.getId())
+                .stream()
+                .filter(f -> "USER_AVATAR".equals(f.getPurpose()))
+                .findFirst()
+                .orElseGet(() -> StorageFile.builder()
+                        .ownerType("USER")
+                        .ownerId(user.getId())
+                        .purpose("USER_AVATAR")
+                        .createdAt(LocalDateTime.now())
+                        .build());
+        sf.setPath(key);
+        sf.setUpdatedAt(LocalDateTime.now());
+        storageFileRepository.save(sf);
+
+        // For privacy, expose backend endpoint as avatarUrl
+        String servedUrl = "/user/v1/avatar";
+        user.setAvatarUrl(servedUrl);
+        userRepository.save(user);
+
+        String presigned = s3StorageService.buildPresignedGetUrl(key, java.time.Duration.ofHours(12))
+                .orElse(servedUrl);
+        return AvatarUploadResponse.builder()
+                .avatarUrl(presigned)
+                .key(key)
+                .build();
+    }
+
+    @Transactional
+    public byte[] getAvatarBytes(Long userId) {
+        String key = mediaService.getUserAvatarKey(String.valueOf(userId));
+        return s3StorageService.getObjectBytes(key);
+    }
+
+    @Transactional
+    public byte[] getAvatarBytesByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        String key = mediaService.getUserAvatarKey(String.valueOf(user.getId()));
+        return s3StorageService.getObjectBytes(key);
     }
 }

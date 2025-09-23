@@ -54,6 +54,13 @@ fi
 
 echo "OAuth2 env present: GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:+***set***} GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI"
 
+# Validate S3 creds environment presence (injected by CI)
+if [ -z "$S3_ACCESS_KEY" ] || [ -z "$S3_SECRET_KEY" ]; then
+  echo "ERROR: S3 credentials are missing. Expected S3_ACCESS_KEY and S3_SECRET_KEY to be set."
+  exit 1
+fi
+echo "S3 env present: S3_ACCESS_KEY=***set*** S3_SECRET_KEY=***set***"
+
 docker-compose up -d
 
 # Remove script file

@@ -15,7 +15,8 @@
                   class="avatar-img"
               />
             </div>
-            <input ref="fileInput" accept="image/*" style="display:none" type="file" @change="onAvatarSelected"/>
+            <input id="avatarFile" ref="fileInput" accept="image/*" name="avatar" style="display:none" type="file"
+                   @change="onAvatarSelected"/>
             <button class="btn btn-primary w-100 mt-2" type="button" @click="triggerFile">
               <i class="bi bi-upload me-1"></i>
               Загрузить фото
@@ -31,25 +32,32 @@
         </div>
 
         <!-- Колонки 2 и 3: единая форма-сетка 2x4 -->
-        <Form :validation-schema="schema" class="edit-profile-form-grid" @submit.prevent="onSubmit">
+        <Form :key="formKey" :initial-values="prefillValues" :validation-schema="schema" class="edit-profile-form-grid"
+              @submit.prevent="onSubmit">
           <!-- Ряд 1 -->
           <div class="form-item" style="grid-column: 1; grid-row: 1;">
+            <label class="sr-only" for="lastName">Фамилия</label>
             <Field id="lastName" :class="{ invalid: !!errors.lastName }" class="form-control" name="lastName"
-                   placeholder="Фамилия" type="text"/>
+                   aria-label="Фамилия" autocomplete="family-name" placeholder="Фамилия" type="text"/>
             <ErrorMessage class="error-message" name="lastName"/>
           </div>
           <div class="form-item" style="grid-column: 2; grid-row: 1;">
             <div class="inline-controls">
+              <label class="sr-only" for="email">Email</label>
               <Field id="email" :class="{ invalid: !!errors.email, 'email-warning': emailNeedsVerification && !emailVerifiedEffective, 'email-verified': emailVerifiedEffective }" class="form-control flex-1" name="email"
-                     placeholder="Email"
+                     aria-label="Email" autocomplete="email" placeholder="Email"
                      type="email" @input="handleEmailChange"/>
               <span v-if="emailVerifiedEffective" class="email-verified-icon">✔️</span>
               <button v-if="!emailVerifiedEffective && !showEmailCode" class="btn btn-sm btn-outline-primary"
                       title="Подтвердить email" type="button" @click="sendEmailVerification">
                 Подтв.
               </button>
+              <label v-if="showEmailCode && !emailVerifiedEffective" class="sr-only" for="emailCode">Код
+                подтверждения</label>
               <Field v-if="showEmailCode && !emailVerifiedEffective" id="emailCode" class="form-control code-input" maxlength="6"
-                     name="emailCode" placeholder="Код" type="text" @input="onEmailCodeInput"/>
+                     aria-label="Код подтверждения" autocomplete="one-time-code" inputmode="numeric" name="emailCode"
+                     placeholder="Код"
+                     type="text" @input="onEmailCodeInput"/>
               <span v-if="isVerifyingCode" class="spinner"></span>
             </div>
             <ErrorMessage class="error-message" name="email"/>
@@ -57,36 +65,44 @@
 
           <!-- Ряд 2 -->
           <div class="form-item" style="grid-column: 1; grid-row: 2;">
+            <label class="sr-only" for="firstName">Имя</label>
             <Field id="firstName" :class="{ invalid: !!errors.firstName }" class="form-control" name="firstName"
-                   placeholder="Имя" type="text"/>
+                   aria-label="Имя" autocomplete="given-name" placeholder="Имя" type="text"/>
             <ErrorMessage class="error-message" name="firstName"/>
           </div>
           <div class="form-item" style="grid-column: 2; grid-row: 2;">
-            <input :placeholder="'Логин'" :value="authStore.user?.username || ''" class="form-control" disabled
-                   type="text"/>
+            <label class="sr-only" for="username">Логин</label>
+            <input id="username" :placeholder="'Логин'" :value="authStore.user?.username || ''" autocomplete="username"
+                   class="form-control" disabled
+                   name="username" type="text"/>
           </div>
 
           <!-- Ряд 3 -->
           <div class="form-item" style="grid-column: 1; grid-row: 3;">
+            <label class="sr-only" for="patronymic">Отчество</label>
             <Field id="patronymic" :class="{ invalid: !!errors.patronymic }" class="form-control" name="patronymic"
-                   placeholder="Отчество" type="text"/>
+                   aria-label="Отчество" autocomplete="additional-name" placeholder="Отчество" type="text"/>
             <ErrorMessage class="error-message" name="patronymic"/>
           </div>
           <div class="form-item" style="grid-column: 2; grid-row: 3;">
+            <label class="sr-only" for="phone">Телефон</label>
             <Field id="phone" :class="{ invalid: !!errors.phone }" class="form-control" name="phone" placeholder="Телефон"
-                   type="tel"/>
+                   aria-label="Телефон" autocomplete="tel" inputmode="tel" type="tel"/>
             <ErrorMessage class="error-message" name="phone"/>
           </div>
 
           <!-- Ряд 4 -->
           <div class="form-item" style="grid-column: 1; grid-row: 4;">
             <div class="control">
-              <DateOfBirthField v-model="dobModel" class="w-100"/>
+              <label class="sr-only" for="dateOfBirth">Дата рождения</label>
+              <DateOfBirthField id="dateOfBirth" v-model="dobModel" aria-label="Дата рождения" class="w-100"/>
             </div>
           </div>
           <div class="form-item" style="grid-column: 2; grid-row: 4;">
-            <input :placeholder="'Роли'" :value="(authStore.user?.roles || []).join(', ')" class="form-control"
-                   disabled type="text"/>
+            <label class="sr-only" for="roles">Роли</label>
+            <input id="roles" :placeholder="'Роли'" :value="(authStore.user?.roles || []).join(', ')" autocomplete="off"
+                   class="form-control"
+                   disabled name="roles" type="text"/>
           </div>
         </Form>
       </div>
@@ -107,7 +123,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref, watch} from 'vue';
+import {computed, nextTick, onMounted, ref, watch} from 'vue';
 import {ErrorMessage, Field, Form, useForm} from 'vee-validate';
 import * as yup from 'yup';
 import Modal from '../Modal.vue';
@@ -119,6 +135,16 @@ import userIcon from '../../assets/user.svg';
 
 const emit = defineEmits(['close', 'success']);
 const authStore = useAuthStore();
+const formKey = ref(0);
+const prefillValues = ref({
+  lastName: '',
+  firstName: '',
+  patronymic: '',
+  dateOfBirth: '',
+  email: '',
+  emailCode: '',
+  phone: ''
+});
 const fileInput = ref(null);
 const placeholderAvatar = userIcon;
 const avatarPreview = ref('');
@@ -159,6 +185,8 @@ const schema = yup.object({
     // Принимаем +79999999999, 8XXXXXXXXXX, пробелы/дефисы — нормализуем при сабмите
     .matches(/^\+?\d[\d\s\-()]{9,14}$/, 'Введите корректный телефон'),
 });
+
+// watcher будет добавлен ниже, после объявления useForm
 
 const { handleSubmit, submitForm, setValues, setFieldValue, values, resetForm, errors, validate } = useForm({
   initialValues: {
@@ -312,7 +340,7 @@ watch(values, (newVal) => {
 }, { deep: true });
 
 let listenersBound = false;
-onMounted(() => {
+onMounted(async () => {
   // Fallback: если по какой-то причине клики не доходят, подцепимся к кнопке напрямую
   try {
     const btn = document.getElementById('save-profile-btn');
@@ -333,10 +361,79 @@ onMounted(() => {
   const draft = localStorage.getItem(LOCAL_STORAGE_KEY);
   if (draft) {
     try {
-      setValues(JSON.parse(draft));
+      const parsed = JSON.parse(draft) || {};
+      // По требованию: основной источник — user_data из localStorage
+      let u = {};
+      try {
+        const rawUser = localStorage.getItem('user_data');
+        if (rawUser) u = JSON.parse(rawUser) || {};
+      } catch {
+      }
+      // если user_data нет — fallback к authStore.user
+      if (!u || Object.keys(u).length === 0) {
+        u = authStore.user || {};
+      }
+      // Сливаем черновик с профилем: пустые поля берём из user
+      const pick = (v, fallback) => (v === undefined || v === null || v === '' ? fallback : v);
+      const merged = {
+        lastName: pick(parsed.lastName, u.lastName || ''),
+        firstName: pick(parsed.firstName, u.firstName || ''),
+        patronymic: pick(parsed.patronymic, u.patronymic || ''),
+        dateOfBirth: pick(parsed.dateOfBirth, u.dateOfBirth || ''),
+        email: pick(parsed.email, u.email || ''),
+        emailCode: '',
+        phone: pick(parsed.phone, u.phone || ''),
+      };
+      prefillValues.value = merged;
+      formKey.value++;
+      await nextTick();
+      resetForm({values: merged, keepDirty: false});
+      // Форсируем проставление значений в Field, если по какой-то причине initial-values не подхватились
+      setFieldValue('lastName', merged.lastName, false);
+      setFieldValue('firstName', merged.firstName, false);
+      setFieldValue('patronymic', merged.patronymic, false);
+      setFieldValue('email', merged.email, false);
+      setFieldValue('phone', merged.phone, false);
+      setFieldValue('dateOfBirth', merged.dateOfBirth, false);
+      console.debug('[ProfileEdit] prefill from draft+user_data', merged);
       // Поле кода не показываем автоматически
       showEmailCode.value = false;
     } catch {}
+  } else {
+    // Если черновика нет — заполняем из authStore.user (локальное хранилище уже могло гидратиться)
+    let u = authStore.user || {};
+    // Фоллбек: берём профиль напрямую из localStorage, если в store его ещё нет
+    try {
+      if (!u || Object.keys(u).length === 0) {
+        const rawUser = localStorage.getItem('user_data');
+        if (rawUser) u = JSON.parse(rawUser) || {};
+      }
+    } catch {
+    }
+    if (u && Object.keys(u).length > 0) {
+      await nextTick();
+      const vals = {
+        lastName: u.lastName || '',
+        firstName: u.firstName || '',
+        patronymic: u.patronymic || '',
+        dateOfBirth: u.dateOfBirth || '',
+        email: u.email || '',
+        emailCode: '',
+        phone: u.phone || '',
+      };
+      prefillValues.value = vals;
+      formKey.value++;
+      resetForm({values: vals, keepDirty: false});
+      // Форсируем проставление значений
+      setFieldValue('lastName', vals.lastName, false);
+      setFieldValue('firstName', vals.firstName, false);
+      setFieldValue('patronymic', vals.patronymic, false);
+      setFieldValue('email', vals.email, false);
+      setFieldValue('phone', vals.phone, false);
+      setFieldValue('dateOfBirth', vals.dateOfBirth, false);
+      console.debug('[ProfileEdit] prefill from user_data/authStore', vals);
+      dobModel.value = u.dateOfBirth || '';
+    }
   }
   // Проверка статуса подтверждения email при открытии модалки
   (async () => {
@@ -418,6 +515,18 @@ const onSubmit = handleSubmit(async (formData) => {
 </script>
 
 <style scoped>
+/* Визуально скрытая подпись для соответствия label[for] и id инпутов (доступность и автозаполнение) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* Контейнер модалки под ширину карточки профиля */
 .dl-layout {

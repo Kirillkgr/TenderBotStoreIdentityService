@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Data
@@ -40,4 +41,8 @@ public class UserResponse {
 
     @JsonIgnore
     private String refreshToken;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 }

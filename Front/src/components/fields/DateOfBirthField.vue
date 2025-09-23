@@ -7,6 +7,7 @@
       v-slot="{ field, meta, errors }"
     >
       <input
+          :id="id"
         v-bind="field"
         :value="field.value"
         @input="e => { field.value = e.target.value; emit('update:modelValue', e.target.value) }"

@@ -27,6 +27,9 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      # S3 credentials (injected from CI/CD secrets)
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
       # Domain for HttpOnly cookies set by backend (used by OAuth2 success handler)
       APP_COOKIE_DOMAIN: "kirillkgr.ru"
 
