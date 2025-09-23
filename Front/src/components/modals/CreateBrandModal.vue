@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { ErrorMessage, Field, Form } from 'vee-validate';
+import {ErrorMessage, Field, Form} from 'vee-validate';
 import * as yup from 'yup';
 import Modal from '@/components/Modal.vue';
 

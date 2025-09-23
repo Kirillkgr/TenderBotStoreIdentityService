@@ -25,12 +25,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Form, Field, ErrorMessage } from 'vee-validate';
+import {ref} from 'vue';
+import {ErrorMessage, Field, Form} from 'vee-validate';
 import * as yup from 'yup';
-import { useRouter } from 'vue-router';
+import {useRouter} from 'vue-router';
 import * as orderService from '../services/orderService';
-import { useToast } from 'vue-toastification';
+import {useToast} from 'vue-toastification';
 
 const router = useRouter();
 const isSubmitting = ref(false);

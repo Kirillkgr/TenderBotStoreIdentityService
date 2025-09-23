@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import {computed, reactive, ref, watch} from 'vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

@@ -32,11 +32,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
-import { useProductStore } from '../store/product';
-import { useCartStore } from '../store/cart';
-import { useToast } from 'vue-toastification';
+import {onMounted, ref} from 'vue';
+import {useRoute} from 'vue-router';
+import {useProductStore} from '../store/product';
+import {useCartStore} from '../store/cart';
+import {useToast} from 'vue-toastification';
 
 const route = useRoute();
 const productStore = useProductStore();

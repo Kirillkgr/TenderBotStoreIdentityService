@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import {onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },

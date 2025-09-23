@@ -36,9 +36,9 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { useAuthStore } from '@/store/auth';
+import {computed, ref} from 'vue';
+import {useRoute} from 'vue-router';
+import {useAuthStore} from '@/store/auth';
 import TagManager from '@/components/tags/TagManager.vue';
 
 export default {

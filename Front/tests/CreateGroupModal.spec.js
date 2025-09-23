@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {mount} from '@vue/test-utils';
+import tagService from '@/services/tagService';
+import CreateGroupModal from '@/components/modals/CreateGroupModal.vue';
 
 vi.mock('@/services/tagService', () => ({
   default: {
@@ -18,9 +20,6 @@ vi.mock('@/store/tag', () => {
     __mocks
   };
 });
-
-import tagService from '@/services/tagService';
-import CreateGroupModal from '@/components/modals/CreateGroupModal.vue';
 
 const brands = [ { id: 1, name: 'Brand1' } ];
 

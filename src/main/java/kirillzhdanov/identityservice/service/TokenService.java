@@ -1,6 +1,7 @@
 package kirillzhdanov.identityservice.service;
 
-import kirillzhdanov.identityservice.model.*;
+import kirillzhdanov.identityservice.model.Token;
+import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.repository.TokenRepository;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

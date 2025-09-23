@@ -53,8 +53,8 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue';
-import { useTagStore } from '@/store/tag';
+import {onMounted, ref, watch} from 'vue';
+import {useTagStore} from '@/store/tag';
 import pencilIcon from '@/assets/pencil.svg';
 
 export default {

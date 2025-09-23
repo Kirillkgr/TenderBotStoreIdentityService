@@ -3,15 +3,19 @@ package kirillzhdanov.identityservice.security;
 import jakarta.servlet.http.HttpServletRequest;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.service.TokenService;
-import lombok.*;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Objects;
 
 /**
  * Класс для аутентификации пользователя с использованием JWT токена

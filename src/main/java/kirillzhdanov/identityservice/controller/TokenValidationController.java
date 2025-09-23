@@ -2,11 +2,15 @@ package kirillzhdanov.identityservice.controller;
 
 import kirillzhdanov.identityservice.dto.JwtUserDetailsResponse;
 import kirillzhdanov.identityservice.security.JwtUtils;
-import kirillzhdanov.identityservice.service.*;
+import kirillzhdanov.identityservice.service.TokenService;
+import kirillzhdanov.identityservice.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Контроллер для валидации JWT токенов.

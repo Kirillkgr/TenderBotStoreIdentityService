@@ -25,9 +25,9 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
-import { useCartStore } from '../store/cart';
-import { useToast } from 'vue-toastification';
+import {onMounted} from 'vue';
+import {useCartStore} from '../store/cart';
+import {useToast} from 'vue-toastification';
 
 const cartStore = useCartStore();
 const toast = useToast();

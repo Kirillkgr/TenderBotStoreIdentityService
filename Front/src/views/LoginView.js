@@ -1,8 +1,8 @@
-import { ref } from 'vue';
+import {ref} from 'vue';
 import * as yup from 'yup';
-import { useAuthStore } from '../store/auth';
-import { useRouter } from 'vue-router';
-import { useToast } from 'vue-toastification';
+import {useAuthStore} from '../store/auth';
+import {useRouter} from 'vue-router';
+import {useToast} from 'vue-toastification';
 
 export default {
   setup() {

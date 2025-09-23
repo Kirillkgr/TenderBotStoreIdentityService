@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {mount} from '@vue/test-utils';
+import tagService from '@/services/tagService';
+import EditGroupModal from '@/components/modals/EditGroupModal.vue';
 
 vi.mock('@/services/tagService', () => ({
   default: {
@@ -13,9 +15,6 @@ vi.mock('@/store/tag', () => ({
     fetchTagsByBrand: vi.fn().mockResolvedValue([]),
   })
 }));
-
-import tagService from '@/services/tagService';
-import EditGroupModal from '@/components/modals/EditGroupModal.vue';
 
 const brands = [ { id: 1, name: 'Brand1' } ];
 const tag = { id: 11, name: 'Child', brandId: 1, parentId: 10 };

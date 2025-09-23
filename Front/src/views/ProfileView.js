@@ -1,6 +1,6 @@
-import { onMounted, computed } from 'vue';
-import { useAuthStore } from '../store/auth';
-import { useOrderStore } from '../store/order';
+import {computed, onMounted} from 'vue';
+import {useAuthStore} from '../store/auth';
+import {useOrderStore} from '../store/order';
 import OrderListItem from '../components/OrderListItem.vue';
 
 export default {

@@ -93,12 +93,12 @@
 </template>
 
 <script setup>
-import { ErrorMessage, Field, Form } from 'vee-validate';
+import {ErrorMessage, Field, Form} from 'vee-validate';
 import * as yup from 'yup';
-import { ref, computed, onMounted, watch } from 'vue';
-import { useToast } from 'vue-toastification';
+import {computed, onMounted, ref, watch} from 'vue';
+import {useToast} from 'vue-toastification';
 import Modal from '@/components/Modal.vue';
-import { useTagStore } from '@/store/tag';
+import {useTagStore} from '@/store/tag';
 import tagService from '@/services/tagService';
 
 const props = defineProps({

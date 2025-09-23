@@ -1,6 +1,6 @@
-import { ref } from 'vue';
-import { useAuthStore } from '../store/auth';
-import { useRouter } from 'vue-router';
+import {ref} from 'vue';
+import {useAuthStore} from '../store/auth';
+import {useRouter} from 'vue-router';
 import * as yup from 'yup';
 
 export default {

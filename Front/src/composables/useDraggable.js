@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue';
+import {onUnmounted, ref} from 'vue';
 
 export function useDraggable(target) {
   const position = ref({ x: 0, y: 0 });

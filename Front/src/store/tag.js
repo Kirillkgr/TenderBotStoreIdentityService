@@ -1,5 +1,5 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import {defineStore} from 'pinia';
+import {ref} from 'vue';
 import tagService from '@/services/tagService';
 
 export const useTagStore = defineStore('tag', () => {

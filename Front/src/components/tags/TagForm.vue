@@ -73,7 +73,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue';
+import {computed, onMounted, ref, watch} from 'vue';
 
 export default {
   name: 'TagForm',

@@ -45,10 +45,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import {ref} from 'vue';
 import axios from 'axios';
-import { useAuthStore } from '@/store/auth';
-import { useToast } from 'vue-toastification';
+import {useAuthStore} from '@/store/auth';
+import {useToast} from 'vue-toastification';
 
 const env = import.meta.env;
 const toast = useToast();

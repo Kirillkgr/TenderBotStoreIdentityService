@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
-import { createPinia, setActivePinia } from 'pinia';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {mount} from '@vue/test-utils';
+import {createPinia, setActivePinia} from 'pinia';
 import ProfileEditView from '@/views/ProfileEditView.vue';
+import {useAuthStore} from '@/store/auth';
 
 // Stub ModalBase to ensure slot content is rendered in tests
 vi.mock('@/components/ui/ModalBase.vue', () => ({
@@ -46,8 +47,6 @@ vi.mock('@/services/user', () => ({
 
 // Stub toast
 vi.mock('vue-toastification', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
-
-import { useAuthStore } from '@/store/auth';
 
 const USER_STORAGE_KEY = 'user_data';
 

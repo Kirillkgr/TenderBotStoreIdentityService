@@ -25,8 +25,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { Field, ErrorMessage } from 'vee-validate';
+import {computed} from 'vue';
+import {ErrorMessage, Field} from 'vee-validate';
 
 const props = defineProps({
   id: {

@@ -1,11 +1,16 @@
 package kirillzhdanov.identityservice.service;
 
-import kirillzhdanov.identityservice.model.*;
+import kirillzhdanov.identityservice.model.Role;
+import kirillzhdanov.identityservice.model.Token;
+import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.repository.TokenRepository;
 import kirillzhdanov.identityservice.security.JwtUtils;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;

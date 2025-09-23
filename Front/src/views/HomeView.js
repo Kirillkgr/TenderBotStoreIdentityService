@@ -1,5 +1,5 @@
-import { onMounted, ref } from 'vue';
-import { useProductStore } from '../store/product';
+import {onMounted, ref} from 'vue';
+import {useProductStore} from '../store/product';
 import ProductCard from '../components/ProductCard.vue';
 
 export default {

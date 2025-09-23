@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createPinia, setActivePinia } from 'pinia';
-import { useAuthStore } from '@/store/auth';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {createPinia, setActivePinia} from 'pinia';
+import {useAuthStore} from '@/store/auth';
 
 const USER_STORAGE_KEY = 'user_data';
 

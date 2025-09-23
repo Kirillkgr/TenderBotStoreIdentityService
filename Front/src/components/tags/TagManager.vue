@@ -90,9 +90,9 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
-import { useTagStore } from '@/store/tag';
-import { useToast } from 'vue-toastification';
+import {computed, onMounted, ref} from 'vue';
+import {useTagStore} from '@/store/tag';
+import {useToast} from 'vue-toastification';
 import TagList from './TagList.vue';
 import TagForm from './TagForm.vue';
 

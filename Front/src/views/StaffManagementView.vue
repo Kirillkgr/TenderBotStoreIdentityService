@@ -113,9 +113,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { StaffApi } from '@/services/staff';
-import { useAuthStore } from '@/store/auth';
+import {computed, onMounted, reactive, ref} from 'vue';
+import {StaffApi} from '@/services/staff';
+import {useAuthStore} from '@/store/auth';
 import ModalBase from '@/components/ui/ModalBase.vue';
 import Modal from '@/components/Modal.vue';
 import UserForm from '@/components/staff/UserForm.vue';

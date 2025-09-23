@@ -1,6 +1,7 @@
 package kirillzhdanov.identityservice.service;
 
-import kirillzhdanov.identityservice.dto.*;
+import kirillzhdanov.identityservice.dto.BotRegistrationRequest;
+import kirillzhdanov.identityservice.dto.MessageResponse;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.repository.BrandRepository;

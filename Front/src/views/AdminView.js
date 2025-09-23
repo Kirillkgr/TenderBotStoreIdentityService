@@ -1,6 +1,6 @@
-import { ref, onMounted } from 'vue';
-import { getBrands, getTagGroupsByBrandId, createBrand, createGroup, createProduct } from '../services/brandService';
-import { useToast } from 'vue-toastification';
+import {onMounted, ref} from 'vue';
+import {createBrand, createGroup, createProduct, getBrands, getTagGroupsByBrandId} from '../services/brandService';
+import {useToast} from 'vue-toastification';
 
 import CreateBrandModal from '../components/modals/CreateBrandModal.vue';
 import CreateGroupModal from '../components/modals/CreateGroupModal.vue';

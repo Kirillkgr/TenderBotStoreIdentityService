@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, watch, ref, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
 import DatePicker from 'vue-datepicker-next';
 import 'vue-datepicker-next/index.css';
 

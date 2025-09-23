@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import apiClient from '../src/services/api';
+import * as productService from '../src/services/productService';
 
 vi.mock('../src/services/api', () => {
   return {
@@ -11,9 +13,6 @@ vi.mock('../src/services/api', () => {
     }
   };
 });
-
-import apiClient from '../src/services/api';
-import * as productService from '../src/services/productService';
 
 describe('productService admin endpoints', () => {
   beforeEach(() => {

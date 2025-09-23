@@ -70,12 +70,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { ErrorMessage, Field, Form } from 'vee-validate';
+import {onMounted, ref} from 'vue';
+import {ErrorMessage, Field, Form} from 'vee-validate';
 import * as yup from 'yup';
 import Modal from '@/components/Modal.vue';
-import { useToast } from 'vue-toastification';
-import { useProductStore } from '@/store/product';
+import {useToast} from 'vue-toastification';
+import {useProductStore} from '@/store/product';
 import tagService from '@/services/tagService';
 
 const props = defineProps({ 
