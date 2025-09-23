@@ -3,7 +3,8 @@ package kirillzhdanov.identityservice.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "roles")
@@ -25,6 +26,7 @@ public class Role {
 	private RoleName name;
 
 	@ManyToMany(mappedBy = "roles")
+	@Builder.Default
 	private Set<User> users = new HashSet<>();
 
 	public enum RoleName {

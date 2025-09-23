@@ -194,4 +194,34 @@ public class AuthControllerTest extends IntegrationTestBase {
         mockMvc.perform(delete("/auth/v1/logout/all/{username}", "testuser"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @DisplayName("Refresh: выполняется ротация refresh-токена, новый устанавливается в cookie, старый становится недействительным")
+    void refresh_rotates_refresh_token_and_invalidates_old() throws Exception {
+        // Arrange: register and login to obtain initial refresh cookie
+        registerAndGetResponse();
+        String credentials = Base64.getEncoder().encodeToString(("testuser:Password123!").getBytes());
+        MvcResult loginRes = mockMvc.perform(post("/auth/v1/login").header("Authorization", "Basic " + credentials))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie oldRefreshCookie = loginRes.getResponse().getCookie("refreshToken");
+        org.junit.jupiter.api.Assertions.assertNotNull(oldRefreshCookie, "refreshToken cookie must be present after login");
+
+        // Act: call refresh with old refresh cookie
+        MvcResult refreshRes = mockMvc.perform(post("/auth/v1/refresh")
+                        .cookie(oldRefreshCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken", notNullValue()))
+                .andReturn();
+
+        // Extract new refresh cookie from Set-Cookie
+        Cookie newRefreshCookie = refreshRes.getResponse().getCookie("refreshToken");
+        org.junit.jupiter.api.Assertions.assertNotNull(newRefreshCookie, "new refreshToken cookie must be set on refresh");
+        org.junit.jupiter.api.Assertions.assertNotEquals(oldRefreshCookie.getValue(), newRefreshCookie.getValue(), "refresh token must rotate");
+
+        // Assert: old refresh becomes invalid -> second refresh with the old cookie is forbidden
+        mockMvc.perform(post("/auth/v1/refresh")
+                        .cookie(oldRefreshCookie))
+                .andExpect(status().isForbidden());
+    }
 }

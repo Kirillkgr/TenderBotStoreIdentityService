@@ -152,8 +152,8 @@ public class GroupTagService {
         // 2) Move if requested (including to root when parentId = 0)
         if (request.getParentId() != null) {
             long desiredParent = request.getParentId();
-            Long currentParentId = current.getParent() != null ? current.getParent().getId() : 0L;
-            if (desiredParent != (currentParentId == null ? 0L : currentParentId)) {
+            long currentParentId = current.getParent() != null ? current.getParent().getId() : 0L;
+            if (desiredParent != currentParentId) {
                 move(groupTagId, desiredParent == 0 ? null : desiredParent);
                 current = groupTagRepository.findById(groupTagId)
                         .orElseThrow(() -> new ResourceNotFoundException("Group tag not found after move: " + groupTagId));
@@ -289,7 +289,16 @@ public class GroupTagService {
     public long purgeArchive(int olderThanDays) {
         int days = olderThanDays <= 0 ? 90 : olderThanDays;
         LocalDateTime threshold = LocalDateTime.now().minusDays(days);
-        return groupTagArchiveRepository.deleteByArchivedAtBefore(threshold);
+        // 1) Удаление явным JPQL delete
+        int deleted = groupTagArchiveRepository.deleteAllOlderThan(threshold);
+        // 2) Верификация отдельным запросом (что ничего старше порога не осталось)
+        long remaining = groupTagArchiveRepository.countByArchivedAtBefore(threshold);
+        if (remaining > 0) {
+            // Это не ошибка в большинстве БД, но оставим логическую гарантию для тестов
+            // Либо можно бросить исключение, если необходимо строгое соответствие
+            throw new IllegalStateException("Archive purge verification failed: remaining=" + remaining);
+        }
+        return deleted;
     }
 
     @Transactional(Transactional.TxType.SUPPORTS)
@@ -357,26 +366,6 @@ public class GroupTagService {
         return convertToDto(restored);
     }
 
-    /**
-     * Идём по именам внутри бренда, находя или создавая недостающие группы. Возвращает последний узел в цепочке.
-     * names: [Parent, Child, ...] — без имени бренда и без имени восстанавливаемого тега.
-     */
-    private GroupTag ensurePathByNames(Brand brand, java.util.List<String> names) {
-        GroupTag currentParent = null;
-        for (String rawName : names) {
-            String name = (rawName == null) ? "" : rawName.trim();
-            if (name.isBlank()) continue;
-            java.util.Optional<GroupTag> found = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
-            if (found.isPresent()) {
-                currentParent = found.get();
-            } else {
-                GroupTag created = new GroupTag(name, brand, currentParent);
-                created = groupTagRepository.save(created);
-                currentParent = created;
-            }
-        }
-        return currentParent;
-    }
 
     // Восстанавливает цепочку родителей по path "/Brand/Parent/Child/" по стратегии: архив-сначала, затем имена.
     // Проходит по родительским сегментам (без самого восстанавливаемого тега),
