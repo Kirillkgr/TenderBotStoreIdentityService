@@ -32,3 +32,14 @@ server:
     session:
       cookie:
         domain: ""
+
+# S3 test properties to satisfy S3StorageService placeholders during context load
+s3:
+  endpoint: http://localhost:9000
+  region: ru-central1
+  bucket: test-bucket
+  accessKey: test-access
+  secretKey: test-secret
+  publicBaseUrl: http://localhost:9000/test-bucket
+  cache:
+    maxAgeSeconds: 60

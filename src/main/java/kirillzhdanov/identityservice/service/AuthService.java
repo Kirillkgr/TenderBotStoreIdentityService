@@ -9,6 +9,7 @@ import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.repository.BrandRepository;
+import kirillzhdanov.identityservice.repository.StorageFileRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Optional;
@@ -38,13 +40,16 @@ public class AuthService {
 
 	private final RoleService roleService;
 
-	private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-	private final AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
 
-	private final JwtUtils jwtUtils;
+    private final JwtUtils jwtUtils;
 
-	private final TokenService tokenService;
+    private final TokenService tokenService;
+
+    private final StorageFileRepository storageFileRepository;
+    private final S3StorageService s3StorageService;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -117,7 +122,8 @@ public class AuthService {
         tokenService.saveToken(refreshToken, Token.TokenType.REFRESH, user);
 
         // Возвращаем ответ
-        return UserResponse.builder().id(savedUser.getId()).username(savedUser.getUsername()).firstName(savedUser.getFirstName()).lastName(savedUser.getLastName()).patronymic(savedUser.getPatronymic()).dateOfBirth(savedUser.getDateOfBirth()).email(savedUser.getEmail()).phone(savedUser.getPhone()).emailVerified(savedUser.isEmailVerified()).roles(savedUser.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())).brands(savedUser.getBrands()
+        String avatarUrl = buildPresignedAvatarUrl(savedUser);
+        return UserResponse.builder().id(savedUser.getId()).username(savedUser.getUsername()).firstName(savedUser.getFirstName()).lastName(savedUser.getLastName()).patronymic(savedUser.getPatronymic()).dateOfBirth(savedUser.getDateOfBirth()).email(savedUser.getEmail()).phone(savedUser.getPhone()).avatarUrl(avatarUrl).emailVerified(savedUser.isEmailVerified()).roles(savedUser.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())).brands(savedUser.getBrands()
                         .stream()
                         .map(brand -> BrandDto.builder()
                                 .id(brand.getId())
@@ -126,6 +132,8 @@ public class AuthService {
                         .collect(Collectors.toSet()))
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .createdAt(savedUser.getCreatedAt())
+                .updatedAt(savedUser.getUpdatedAt())
                 .build();
     }
 
@@ -209,7 +217,8 @@ public class AuthService {
         tokenService.saveToken(refreshToken, Token.TokenType.REFRESH, user);
 
         // Возвращаем UserResponse с данными пользователя и токенами
-        return UserResponse.builder().id(user.getId()).username(user.getUsername()).firstName(user.getFirstName()).lastName(user.getLastName()).patronymic(user.getPatronymic()).dateOfBirth(user.getDateOfBirth()).email(user.getEmail()).phone(user.getPhone()).emailVerified(user.isEmailVerified()).roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())).brands(user.getBrands().stream().map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet())).accessToken(accessToken).refreshToken(refreshToken).build();
+        String avatarUrl = buildPresignedAvatarUrl(user);
+        return UserResponse.builder().id(user.getId()).username(user.getUsername()).firstName(user.getFirstName()).lastName(user.getLastName()).patronymic(user.getPatronymic()).dateOfBirth(user.getDateOfBirth()).email(user.getEmail()).phone(user.getPhone()).avatarUrl(avatarUrl).emailVerified(user.isEmailVerified()).roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())).brands(user.getBrands().stream().map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet())).accessToken(accessToken).refreshToken(refreshToken).createdAt(user.getCreatedAt()).updatedAt(user.getUpdatedAt()).build();
     }
 
     @Transactional(readOnly = true)
@@ -217,6 +226,7 @@ public class AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
 
+        String avatarUrl = buildPresignedAvatarUrl(user);
         return UserResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -226,11 +236,26 @@ public class AuthService {
                 .dateOfBirth(user.getDateOfBirth())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .avatarUrl(user.getAvatarUrl())
+                .avatarUrl(avatarUrl)
                 .emailVerified(user.isEmailVerified())
                 .roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet()))
                 .brands(user.getBrands().stream().map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet()))
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
                 .build();
+    }
+
+    private String buildPresignedAvatarUrl(User user) {
+        try {
+            var files = storageFileRepository.findByOwnerTypeAndOwnerId("USER", user.getId());
+            var avatar = files.stream().filter(f -> "USER_AVATAR".equals(f.getPurpose())).findFirst();
+            if (avatar.isPresent()) {
+                return s3StorageService.buildPresignedGetUrl(avatar.get().getPath(), Duration.ofHours(12)).orElse(user.getAvatarUrl());
+            }
+            return user.getAvatarUrl();
+        } catch (Exception e) {
+            return user.getAvatarUrl();
+        }
     }
 
     // Генерирует 6-значный код подтверждения email

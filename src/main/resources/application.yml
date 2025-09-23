@@ -25,6 +25,12 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
     contexts: default,prod
 
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 
   security:
     oauth2:
@@ -66,3 +72,14 @@ address:
         - "http://localhost:5173"
         - "http://localhost:8080"
         - "http://localhost:5173/"
+
+
+s3:
+  endpoint: https://storage.yandexcloud.net
+  region: ru-central1
+  bucket: kirillkgr.ru
+  accessKey: ${S3_ACCESS_KEY:change-me}
+  secretKey: ${S3_SECRET_KEY:change-me}
+  publicBaseUrl: https://storage.yandexcloud.net/kirillkgr.ru
+  cache:
+    maxAgeSeconds: 2592000
