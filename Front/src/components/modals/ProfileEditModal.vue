@@ -32,6 +32,8 @@
         </div>
 
         <!-- Колонки 2 и 3: единая форма-сетка 2x4 -->
+        <!--noinspection JSUnresolvedVariable,JSUnresolvedReference -->
+        <!--suppress JSUnresolvedReference -->
         <Form :key="formKey" :initial-values="prefillValues" :validation-schema="schema" class="edit-profile-form-grid"
               @submit.prevent="onSubmit">
           <!-- Ряд 1 -->
@@ -126,12 +128,13 @@
 import {computed, nextTick, onMounted, ref, watch} from 'vue';
 import {ErrorMessage, Field, Form, useForm} from 'vee-validate';
 import * as yup from 'yup';
-import Modal from '../Modal.vue';
-import DateOfBirthField from '../fields/DateOfBirthField.vue';
-import {useAuthStore} from '../../store/auth';
+import Modal from '@/components/Modal.vue';
+import DateOfBirthField from '@/components/fields/DateOfBirthField.vue';
+import {useAuthStore} from '@/store/auth';
 import {useToast} from 'vue-toastification';
-import * as userService from '../../services/userService';
-import userIcon from '../../assets/user.svg';
+import {formatLocalDateTime} from '@/utils/datetime';
+import * as userService from '@/services/userService';
+import userIcon from '@/assets/user.svg';
 
 const emit = defineEmits(['close', 'success']);
 const authStore = useAuthStore();
@@ -155,11 +158,7 @@ const LOCAL_STORAGE_KEY = 'profileEditDraft';
 const user = authStore.user || {};
 
 function formatDate(val) {
-  try {
-    return val ? new Date(val).toLocaleString() : '—';
-  } catch {
-    return '—';
-  }
+  return formatLocalDateTime(val);
 }
 
 const schema = yup.object({
@@ -188,7 +187,9 @@ const schema = yup.object({
 
 // watcher будет добавлен ниже, после объявления useForm
 
-const { handleSubmit, submitForm, setValues, setFieldValue, values, resetForm, errors, validate } = useForm({
+// noinspection JSUnresolvedReference
+const {handleSubmit, setFieldValue, values, resetForm, errors} = useForm({
+  // noinspection JSUnresolvedVariable
   initialValues: {
     lastName: user.lastName || '',
     firstName: user.firstName || '',
@@ -201,6 +202,7 @@ const { handleSubmit, submitForm, setValues, setFieldValue, values, resetForm, e
 });
 
 const isSaving = ref(false);
+// noinspection JSUnresolvedReference
 const isExternalProvider = computed(() => !!(authStore.user?.oauthProvider || authStore.user?.provider || authStore.user?.external));
 const emailVerifiedEffective = computed(() => !!(emailVerified.value || authStore.user?.emailVerified || isExternalProvider.value));
 
@@ -387,13 +389,20 @@ onMounted(async () => {
       prefillValues.value = merged;
       formKey.value++;
       await nextTick();
+      // noinspection JSUnresolvedReference
       resetForm({values: merged, keepDirty: false});
       // Форсируем проставление значений в Field, если по какой-то причине initial-values не подхватились
+      // noinspection JSUnresolvedReference
       setFieldValue('lastName', merged.lastName, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('firstName', merged.firstName, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('patronymic', merged.patronymic, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('email', merged.email, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('phone', merged.phone, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('dateOfBirth', merged.dateOfBirth, false);
       console.debug('[ProfileEdit] prefill from draft+user_data', merged);
       // Поле кода не показываем автоматически
@@ -423,20 +432,28 @@ onMounted(async () => {
       };
       prefillValues.value = vals;
       formKey.value++;
+      // noinspection JSUnresolvedReference
       resetForm({values: vals, keepDirty: false});
       // Форсируем проставление значений
+      // noinspection JSUnresolvedReference
       setFieldValue('lastName', vals.lastName, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('firstName', vals.firstName, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('patronymic', vals.patronymic, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('email', vals.email, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('phone', vals.phone, false);
+      // noinspection JSUnresolvedReference
       setFieldValue('dateOfBirth', vals.dateOfBirth, false);
       console.debug('[ProfileEdit] prefill from user_data/authStore', vals);
       dobModel.value = u.dateOfBirth || '';
     }
   }
   // Проверка статуса подтверждения email при открытии модалки
-  (async () => {
+  // Fire-and-forget check; 'void' hints to IDE/linter that awaiting is intentionaly omitted
+  void (async () => {
     try {
       const emailToCheck = values.email || user.email;
       if (!emailToCheck) return;
@@ -458,8 +475,7 @@ function onAvatarSelected(evt) {
   if (!file) return;
   selectedAvatarFile.value = file;
   try {
-    const url = URL.createObjectURL(file);
-    avatarPreview.value = url;
+    avatarPreview.value = URL.createObjectURL(file);
   } catch (_) {
   }
 }
@@ -595,15 +611,6 @@ const onSubmit = handleSubmit(async (formData) => {
   vertical-align: middle;
 }
 
-.edit-profile-form {
-  width: 100%;
-  max-width: 340px;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 /* Новая форма-сетка 2x4 для симметрии полей */
 .edit-profile-form-grid {
   grid-column: 2 / 4; /* занимать обе правые колонки */
@@ -656,15 +663,6 @@ const onSubmit = handleSubmit(async (formData) => {
   width: 100%;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.form-group label {
-  font-size: 0.8rem;
-}
 .form-control {
   padding: 6px 8px;
   border-radius: 8px;
@@ -697,12 +695,6 @@ const onSubmit = handleSubmit(async (formData) => {
 
 .form-control.email-verified {
   border-color: #34c759;
-}
-
-.email-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
 }
 
 .email-verified-icon {
@@ -756,10 +748,6 @@ const onSubmit = handleSubmit(async (formData) => {
   .dl-layout {
     grid-template-columns: 1fr;
     max-width: 92vw;
-  }
-
-  .edit-profile-form {
-    max-width: 100%;
   }
 
   .footer-actions {

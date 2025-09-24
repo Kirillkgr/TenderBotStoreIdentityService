@@ -96,6 +96,20 @@ public class UserProfileService {
 
         user = userRepository.save(user);
 
+        // Сформируем avatarUrl аналогично остальным местам: пробуем получить presigned URL, иначе - служебный URL
+        String avatarUrl = user.getAvatarUrl();
+        try {
+            String key = mediaService.getUserAvatarKey(String.valueOf(user.getId()));
+            String presigned = s3StorageService
+                    .buildPresignedGetUrl(key, java.time.Duration.ofHours(12))
+                    .orElse(avatarUrl);
+            if (presigned != null) {
+                avatarUrl = presigned;
+            }
+        } catch (Exception ignored) {
+            // если ключа нет — оставляем как есть (null или "/user/v1/avatar" если ранее установлен)
+        }
+
         return UserResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -105,11 +119,14 @@ public class UserProfileService {
                 .dateOfBirth(user.getDateOfBirth())
                 .email(user.getEmail())
                 .phone(user.getPhone())
+                .avatarUrl(avatarUrl)
                 .emailVerified(user.isEmailVerified())
                 .roles(user.getRoles().stream().map(r -> r.getName().name()).collect(java.util.stream.Collectors.toSet()))
                 .brands(user.getBrands().stream()
                         .map(b -> kirillzhdanov.identityservice.dto.BrandDto.builder().id(b.getId()).name(b.getName()).build())
                         .collect(java.util.stream.Collectors.toSet()))
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
                 .build();
     }
 

@@ -19,6 +19,9 @@
       <h3 class="product-name" :title="product.name">
         {{ product.name }}
       </h3>
+      <div v-if="product.createdAt" :title="formatFull(product.createdAt)" class="meta-time">
+        {{ timeAgoStr(product.createdAt) }}
+      </div>
       <div class="price-row">
         <div class="prices">
           <template v-if="product.promoPrice && product.promoPrice < product.price">
@@ -55,6 +58,7 @@ import {defineEmits, defineProps} from 'vue';
 import {useRouter} from 'vue-router';
 import {useCartStore} from '../store/cart';
 import {useToast} from 'vue-toastification';
+import {formatLocalDateTime, timeAgo} from '@/utils/datetime';
 
 const props = defineProps({
   product: {
@@ -103,6 +107,14 @@ function formatPrice(val) {
     const s = String(val ?? '');
     return s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
+}
+
+function timeAgoStr(val) {
+  return timeAgo(val);
+}
+
+function formatFull(val) {
+  return formatLocalDateTime(val);
 }
 </script>
 
@@ -180,6 +192,12 @@ function formatPrice(val) {
   flex-grow: 1;
   background: var(--card);
   border-radius: 0 0 16px 16px;
+}
+
+.meta-time {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: -6px 0 8px 0;
 }
 
 .product-name {
