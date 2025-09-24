@@ -1,6 +1,7 @@
 package kirillzhdanov.identityservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kirillzhdanov.identityservice.config.BrandContextInterceptor;
 import kirillzhdanov.identityservice.dto.EmailVerificationRequest;
 import kirillzhdanov.identityservice.dto.EmailVerifiedResponse;
 import kirillzhdanov.identityservice.dto.UpdateUserRequest;
@@ -8,6 +9,7 @@ import kirillzhdanov.identityservice.dto.UserResponse;
 import kirillzhdanov.identityservice.security.JwtAuthenticator;
 import kirillzhdanov.identityservice.security.JwtTokenExtractor;
 import kirillzhdanov.identityservice.service.UserProfileService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -22,6 +24,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -45,15 +48,23 @@ class UserControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
+    @MockitoBean
     private UserProfileService userProfileService;
+
+    // Mock brand interceptor to avoid pulling BrandRepository and its infrastructure into @WebMvcTest slice
+    @MockitoBean
+    private BrandContextInterceptor brandContextInterceptor;
+
+    @BeforeEach
+    void allowRequestsThroughInterceptor() throws Exception {
+        // By default Mockito boolean return is false, which would block the handler chain.
+        // Allow all requests to pass through in this slice test.
+        Mockito.when(brandContextInterceptor.preHandle(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(true);
+    }
 
     @TestConfiguration
     static class TestConfig {
-        @Bean
-        UserProfileService userProfileService() {
-            return Mockito.mock(UserProfileService.class);
-        }
 
         @Bean
         JwtTokenExtractor jwtTokenExtractor() {
