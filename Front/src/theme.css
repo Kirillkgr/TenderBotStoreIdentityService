@@ -16,6 +16,7 @@
   --danger: #ef4444;
   --warning: #f59e0b;
   --input-bg: rgba(255,255,255,.06);
+  --input-border: var(--card-border);
   --input-bg-hover: rgba(255,255,255,.10);
   --overlay: rgba(0,0,0,0.55);
   --shadow-color: rgba(0,0,0,0.28);
@@ -39,6 +40,7 @@
   --danger: #dc2626;
   --warning: #f59e0b;
   --input-bg: #ffffff;
+  --input-border: var(--card-border);
   --input-bg-hover: #f3f4f6;
   --overlay: rgba(17,24,39,0.45);
   --shadow-color: rgba(0,0,0,0.16);
@@ -62,6 +64,7 @@
   --danger: #ef4444;
   --warning: #f59e0b;
   --input-bg: rgba(255,255,255,.06);
+  --input-border: var(--card-border);
   --input-bg-hover: rgba(255,255,255,.10);
   --overlay: rgba(0,0,0,0.55);
   --shadow-color: rgba(0,0,0,0.28);
