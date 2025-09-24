@@ -45,6 +45,13 @@ public class Product {
     @Column(nullable = false)
     private boolean visible = true;
 
+    // Marketing stats: interest counters
+    @Column(name = "anonymous_cart_interest")
+    private Long anonymousCartInterest;
+
+    @Column(name = "auth_cart_interest")
+    private Long authCartInterest;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -56,6 +63,8 @@ public class Product {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         updatedAt = now;
+        if (anonymousCartInterest == null) anonymousCartInterest = 0L;
+        if (authCartInterest == null) authCartInterest = 0L;
     }
 
     @PreUpdate

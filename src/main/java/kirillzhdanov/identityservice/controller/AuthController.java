@@ -5,7 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import kirillzhdanov.identityservice.dto.*;
 import kirillzhdanov.identityservice.service.AuthService;
+import kirillzhdanov.identityservice.service.MembershipService;
 import kirillzhdanov.identityservice.service.CookieService;
+import kirillzhdanov.identityservice.service.CartService;
+import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.util.Base64Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,31 +29,40 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuthController {
 
-	private final AuthService authService;
+    private final AuthService authService;
 
     private final CookieService cookieService;
+    private final MembershipService membershipService;
+    private final CartService cartService;
+    private final UserRepository userRepository;
 
-	/* Registration endpoint */
-	@PostMapping("/checkUsername")
-	public ResponseEntity<UserResponse> checkUsername(@Valid @NotEmpty @NotBlank @RequestParam String username) {
-		boolean response;
-		response = authService.checkUniqUsername(username);
-		return ResponseEntity.status(response ? 409 : 200)
-							 .build();
-	}
+    /* Registration endpoint */
+    @PostMapping("/checkUsername")
+    public ResponseEntity<UserResponse> checkUsername(@Valid @NotEmpty @NotBlank @RequestParam String username) {
+        boolean response;
+        response = authService.checkUniqUsername(username);
+        return ResponseEntity.status(response ? 409 : 200)
+                .build();
+    }
 
-	/* Convenience GET endpoint to support clients using GET for availability check */
-	@GetMapping("/checkUsername")
-	public ResponseEntity<UserResponse> checkUsernameGet(@Valid @NotEmpty @NotBlank @RequestParam String username) {
-		boolean response = authService.checkUniqUsername(username);
-		return ResponseEntity.status(response ? 409 : 200).build();
-	}
+    /* Convenience GET endpoint to support clients using GET for availability check */
+    @GetMapping("/checkUsername")
+    public ResponseEntity<UserResponse> checkUsernameGet(@Valid @NotEmpty @NotBlank @RequestParam String username) {
+        boolean response = authService.checkUniqUsername(username);
+        return ResponseEntity.status(response ? 409 : 200).build();
+    }
 
-	/* Registration endpoint */
-	@PostMapping("/register")
-	public ResponseEntity<UserResponse> registerUser(@Valid @RequestBody UserRegistrationRequest request) {
+    /* Registration endpoint */
+    @PostMapping("/register")
+    public ResponseEntity<UserResponse> registerUser(@Valid @RequestBody UserRegistrationRequest request) {
 
         UserResponse response = authService.registerUser(request);
+        try {
+            if (response != null && response.getUsername() != null) {
+                membershipService.ensureMembershipForUsernameInCurrentBrand(response.getUsername());
+            }
+        } catch (Exception ignored) {
+        }
         return ResponseEntity.status(201)
                 .body(response);
     }
@@ -58,7 +70,8 @@ public class AuthController {
     /* Login endpoint */
     @PostMapping("/login")
     public ResponseEntity<UserResponse> login(
-            @NotEmpty @NotBlank @RequestHeader("Authorization") String authHeader) {
+            @NotEmpty @NotBlank @RequestHeader("Authorization") String authHeader,
+            @CookieValue(name = "cart_token", required = false) String guestCartToken) {
 
         LoginRequest requestFromAuthHeader = Base64Utils.getUsernameAndPassword(authHeader);
         UserResponse response = authService.login(requestFromAuthHeader);
@@ -68,6 +81,23 @@ public class AuthController {
 
         // Удаляем refresh token из тела ответа
         response.setRefreshToken(null);
+
+        // Убедимся, что создано членство пользователя в текущем бренде
+        try {
+            if (response.getUsername() != null) {
+                membershipService.ensureMembershipForUsernameInCurrentBrand(response.getUsername());
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Мёрджим гостевую корзину в корзину пользователя (если есть токен)
+        try {
+            if (guestCartToken != null && !guestCartToken.isBlank() && response.getUsername() != null) {
+                userRepository.findByUsername(response.getUsername())
+                        .ifPresent(u -> cartService.mergeGuestCartToUser(u, guestCartToken));
+            }
+        } catch (Exception ignored) {
+        }
 
         // Возвращаем ответ с куки
         return ResponseEntity.ok()

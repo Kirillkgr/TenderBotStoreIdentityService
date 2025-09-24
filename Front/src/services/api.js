@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {useAuthStore} from '../store/auth';
+import {useCartStore} from '../store/cart';
 
 const DEBUG_HTTP = import.meta.env.VITE_DEBUG_HTTP === 'true';
 
@@ -43,6 +44,17 @@ apiClient.interceptors.request.use(
     const authStore = useAuthStore();
     const token = authStore.accessToken;
 
+    // Прокинем идентификаторы корзины для защиты от несоответствий scope
+    try {
+      const cartStore = useCartStore();
+      // если стор ещё не инициализирован — пробуем из localStorage
+      const scopeId = cartStore?.cartScopeId || localStorage.getItem('cart_scope_id');
+      const cartToken = cartStore?.cartToken || localStorage.getItem('cart_token');
+      if (scopeId) config.headers['X-Cart-Id'] = scopeId;
+      if (cartToken) config.headers['X-Cart-Token'] = cartToken;
+    } catch (_) {
+    }
+
     const url = config.url || '';
     const isPublicAuthEndpoint = url.startsWith('/auth/v1/login')
       || url.startsWith('/auth/v1/register')
@@ -50,6 +62,15 @@ apiClient.interceptors.request.use(
       || url.startsWith('/auth/v1/refresh');
 
     const hasBasicHeader = !!config.headers?.Authorization && /^Basic\s/i.test(config.headers.Authorization);
+
+    // Прокидываем идентификатор бренда (если выбран на фронте)
+    try {
+      const currentBrandId = localStorage.getItem('current_brand_id');
+      if (currentBrandId) {
+        config.headers['X-Brand-Id'] = currentBrandId;
+      }
+    } catch (_) {
+    }
 
     if (!isPublicAuthEndpoint && !hasBasicHeader && token) {
       config.headers.Authorization = `Bearer ${token}`;

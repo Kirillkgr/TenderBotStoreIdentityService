@@ -8,6 +8,8 @@ import CartView from '../views/CartView.vue';
 import ProductDetailView from '../views/ProductDetailView.vue';
 import CheckoutView from '../views/CheckoutView.vue';
 import AdminView from '../views/AdminView.vue';
+import AdminOrdersView from '../views/AdminOrdersView.vue';
+import AdminClientsView from '../views/AdminClientsView.vue';
 import TagsView from '../views/TagsView.vue';
 import ProfileEditView from '../views/ProfileEditView.vue';
 import StaffManagementView from '../views/StaffManagementView.vue';
@@ -73,6 +75,18 @@ const routes = [
         name: 'Admin',
         meta: { title: 'Админ панель', requiresAuth: true, requiresAdmin: true },
         component: AdminView,
+    },
+    {
+        path: '/admin/orders',
+        name: 'AdminOrders',
+        meta: {title: 'Заказы', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        component: AdminOrdersView,
+    },
+    {
+        path: '/admin/clients',
+        name: 'AdminClients',
+        meta: {title: 'Клиенты', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        component: AdminClientsView,
     },
     {
         path: '/staff',

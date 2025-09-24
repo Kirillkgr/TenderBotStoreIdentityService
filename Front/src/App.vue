@@ -4,6 +4,7 @@
       :is-modal-visible="isModalVisible"
       @open-login-modal="openModal('LoginView')"
       @open-register-modal="openModal('RegisterView')"
+      @open-mini-cart="showMiniCart = true"
     />
     <main class="main-content">
 <!--      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>-->
@@ -20,6 +21,8 @@
         <component :is="modalContent" @success="handleSuccess" />
       </template>
     </Modal>
+
+    <MiniCartModal v-model="showMiniCart" @open-login="openModal('LoginView')" @open-checkout="openCheckout"/>
   </div>
 </template>
 
@@ -31,6 +34,7 @@ import Modal from './components/Modal.vue';
 import LoginView from './views/LoginView.vue';
 import RegisterView from './views/RegisterView.vue';
 import ProfileEditModal from './components/modals/ProfileEditModal.vue';
+import MiniCartModal from './components/modals/MiniCartModal.vue';
 
 const route = useRoute();
 
@@ -41,6 +45,7 @@ const components = {
 };
 
 const isModalVisible = ref(false);
+const showMiniCart = ref(false);
 
 const pageTitle = computed(() => {
   if (isModalVisible.value && modalContent.value === ProfileEditModal) {
@@ -78,6 +83,11 @@ function closeModal() {
 
 function handleSuccess() {
   closeModal();
+}
+
+function openCheckout() {
+  // TODO: open CheckoutModal when implemented
+  showMiniCart.value = false;
 }
 watch(
   () => route.name,

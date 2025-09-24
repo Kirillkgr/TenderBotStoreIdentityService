@@ -9,3 +9,8 @@ export const placeOrder = (orderDetails) => {
 export const getOrderHistory = () => {
     return apiClient.get('/orders');
 };
+
+// Админ: получить заказы с пагинацией/фильтрами (OWNER/ADMIN)
+export const getAdminOrders = (params = {}) => {
+    return apiClient.get('/admin/v1/orders', {params});
+};

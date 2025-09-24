@@ -34,12 +34,17 @@
             to="/staff"
             class="nav-link btn-primary"
           >Управление персоналом</router-link>
-          <router-link to="/cart">Корзина ({{ cartStore.items.length }})</router-link>
+          <button class="nav-link btn-primary" type="button" @click.stop="openMiniCart">
+            Корзина ({{ cartStore.items.length }})
+          </button>
           <router-link v-if="isAdminOrOwner" to="/admin/archive">Корзина (архив)</router-link>
           <router-link v-if="isAdminOrOwner" to="/admin">Админ</router-link>
         </template>
         <template v-else>
           <button @click="openLogin" class="nav-link btn-primary">Войти</button>
+          <button class="nav-link btn-primary" type="button" @click.stop="openMiniCart">
+            Корзина ({{ cartStore.items.length }})
+          </button>
           <a href="#" @click.prevent="openRegister">Регистрация</a>
         </template>
       </div>
@@ -96,7 +101,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['open-login-modal', 'open-register-modal']);
+const emit = defineEmits(['open-login-modal', 'open-register-modal', 'open-mini-cart']);
 const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
@@ -179,6 +184,11 @@ function openLogin() {
 function openRegister() {
   emit('open-register-modal');
   isMenuOpen.value = false; // Close menu on mobile after clicking
+}
+
+function openMiniCart() {
+  emit('open-mini-cart');
+  isMenuOpen.value = false;
 }
 
 function openQr() {
