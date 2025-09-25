@@ -19,6 +19,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -76,6 +77,7 @@ public class OrderAdminServiceImpl implements OrderAdminService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<OrderDto> findOrders(Pageable pageable, String search, Long brandId, String dateFrom, String dateTo) {
         Specification<Order> spec = Specification.where(null);
 
@@ -130,6 +132,51 @@ public class OrderAdminServiceImpl implements OrderAdminService {
         return new PageImpl<>(dtos, pageable, page.getTotalElements());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderDto> findOrdersForBrands(Pageable pageable, String search, List<Long> brandIds, String dateFrom, String dateTo) {
+        Specification<Order> spec = Specification.where(null);
+
+        if (brandIds != null && !brandIds.isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.get("brand").get("id").in(brandIds));
+        } else {
+            // если список пуст — ничего не отдаём
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        // по аналогии добавим поиск и даты
+        if (StringUtils.hasText(search)) {
+            spec = spec.and((root, query, cb) -> {
+                var client = root.join("client", JoinType.LEFT);
+                var brand = root.join("brand", JoinType.LEFT);
+                String like = "%" + search.toLowerCase(Locale.ROOT) + "%";
+                Predicate byId = cb.disjunction();
+                try {
+                    long idVal = Long.parseLong(search.trim());
+                    byId = cb.equal(root.get("id"), idVal);
+                } catch (NumberFormatException ignored) {
+                }
+                Predicate byClient = cb.or(
+                        cb.like(cb.lower(client.get("username")), like),
+                        cb.like(cb.lower(client.get("firstName")), like),
+                        cb.like(cb.lower(client.get("lastName")), like)
+                );
+                Predicate byBrand = cb.like(cb.lower(brand.get("name")), like);
+                return cb.or(byId, byClient, byBrand);
+            });
+        }
+
+        LocalDateTime from = parseDateStart(dateFrom);
+        LocalDateTime to = parseDateEnd(dateTo);
+        if (from != null) spec = spec.and((root, q, cb) -> cb.greaterThanOrEqualTo(root.get("createdAt"), from));
+        if (to != null) spec = spec.and((root, q, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), to));
+
+        Page<Order> page = orderRepository.findAll(spec, pageable);
+        List<OrderDto> dtos = new ArrayList<>();
+        for (Order o : page.getContent()) dtos.add(mapOrder(o));
+        return new PageImpl<>(dtos, pageable, page.getTotalElements());
+    }
+
     private OrderDto mapOrder(Order o) {
         if (o == null) return null;
         Long clientId = Optional.ofNullable(o.getClient()).map(User::getId).orElse(null);
@@ -140,6 +187,8 @@ public class OrderAdminServiceImpl implements OrderAdminService {
             String full = (ln + " " + fn).trim();
             return full.isBlank() ? un : full;
         }).orElse(null);
+        String clientPhone = Optional.ofNullable(o.getClient()).map(User::getPhone).orElse(null);
+        String clientEmail = Optional.ofNullable(o.getClient()).map(User::getEmail).orElse(null);
         Long brandId = Optional.ofNullable(o.getBrand()).map(Brand::getId).orElse(null);
         String brandName = Optional.ofNullable(o.getBrand()).map(Brand::getName).orElse(null);
         List<OrderItemDto> items = new ArrayList<>();
@@ -156,10 +205,14 @@ public class OrderAdminServiceImpl implements OrderAdminService {
                 .id(o.getId())
                 .clientId(clientId)
                 .clientName(clientName)
+                .clientPhone(clientPhone)
+                .clientEmail(clientEmail)
                 .brandId(brandId)
                 .brandName(brandName)
+                .status(o.getStatus() != null ? o.getStatus().name() : null)
                 .total(Optional.ofNullable(o.getTotal()).orElse(BigDecimal.ZERO))
                 .createdAt(o.getCreatedAt())
+                .comment(o.getComment())
                 .items(items)
                 .build();
     }

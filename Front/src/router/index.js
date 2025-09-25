@@ -14,6 +14,7 @@ import TagsView from '../views/TagsView.vue';
 import ProfileEditView from '../views/ProfileEditView.vue';
 import StaffManagementView from '../views/StaffManagementView.vue';
 import ArchiveProductsView from '../views/ArchiveProductsView.vue';
+import MyOrdersView from '../views/MyOrdersView.vue';
 
 const routes = [
     {
@@ -69,6 +70,12 @@ const routes = [
         name: 'Checkout',
         meta: { title: 'Оформление заказа', requiresAuth: true },
         component: CheckoutView,
+    },
+    {
+        path: '/my-orders',
+        name: 'MyOrders',
+        meta: {title: 'Мои заказы', requiresAuth: true},
+        component: MyOrdersView,
     },
     {
         path: '/admin',

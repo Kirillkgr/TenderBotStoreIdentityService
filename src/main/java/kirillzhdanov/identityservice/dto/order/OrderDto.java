@@ -17,9 +17,14 @@ public class OrderDto {
     private Long id;
     private Long clientId;
     private String clientName;
+    private String clientPhone;
+    private String clientEmail;
     private Long brandId;
     private String brandName;
+    private String status;
+    private String deliveryMode;
     private BigDecimal total;
     private LocalDateTime createdAt;
+    private String comment;
     private List<OrderItemDto> items;
 }

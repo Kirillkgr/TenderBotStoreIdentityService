@@ -2,6 +2,7 @@ package kirillzhdanov.identityservice.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -32,5 +33,6 @@ public class Brand {
 
 	@ManyToMany(mappedBy = "brands")
 	@Builder.Default
+    @JsonIgnore
 	private Set<User> users = new HashSet<>();
 }

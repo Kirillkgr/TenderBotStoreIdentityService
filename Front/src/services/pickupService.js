@@ -1,3 +1,3 @@
 import apiClient from './api';
 
-export const listPickupPoints = () => apiClient.get('/public/v1/pickup-points');
+export const listPickupPoints = (brandId) => apiClient.get(`/brand/${brandId}/pickup-points`);

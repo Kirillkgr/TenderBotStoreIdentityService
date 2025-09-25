@@ -41,6 +41,7 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight
+                        .requestMatchers("/notifications/longpoll/**").authenticated()
                         .requestMatchers("/auth/v1/login")
                         .permitAll()
                         .requestMatchers("/auth/v1/register")

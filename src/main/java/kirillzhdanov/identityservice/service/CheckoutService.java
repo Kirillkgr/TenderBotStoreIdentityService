@@ -9,5 +9,6 @@ public interface CheckoutService {
                               DeliveryMode mode,
                               Long addressId,
                               Long pickupPointId,
-                              String comment);
+                              String comment,
+                              String cartToken);
 }

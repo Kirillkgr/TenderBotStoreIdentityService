@@ -35,10 +35,25 @@ public class CheckoutServiceImpl implements CheckoutService {
 
     @Override
     @Transactional
-    public Order createOrderFromCart(User user, DeliveryMode mode, Long addressId, Long pickupPointId, String comment) {
+    public Order createOrderFromCart(User user, DeliveryMode mode, Long addressId, Long pickupPointId, String comment, String cartToken) {
         if (user == null) throw new IllegalArgumentException("User is required");
         List<CartItem> items = cartRepo.findByUser_Id(user.getId());
-        if (items.isEmpty()) throw new IllegalStateException("Cart is empty");
+        if (items.isEmpty()) {
+            // Попробуем использовать гостевую корзину по cartToken
+            if (cartToken != null && !cartToken.isBlank()) {
+                List<CartItem> guest = cartRepo.findByCartToken(cartToken);
+                if (!guest.isEmpty()) {
+                    // Переносим позиции гостя пользователю
+                    for (CartItem g : guest) {
+                        g.setUser(user);
+                        g.setCartToken(null);
+                        cartRepo.save(g);
+                    }
+                    items = cartRepo.findByUser_Id(user.getId());
+                }
+            }
+            if (items.isEmpty()) throw new IllegalStateException("Cart is empty");
+        }
 
         // Бренд из первой позиции и проверим однородность
         Brand brand = items.get(0).getBrand();

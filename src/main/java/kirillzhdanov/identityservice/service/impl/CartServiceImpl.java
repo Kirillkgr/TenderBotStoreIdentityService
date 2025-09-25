@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.service.impl;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.cart.CartItem;
 import kirillzhdanov.identityservice.repository.cart.CartItemRepository;
+import kirillzhdanov.identityservice.repository.ProductRepository;
 import kirillzhdanov.identityservice.service.CartService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import java.util.*;
 public class CartServiceImpl implements CartService {
 
     private final CartItemRepository cartItemRepository;
+    private final ProductRepository productRepository;
 
     @Override
     public void mergeGuestCartToUser(User user, String cartToken) {
@@ -62,6 +64,18 @@ public class CartServiceImpl implements CartService {
                 cartItemRepository.save(g);
                 byProduct.put(g.getProduct().getId(), g);
                 log.debug("Cart merge: moved productId={} qty={}", g.getProduct().getId(), g.getQuantity());
+            }
+
+            // Зафиксируем интерес авторизованного пользователя к товару (конверсия из гостя)
+            try {
+                var p = g.getProduct();
+                if (p != null) {
+                    long inc = (g.getQuantity() == null ? 1L : Math.max(1L, g.getQuantity()));
+                    p.setAuthCartInterest((p.getAuthCartInterest() == null ? 0L : p.getAuthCartInterest()) + inc);
+                    productRepository.save(p);
+                }
+            } catch (Exception e) {
+                log.warn("Cart merge: failed to increment auth interest for productId={}", g.getProduct() != null ? g.getProduct().getId() : null, e);
             }
         }
         log.info("Cart merge complete: user={}, finalItems={} ", user.getUsername(), cartItemRepository.findByUser_Id(user.getId()).size());

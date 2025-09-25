@@ -66,7 +66,8 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  openInModal: { type: Boolean, default: false }
+  openInModal: {type: Boolean, default: false},
+  hideAddToCart: {type: Boolean, default: false}
 });
 
 const emit = defineEmits(['preview']);

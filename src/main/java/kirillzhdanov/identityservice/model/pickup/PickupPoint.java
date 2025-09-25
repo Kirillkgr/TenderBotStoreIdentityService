@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.model.pickup;
 import jakarta.persistence.*;
 import kirillzhdanov.identityservice.model.Brand;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 
@@ -20,6 +21,7 @@ public class PickupPoint {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id", nullable = false)
+    @JsonIgnore
     private Brand brand;
 
     @Column(name = "name")

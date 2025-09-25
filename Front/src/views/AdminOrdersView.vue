@@ -1,7 +1,6 @@
 <template>
   <div class="admin-page">
     <h2>Заказы</h2>
-    <p class="text-muted">Страница-заготовка. Бэкенд-API для заказов будет подключен позже.</p>
 
     <div class="toolbar">
       <input v-model="search" class="input" placeholder="Поиск (id, клиент, бренд)"/>
@@ -20,22 +19,43 @@
       <thead>
       <tr>
         <th>ID</th>
-        <th>Клиент</th>
         <th>Бренд</th>
+        <th>Клиент (ФИО)</th>
+        <th>Контакты</th>
+        <th>Комментарий</th>
         <th>Сумма</th>
+        <th>Статус</th>
         <th>Создан</th>
+        <th>Действия</th>
       </tr>
       </thead>
       <tbody>
       <tr v-for="o in paged" :key="o.id">
         <td>{{ o.id }}</td>
-        <td>{{ o.clientName || '—' }}</td>
         <td>{{ o.brandName || o.brandId || '—' }}</td>
+        <td>{{ o.clientName || '—' }}</td>
+        <td>
+          <div>{{ o.clientPhone || '—' }}</div>
+          <div v-if="o.clientEmail && !o.clientPhone" class="text-muted">{{ o.clientEmail }}</div>
+        </td>
+        <td style="max-width: 240px; word-break: break-word;">{{ o.comment || '—' }}</td>
         <td>{{ formatPrice(o.total) }} ₽</td>
+        <td>
+          <select v-model="statusDraft[o.id]" class="input" style="min-width:160px;">
+            <option v-for="st in statusesFor(o.status)" :key="st" :value="st">{{ st }}</option>
+          </select>
+          <button :disabled="statusDraft[o.id]===o.status || savingStatusId===o.id" class="btn btn-sm"
+                  @click="applyStatus(o)">
+            Сохранить
+          </button>
+        </td>
         <td>{{ formatLocalDateTime(o.createdAt) }}</td>
+        <td>
+          <button class="btn btn-sm" type="button" @click.stop="openMessage(o)">Сообщение</button>
+        </td>
       </tr>
-      <tr v-if="filtered.length === 0">
-        <td class="text-muted" colspan="5">Нет данных</td>
+      <tr v-if="(orders||[]).length === 0">
+        <td class="text-muted" colspan="9">Нет данных</td>
       </tr>
       </tbody>
     </table>
@@ -50,13 +70,18 @@
         <option :value="50">50</option>
       </select>
     </div>
+
+    <!-- Модалка отправки сообщения клиенту -->
+    <ChatModal v-if="messageModal.visible" :order="messageModal.order" role="admin" @close="closeMessage"/>
   </div>
 </template>
 
 <script setup>
-import {computed, onMounted, ref} from 'vue';
+import {computed, onMounted, onBeforeUnmount, ref, watch} from 'vue';
 import {formatLocalDateTime} from '@/utils/datetime';
-import * as orderService from '@/services/orderService';
+import orderAdminService, {ORDER_STATUSES} from '@/services/orderAdminService';
+import {getNotificationsClient} from '@/services/notifications';
+import ChatModal from '@/components/ChatModal.vue';
 
 const orders = ref([]);
 const loading = ref(false);
@@ -75,11 +100,26 @@ function formatPrice(val) {
   return new Intl.NumberFormat('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(n);
 }
 
+const savingStatusId = ref(null);
+const statusDraft = ref({}); // orderId -> status
+
+function statusesFor(current) {
+  const map = {
+    QUEUED: ['QUEUED', 'PREPARING', 'CANCELED'],
+    PREPARING: ['PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'CANCELED'],
+    READY_FOR_PICKUP: ['READY_FOR_PICKUP', 'DELIVERED', 'COMPLETED', 'CANCELED'],
+    OUT_FOR_DELIVERY: ['OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELED'],
+    DELIVERED: ['DELIVERED', 'COMPLETED'],
+    COMPLETED: ['COMPLETED'],
+    CANCELED: ['CANCELED'],
+  };
+  return map[current] || ORDER_STATUSES;
+}
+
 async function reload() {
   loading.value = true;
   error.value = '';
   try {
-    // Серверная пагинация (fallback на массив при заглушке)
     const params = {
       page: Math.max(0, (page.value || 1) - 1),
       size: pageSize.value || 10,
@@ -88,26 +128,26 @@ async function reload() {
       dateFrom: dateFrom.value || undefined,
       dateTo: dateTo.value || undefined,
     };
-    const res = await orderService.getAdminOrders(params);
+    const res = params.brandId == null
+        ? await orderAdminService.listAccessibleOrders(params.page, params.size, undefined, params.search, params.dateFrom, params.dateTo)
+        : await orderAdminService.listBrandOrders(params.brandId, params.page, params.size);
     const body = res?.data ?? {};
-    if (Array.isArray(body)) {
-      orders.value = body;
-      totalPages.value = 1;
-    } else if (Array.isArray(body.content)) {
+    if (Array.isArray(body.content)) {
       orders.value = body.content || [];
       totalPages.value = Math.max(1, Number(body.totalPages) || 1);
       // синхронизация страницы и размера, если сервер вернул другие значения
       if (typeof body.number === 'number') page.value = Number(body.number) + 1;
       if (typeof body.size === 'number') pageSize.value = Number(body.size) || pageSize.value;
-    } else if (Array.isArray(body.data)) {
-      orders.value = body.data || [];
-      totalPages.value = 1;
     } else {
       orders.value = [];
       totalPages.value = 1;
     }
+    // Инициализируем драфты статусов
+    const map = {};
+    for (const o of orders.value) map[o.id] = o.status;
+    statusDraft.value = map;
   } catch (e) {
-    error.value = 'API для заказов будет подключено позже';
+    error.value = e?.response?.data?.message || 'Не удалось загрузить заказы';
     orders.value = [];
   } finally {
     loading.value = false;
@@ -116,11 +156,49 @@ async function reload() {
 
 onMounted(reload);
 
+let unsubscribe = null;
+onMounted(() => {
+  const client = getNotificationsClient();
+  client.start();
+  unsubscribe = client.subscribe((evt) => {
+    try {
+      if (evt?.type === 'CLIENT_MESSAGE' && evt.orderId) {
+        const order = (orders.value || []).find(o => o.id === evt.orderId);
+        if (order) {
+          // Простая реакция: автооткрываем модалку отправки сообщения
+          openMessage(order);
+        }
+      } else if (evt?.type === 'ORDER_STATUS_CHANGED' && evt.orderId) {
+        // Обновим строку заказа или перезагрузим страницу
+        const idx = (orders.value || []).findIndex(o => o.id === evt.orderId);
+        if (idx >= 0) {
+          // Патчим статус локально для мгновенного UX
+          const next = [...orders.value];
+          next[idx] = {...next[idx], status: evt.newStatus};
+          orders.value = next;
+        } else {
+          // Если заказ не найден на текущей странице — можно перезагрузить
+          reload();
+        }
+      }
+    } catch (_) {
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  if (typeof unsubscribe === 'function') unsubscribe();
+});
+
 const filtered = computed(() => {
   let arr = orders.value || [];
   if (search.value) {
     const s = search.value.toLowerCase();
-    arr = arr.filter(o => String(o.id).includes(s) || String(o.clientName || '').toLowerCase().includes(s) || String(o.brandName || o.brandId || '').toLowerCase().includes(s));
+    arr = arr.filter(o => String(o.id).includes(s)
+        || String(o.clientName || '').toLowerCase().includes(s)
+        || String(o.clientPhone || '').toLowerCase().includes(s)
+        || String(o.clientEmail || '').toLowerCase().includes(s)
+        || String(o.brandName || o.brandId || '').toLowerCase().includes(s));
   }
   if (brandId.value != null && brandId.value !== '') {
     arr = arr.filter(o => Number(o.brandId) === Number(brandId.value));
@@ -163,6 +241,40 @@ function nextPage() {
     page.value += 1;
     reload();
   }
+}
+
+// Когда меняется brandId, сбрасываем на первую страницу
+watch(brandId, () => {
+  page.value = 1;
+});
+
+async function applyStatus(order) {
+  const draft = statusDraft.value[order.id];
+  if (!draft || draft === order.status) return;
+  savingStatusId.value = order.id;
+  try {
+    await orderAdminService.updateStatus(order.id, draft);
+    order.status = draft;
+  } catch (e) {
+    alert(e?.response?.status === 409 ? 'Недопустимый переход статуса' : 'Не удалось сохранить статус');
+    statusDraft.value[order.id] = order.status; // откат
+  } finally {
+    savingStatusId.value = null;
+  }
+}
+
+const messageModal = ref({visible: false, order: null});
+
+function openMessage(order) {
+  try {
+    console.log('[AdminOrders] openMessage orderId=', order?.id);
+  } catch (e) {
+  }
+  messageModal.value = {visible: true, order};
+}
+
+function closeMessage() {
+  messageModal.value.visible = false;
 }
 </script>
 
@@ -227,5 +339,38 @@ function nextPage() {
   align-items: center;
   gap: 8px;
   margin-top: 10px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal__dialog {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  width: min(600px, 96vw);
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal__body {
+  margin: 8px 0;
+}
+
+.modal__footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 </style>

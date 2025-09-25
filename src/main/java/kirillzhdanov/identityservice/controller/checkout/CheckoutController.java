@@ -10,6 +10,8 @@ import kirillzhdanov.identityservice.repository.order.OrderRepository;
 import kirillzhdanov.identityservice.service.CheckoutService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +24,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/checkout")
 @RequiredArgsConstructor
+@Slf4j
 public class CheckoutController {
 
     private final CheckoutService checkoutService;
@@ -29,14 +32,22 @@ public class CheckoutController {
     private final OrderRepository orderRepository;
 
     @PostMapping
-    public ResponseEntity<?> checkout(@RequestBody CheckoutRequest req) {
-        Optional<User> userOpt = getCurrentUser();
+    public ResponseEntity<?> checkout(@RequestBody CheckoutRequest req, HttpServletRequest request) {
+        Optional<User> userOpt = getCurrentUserWithDiagnostics(request);
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(401).body(Map.of("message", "Требуется авторизация"));
         }
         try {
             DeliveryMode mode = DeliveryMode.valueOf(req.getMode());
-            Order order = checkoutService.createOrderFromCart(userOpt.get(), mode, req.getAddressId(), req.getPickupPointId(), req.getComment());
+            String cartToken = request != null ? request.getHeader("X-Cart-Token") : null;
+            Order order = checkoutService.createOrderFromCart(
+                    userOpt.get(),
+                    mode,
+                    req.getAddressId(),
+                    req.getPickupPointId(),
+                    req.getComment(),
+                    cartToken
+            );
             return ResponseEntity.ok(order);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
@@ -49,13 +60,10 @@ public class CheckoutController {
 
     // Заказы текущего пользователя
     @GetMapping("/my")
-    public ResponseEntity<?> myOrders() {
-        Optional<User> userOpt = getCurrentUser();
+    public ResponseEntity<?> myOrders(HttpServletRequest request) {
+        Optional<User> userOpt = getCurrentUserWithDiagnostics(request);
         if (userOpt.isEmpty()) return ResponseEntity.status(401).build();
-        List<Order> orders = orderRepository.findAll() // TODO: заменить на метод findByClient_Id при наличии
-                .stream().filter(o -> o.getClient() != null && o.getClient().getId().equals(userOpt.get().getId()))
-                .sorted((a, b) -> b.getId().compareTo(a.getId()))
-                .toList();
+        List<Order> orders = orderRepository.findByClient_IdOrderByIdDesc(userOpt.get().getId());
         return ResponseEntity.ok(orders);
     }
 
@@ -77,16 +85,53 @@ public class CheckoutController {
         }
     }
 
-    private Optional<User> getCurrentUser() {
+    private Optional<User> getCurrentUserWithDiagnostics(HttpServletRequest request) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()) return Optional.empty();
-            String username = String.valueOf(auth.getPrincipal());
-            if (auth.getPrincipal() instanceof org.springframework.security.core.userdetails.User u) {
-                username = u.getUsername();
+            String authz = request != null ? request.getHeader("Authorization") : null;
+            if (auth == null) {
+                log.warn("[checkout] Authentication is null, Authorization header present? {}", authz != null);
+                return Optional.empty();
             }
-            return userRepository.findByUsername(username);
+            if (!auth.isAuthenticated()) {
+                log.warn("[checkout] Authentication is not authenticated. Principal={} AuthzPresent={} Class={}",
+                        auth.getPrincipal(), authz != null, auth.getClass().getSimpleName());
+                return Optional.empty();
+            }
+            Object principal = auth.getPrincipal();
+            String candidate = null;
+            if (principal instanceof org.springframework.security.core.userdetails.User u) {
+                candidate = u.getUsername();
+            } else if (principal instanceof String s) {
+                candidate = s;
+            } else {
+                candidate = auth.getName();
+            }
+            log.info("[checkout] Auth principalClass={}, name={}, authzPresent={}",
+                    principal != null ? principal.getClass().getSimpleName() : "null",
+                    candidate, authz != null);
+            // Пытаемся по username
+            if (candidate != null) {
+                Optional<User> byUsername = userRepository.findByUsername(candidate);
+                if (byUsername.isPresent()) return byUsername;
+                // Пытаемся по email
+                try {
+                    Optional<User> byEmail = userRepository.findByEmail(candidate);
+                    if (byEmail.isPresent()) return byEmail;
+                } catch (Exception ignored) {
+                }
+                // Пытаемся по id, если строка — число
+                try {
+                    long id = Long.parseLong(candidate);
+                    Optional<User> byId = userRepository.findById(id);
+                    if (byId.isPresent()) return byId;
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            log.warn("[checkout] User not resolved from principal='{}'", candidate);
+            return Optional.empty();
         } catch (Exception e) {
+            log.error("[checkout] Failed to resolve user: {}", e.toString());
             return Optional.empty();
         }
     }

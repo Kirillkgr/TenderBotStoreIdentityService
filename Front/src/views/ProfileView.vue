@@ -57,30 +57,37 @@
       <div v-if="orderStore.loading">Загрузка заказов...</div>
       <div v-else-if="orderStore.orders.length === 0">У вас еще нет заказов.</div>
       <div v-else>
-        <OrderListItem
-            v-for="order in orderStore.orders"
-            :key="order.id"
-            :order="order"
-        />
+        <div v-for="order in orderStore.orders" :key="order.id" class="order-row">
+          <OrderListItem :order="order" @open-message="openMessage"/>
+        </div>
       </div>
     </div>
 
     <!-- Локальная модалка редактирования профиля -->
     <ProfileEditModal v-if="showEdit" @close="showEdit = false" @success="showEdit = false"/>
+
+    <!-- Общая модалка чата -->
+    <ChatModal v-if="messageModal.visible" :order="messageModal.order" role="client" @close="closeMessage"/>
   </div>
 
 </template>
 
 <script setup>
-import {computed, onMounted, ref} from 'vue';
+import {computed, onMounted, onBeforeUnmount, ref} from 'vue';
 import {useAuthStore} from '../store/auth';
 import {useOrderStore} from '../store/order';
 import OrderListItem from '../components/OrderListItem.vue';
 import ProfileEditModal from '../components/modals/ProfileEditModal.vue';
+import orderClientService from '@/services/orderClientService';
+import {getNotificationsClient} from '@/services/notifications';
+import ChatModal from '@/components/ChatModal.vue';
 
 const authStore = useAuthStore();
 const orderStore = useOrderStore();
 const showEdit = ref(false);
+
+// Модалка чата по выбранному заказу (общий ChatModal)
+const messageModal = ref({visible: false, order: null});
 
 const formattedDateOfBirth = computed(() => {
   if (!authStore.user || !authStore.user.dateOfBirth) return '';
@@ -99,6 +106,61 @@ function formatDate(val) {
 onMounted(() => {
   orderStore.fetchOrders();
 });
+
+// Подписка на события long-poll: сообщения курьера и смена статуса заказа
+let unsubscribe = null;
+onMounted(() => {
+  const client = getNotificationsClient();
+  client.start();
+  unsubscribe = client.subscribe((evt) => {
+    try {
+      if (evt?.type === 'COURIER_MESSAGE' && evt.orderId) {
+        // Откроем модалку для соответствующего заказа, если он активен
+        const order = (orderStore.orders || []).find(o => o.id === evt.orderId);
+        if (order && isActive(order.status)) {
+          openMessage(order);
+        }
+      } else if (evt?.type === 'ORDER_STATUS_CHANGED' && evt.orderId) {
+        // Обновим список заказов, чтобы отразить новый статус
+        orderStore.fetchOrders();
+      }
+    } catch (_) {
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  if (typeof unsubscribe === 'function') unsubscribe();
+});
+
+function isActive(status) {
+  return status !== 'COMPLETED' && status !== 'CANCELED';
+}
+
+function openMessage(order) {
+  messageModal.value = {visible: true, order, text: '', error: ''};
+}
+
+function closeMessage() {
+  messageModal.value.visible = false;
+}
+
+async function sendMessage() {
+  const {order, text} = messageModal.value;
+  if (!order || !text || !text.trim()) {
+    messageModal.value.error = 'Введите сообщение';
+    return;
+  }
+  sending.value = true;
+  try {
+    await orderClientService.sendMessage(order.id, text.trim());
+    closeMessage();
+  } catch (e) {
+    messageModal.value.error = 'Не удалось отправить сообщение';
+  } finally {
+    sending.value = false;
+  }
+}
 </script>
 
 <style scoped>
