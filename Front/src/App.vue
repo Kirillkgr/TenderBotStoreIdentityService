@@ -4,6 +4,7 @@
       :is-modal-visible="isModalVisible"
       @open-login-modal="openModal('LoginView')"
       @open-register-modal="openModal('RegisterView')"
+      @open-mini-cart="showMiniCart = true"
     />
     <main class="main-content">
 <!--      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>-->
@@ -20,27 +21,36 @@
         <component :is="modalContent" @success="handleSuccess" />
       </template>
     </Modal>
+
+    <MiniCartModal v-model="showMiniCart" @open-login="openModal('LoginView')" @open-checkout="openCheckout"/>
   </div>
 </template>
 
 <script setup>
-import {computed, ref, shallowRef, watch} from 'vue';
+import {computed, ref, shallowRef, watch, onMounted} from 'vue';
 import {useRoute} from 'vue-router';
 import AppHeader from './components/AppHeader.vue';
 import Modal from './components/Modal.vue';
 import LoginView from './views/LoginView.vue';
 import RegisterView from './views/RegisterView.vue';
 import ProfileEditModal from './components/modals/ProfileEditModal.vue';
+import CheckoutModal from './components/modals/CheckoutModal.vue';
+import MiniCartModal from './components/modals/MiniCartModal.vue';
+import {getNotificationsClient} from './services/notifications';
+import {useAuthStore} from './store/auth';
 
 const route = useRoute();
+const authStore = useAuthStore();
 
 const components = {
   LoginView,
   RegisterView,
   ProfileEditModal
+  , CheckoutModal
 };
 
 const isModalVisible = ref(false);
+const showMiniCart = ref(false);
 
 const pageTitle = computed(() => {
   if (isModalVisible.value && modalContent.value === ProfileEditModal) {
@@ -79,6 +89,11 @@ function closeModal() {
 function handleSuccess() {
   closeModal();
 }
+
+function openCheckout() {
+  showMiniCart.value = false;
+  openModal('CheckoutModal');
+}
 watch(
   () => route.name,
   () => {
@@ -86,6 +101,33 @@ watch(
   },
   { immediate: true }
 );
+
+// Автозапуск long-poll уведомлений для авторизованных пользователей
+// ВАЖНО: стартуем ТОЛЬКО когда есть и isAuthenticated, и accessToken,
+// чтобы исключить 401 на /notifications/longpoll во время логина.
+watch(
+    () => ({isAuth: authStore.isAuthenticated, token: authStore.accessToken}),
+    ({isAuth, token}) => {
+      const client = getNotificationsClient();
+      if (!isAuth || !token) {
+        client.stop();
+        return;
+      }
+      client.start();
+    },
+    {immediate: true, deep: false}
+);
+
+// Один раз пытаемся восстановить сессию при загрузке приложения,
+// чтобы accessToken появился до старта long-poll
+onMounted(async () => {
+  try {
+    if (authStore.isAuthenticated && !authStore.accessToken) {
+      await authStore.restoreSession();
+    }
+  } catch (_) {
+  }
+});
 </script>
 
 <style>

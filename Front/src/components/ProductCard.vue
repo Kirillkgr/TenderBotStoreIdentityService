@@ -56,7 +56,8 @@
 <script setup>
 import {defineEmits, defineProps} from 'vue';
 import {useRouter} from 'vue-router';
-import {useCartStore} from '../store/cart';
+import {useCartStore} from '@/store/cart';
+import {useAuthStore} from '@/store/auth';
 import {useToast} from 'vue-toastification';
 import {formatLocalDateTime, timeAgo} from '@/utils/datetime';
 
@@ -65,7 +66,8 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  openInModal: { type: Boolean, default: false }
+  openInModal: {type: Boolean, default: false},
+  hideAddToCart: {type: Boolean, default: false}
 });
 
 const emit = defineEmits(['preview']);
@@ -74,6 +76,7 @@ const FALLBACK_IMG = 'https://img1.reactor.cc/pics/post/mlp-neuroart-mlp-art-my-
 
 const router = useRouter();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const toast = useToast();
 
 function handleClick() {
@@ -90,8 +93,26 @@ function handleImageError() {
 
 async function addToCart() {
   try {
-    await cartStore.addItem(props.product.id, 1);
+    let result = await cartStore.addProduct(props.product, 1);
+    if (result?.conflict) {
+      const ok = window.confirm('В корзине уже есть товары другого бренда. Очистить корзину и добавить этот товар?');
+      if (ok) {
+        await cartStore.clearServerCart();
+        result = await cartStore.addProduct(props.product, 1);
+        toast.info('Корзина очищена. Продолжаем с выбранным брендом.');
+      } else {
+        toast.info('Добавление отменено: корзина содержит товары другого бренда.');
+        return;
+      }
+    }
+    if (result?.cleared) {
+      toast.info('Корзина была очищена из-за смены бренда. Продолжайте с товарами выбранного бренда.');
+    }
     toast.success(`'${props.product.name}' добавлен в корзину!`);
+    if (!authStore.isAuthenticated) {
+      // Предложим зарегистрироваться с привязкой к бренду корзины
+      toast.info('Зарегистрируйтесь, чтобы оформить заказ для выбранного бренда.', {timeout: 4000});
+    }
   } catch (error) {
     toast.error('Не удалось добавить товар. Возможно, нужно войти в систему.');
   }

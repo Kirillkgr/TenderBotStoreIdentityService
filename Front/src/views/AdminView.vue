@@ -92,6 +92,20 @@
       >
         + Создать товар
       </button>
+      <template v-if="canSeeAdminLinks">
+        <router-link
+            :to="{ name: 'AdminOrders' }"
+            class="admin-action-btn tertiary"
+        >
+          ➜ Заказы
+        </router-link>
+        <router-link
+            :to="{ name: 'AdminClients' }"
+            class="admin-action-btn tertiary"
+        >
+          ➜ Клиенты
+        </router-link>
+      </template>
     </div>
 
     <!-- Debug Info -->
@@ -395,6 +409,7 @@
 
 <script setup>
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {useAuthStore} from '@/store/auth';
 import {useToast} from 'vue-toastification';
 import {useTagStore} from '@/store/tag';
 import {useProductStore} from '@/store/product';
@@ -437,6 +452,13 @@ const editProduct = ref(null);
 const tagStore = useTagStore();
 const productStore = useProductStore();
 const toast = useToast();
+const authStore = useAuthStore();
+
+// RBAC: ADMIN/OWNER (including ROLE_* aliases)
+const canSeeAdminLinks = computed(() => {
+  const roles = authStore.user?.roles || [];
+  return roles.includes('ADMIN') || roles.includes('OWNER') || roles.includes('ROLE_ADMIN') || roles.includes('ROLE_OWNER');
+});
 
 // Helper function for Russian pluralization
 const formatWord = (count, words) => {

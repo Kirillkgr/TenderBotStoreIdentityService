@@ -1,8 +1,10 @@
 <template>
   <teleport to="body">
     <transition name="modal-fade">
-      <div v-if="modelValue" class="modal-overlay" @click.self="close">
-        <div class="modal-window" :class="{ square }" :style="{ top: position.top + 'px', left: position.left + 'px' }" ref="windowRef">
+      <div v-if="modelValue" :class="{ 'modal-overlay--nooverlay': noOverlay }" class="modal-overlay"
+           @click.self="onOverlay">
+        <div ref="windowRef" :class="{ square, 'pe-auto': noOverlay }"
+             :style="{ top: position.top + 'px', left: position.left + 'px' }" class="modal-window">
           <div class="modal-header" :class="{ square, 'band-primary': primaryHeader }" @mousedown="onDragStart">
             <slot name="title">
               <h3 class="modal-title">{{ title }}</h3>
@@ -30,6 +32,9 @@ const props = defineProps({
   width: { type: Number, default: 800 },
   square: { type: Boolean, default: false },
   primaryHeader: { type: Boolean, default: false },
+  closeOnOverlay: {type: Boolean, default: true},
+  noOverlay: {type: Boolean, default: false},
+  lockBodyScroll: {type: Boolean, default: true},
 });
 const emit = defineEmits(['update:modelValue']);
 
@@ -69,12 +74,16 @@ function close() {
   emit('update:modelValue', false);
 }
 
+function onOverlay() {
+  if (props.closeOnOverlay) close();
+}
+
 watch(() => props.modelValue, (open) => {
   if (open) {
     center();
-    document.body.style.overflow = 'hidden';
+    if (props.lockBodyScroll) document.body.style.overflow = 'hidden';
   } else {
-    document.body.style.overflow = '';
+    if (props.lockBodyScroll) document.body.style.overflow = '';
   }
 });
 
@@ -98,6 +107,11 @@ onBeforeUnmount(() => {
   place-items: center;
   z-index: 10000;
 }
+
+.modal-overlay.modal-overlay--nooverlay {
+  background: transparent;
+  pointer-events: none; /* не блокируем клики по странице */
+}
 .modal-window {
   position: absolute;
   width: min(96vw, v-bind(width)px);
@@ -107,6 +121,10 @@ onBeforeUnmount(() => {
   border: 1px solid var(--card-border, #333);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+.pe-auto {
+  pointer-events: auto;
 }
 .modal-window.square { border-radius: 0; }
 .modal-header {

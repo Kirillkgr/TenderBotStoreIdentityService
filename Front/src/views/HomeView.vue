@@ -73,6 +73,7 @@
 
 <script setup>
 import {onMounted, onUnmounted, ref} from 'vue';
+import {useAuthStore} from '@/store/auth';
 import {useProductStore} from '../store/product';
 import ProductCard from '../components/ProductCard.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
@@ -83,6 +84,7 @@ import {useTagStore} from '@/store/tag';
 
 const productStore = useProductStore();
 const tagStore = useTagStore();
+const authStore = useAuthStore();
 
 // Бренды
 const brands = ref([]);
@@ -144,8 +146,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 // Товары как было
 onMounted(async () => {
   await loadBrands();
-  // Если есть хотя бы один бренд — выберем первый, чтобы показать контент
-  if (brands.value.length > 0) {
+  // Попробуем взять бренд из query (?brand=ID)
+  const params = new URLSearchParams(window.location.search);
+  const qBrand = params.get('brand');
+  const exists = qBrand && (brands.value || []).some(b => Number(b.id) === Number(qBrand));
+  if (exists) {
+    await selectBrand(Number(qBrand));
+  } else if (brands.value.length > 0) {
+    // Если есть хотя бы один бренд — выберем первый, чтобы показать контент
     await selectBrand(brands.value[0].id);
   }
 });
@@ -163,6 +171,14 @@ const loadBrands = async () => {
     } else {
       brands.value = [];
     }
+    // Если админ/овнер и у пользователя есть список брендов — ограничим видимость доступными
+    const roles = authStore.user?.roles || [];
+    const isAdmin = roles.includes('ADMIN') || roles.includes('ROLE_ADMIN') || roles.includes('OWNER') || roles.includes('ROLE_OWNER');
+    const userBrands = Array.isArray(authStore.user?.brands) ? authStore.user.brands : [];
+    if (isAdmin && userBrands.length > 0) {
+      const allowedIds = new Set(userBrands.map(b => Number(b.id ?? b)));
+      brands.value = (brands.value || []).filter(b => allowedIds.has(Number(b.id)));
+    }
   } catch (e) {
     console.error('Не удалось загрузить бренды:', e);
     brands.value = [];
@@ -172,7 +188,24 @@ const loadBrands = async () => {
 };
 
 const selectBrand = async (brandId) => {
-  selectedBrandId.value = Number(brandId);
+  const nextId = Number(brandId);
+  const currentId = selectedBrandId.value == null ? null : Number(selectedBrandId.value);
+  const roles = authStore.user?.roles || [];
+  const isAdmin = roles.includes('ADMIN') || roles.includes('ROLE_ADMIN') || roles.includes('OWNER') || roles.includes('ROLE_OWNER');
+
+  if (!isAdmin && currentId != null && currentId !== nextId) {
+    // Для неадминов открываем другой бренд в новой вкладке
+    const url = new URL(window.location.href);
+    url.searchParams.set('brand', String(nextId));
+    window.open(url.toString(), '_blank', 'noopener');
+    return;
+  }
+
+  selectedBrandId.value = nextId;
+  try {
+    localStorage.setItem('current_brand_id', String(nextId));
+  } catch (_) {
+  }
   // Сбрасываем путь и загружаем корень
   currentParentId.value = 0;
   currentPath.value = [];

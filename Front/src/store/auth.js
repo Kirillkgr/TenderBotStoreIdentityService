@@ -1,6 +1,7 @@
 import {defineStore} from 'pinia';
 import * as authService from '../services/authService';
 import router from '../router';
+import {useCartStore} from './cart';
 
 const USER_STORAGE_KEY = 'user_data';
 
@@ -92,6 +93,25 @@ export const useAuthStore = defineStore('auth', {
             // Маркер, чтобы на следующей загрузке и в перехватчике не делать refresh
             try { localStorage.setItem('skip_refresh_once', '1'); } catch(_) {}
 
+            // Очистим корзину и локальные идентификаторы корзины, чтобы не таскать гостевую корзину между сессиями
+            try {
+                const cart = useCartStore();
+                cart.clearCart();
+            } catch (_) {
+            }
+            try {
+                localStorage.removeItem('cart_scope_id');
+            } catch (_) {
+            }
+            try {
+                localStorage.removeItem('cart_token');
+            } catch (_) {
+            }
+            try {
+                localStorage.removeItem('cart_brand_id');
+            } catch (_) {
+            }
+
             this.setUser(null);
             this.setAccessToken(null);
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
@@ -105,6 +125,24 @@ export const useAuthStore = defineStore('auth', {
             this.setUser(null);
             this.setAccessToken(null);
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
+            // Те же очистки корзины при клиентском сбросе
+            try {
+                const cart = useCartStore();
+                cart.clearCart();
+            } catch (_) {
+            }
+            try {
+                localStorage.removeItem('cart_scope_id');
+            } catch (_) {
+            }
+            try {
+                localStorage.removeItem('cart_token');
+            } catch (_) {
+            }
+            try {
+                localStorage.removeItem('cart_brand_id');
+            } catch (_) {
+            }
             await router.push('/');
         },
 

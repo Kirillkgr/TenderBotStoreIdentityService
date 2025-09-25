@@ -14,3 +14,11 @@ export const getCart = () => {
 export const removeFromCart = (cartItemId) => {
     return apiClient.delete(`/cart/remove/${cartItemId}`);
 };
+
+// Обновить количество позиции в корзине
+export const updateCartItemQuantity = (cartItemId, quantity) => {
+    return apiClient.patch(`/cart/item/${cartItemId}`, {quantity});
+};
+
+// Очистить корзину на сервере
+export const clearCart = () => apiClient.delete('/cart/clear');

@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.31.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1758828250805-1" author="RillG">
+        <createTable tableName="cart_items">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_cart_items"/>
+            </column>
+            <column name="user_id" type="BIGINT"/>
+            <column name="cart_token" type="VARCHAR(255)"/>
+            <column name="brand_id" type="BIGINT"/>
+            <column name="product_id" type="BIGINT"/>
+            <column name="quantity" type="INT"/>
+            <column name="created_at" type="DATETIME"/>
+            <column name="updated_at" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1758828250805-2" author="RillG">
+        <createTable tableName="delivery_addresses">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_delivery_addresses"/>
+            </column>
+            <column name="membership_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line1" type="VARCHAR(255)"/>
+            <column name="line2" type="VARCHAR(255)"/>
+            <column name="city" type="VARCHAR(255)"/>
+            <column name="region" type="VARCHAR(255)"/>
+            <column name="postcode" type="VARCHAR(255)"/>
+            <column name="comment" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN"/>
+            <column name="created_at" type="DATETIME"/>
+            <column name="updated_at" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1758828250805-3" author="RillG">
+        <createTable tableName="order_items">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_order_items"/>
+            </column>
+            <column name="order_id" type="BIGINT"/>
+            <column name="product_id" type="BIGINT"/>
+            <column name="quantity" type="INT"/>
+            <column name="price" type="DECIMAL(15, 2)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1758828250805-4" author="RillG">
+        <createTable tableName="order_messages">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_order_messages"/>
+            </column>
+            <column name="order_id" type="BIGINT"/>
+            <column name="from_client" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="text" type="VARCHAR(2000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sender_user_id" type="BIGINT"/>
+            <column name="created_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1758828250805-5" author="RillG">
+        <createTable tableName="orders">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_orders"/>
+            </column>
+            <column name="client_id" type="BIGINT"/>
+            <column name="brand_id" type="BIGINT"/>
+            <column name="total" type="DECIMAL(15, 2)"/>
+            <column name="created_at" type="DATETIME"/>
+            <column name="updated_at" type="DATETIME"/>
+            <column name="status" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="delivery_mode" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address_snapshot" type="TEXT"/>
+            <column name="pickup_snapshot" type="TEXT"/>
+            <column name="comment" type="VARCHAR(2000)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1758828250805-6" author="RillG">
+        <createTable tableName="pickup_points">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_pickup_points"/>
+            </column>
+            <column name="brand_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="address" type="VARCHAR(255)"/>
+            <column name="latitude" type="DECIMAL(10, 7)"/>
+            <column name="longitude" type="DECIMAL(10, 7)"/>
+            <column name="active" type="BOOLEAN"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1758828250805-7" author="RillG">
+        <createTable tableName="user_brand_membership">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_user_brand_membership"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="brand_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bonus_balance" type="DECIMAL(15, 2)"/>
+            <column name="tier" type="VARCHAR(255)"/>
+            <column name="created_at" type="DATETIME"/>
+            <column name="updated_at" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1758828250805-8" author="RillG">
+        <addColumn tableName="products">
+            <column name="anonymous_cart_interest" type="BIGINT"/>
+            <column name="auth_cart_interest" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1758828250805-10" author="RillG">
+        <addUniqueConstraint columnNames="user_id, brand_id" constraintName="uc_a0bc022ad44c7b29b4fced212"
+                             tableName="user_brand_membership"/>
+    </changeSet>
+    <changeSet id="1758828250805-11" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="brand_id" baseTableName="cart_items"
+                                 constraintName="FK_CART_ITEMS_ON_BRAND" referencedColumnNames="id"
+                                 referencedTableName="brands"/>
+    </changeSet>
+    <changeSet id="1758828250805-12" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="product_id" baseTableName="cart_items"
+                                 constraintName="FK_CART_ITEMS_ON_PRODUCT" referencedColumnNames="id"
+                                 referencedTableName="products"/>
+    </changeSet>
+    <changeSet id="1758828250805-13" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="cart_items"
+                                 constraintName="FK_CART_ITEMS_ON_USER" referencedColumnNames="id"
+                                 referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1758828250805-14" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="membership_id" baseTableName="delivery_addresses"
+                                 constraintName="FK_DELIVERY_ADDRESSES_ON_MEMBERSHIP" referencedColumnNames="id"
+                                 referencedTableName="user_brand_membership"/>
+    </changeSet>
+    <changeSet id="1758828250805-15" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="brand_id" baseTableName="orders" constraintName="FK_ORDERS_ON_BRAND"
+                                 referencedColumnNames="id" referencedTableName="brands"/>
+    </changeSet>
+    <changeSet id="1758828250805-16" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="client_id" baseTableName="orders" constraintName="FK_ORDERS_ON_CLIENT"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1758828250805-17" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="order_id" baseTableName="order_items"
+                                 constraintName="FK_ORDER_ITEMS_ON_ORDER" referencedColumnNames="id"
+                                 referencedTableName="orders"/>
+    </changeSet>
+    <changeSet id="1758828250805-18" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="product_id" baseTableName="order_items"
+                                 constraintName="FK_ORDER_ITEMS_ON_PRODUCT" referencedColumnNames="id"
+                                 referencedTableName="products"/>
+    </changeSet>
+    <changeSet id="1758828250805-19" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="order_id" baseTableName="order_messages"
+                                 constraintName="FK_ORDER_MESSAGES_ON_ORDER" referencedColumnNames="id"
+                                 referencedTableName="orders"/>
+    </changeSet>
+    <changeSet id="1758828250805-20" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="brand_id" baseTableName="pickup_points"
+                                 constraintName="FK_PICKUP_POINTS_ON_BRAND" referencedColumnNames="id"
+                                 referencedTableName="brands"/>
+    </changeSet>
+    <changeSet id="1758828250805-21" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="brand_id" baseTableName="user_brand_membership"
+                                 constraintName="FK_USER_BRAND_MEMBERSHIP_ON_BRAND" referencedColumnNames="id"
+                                 referencedTableName="brands"/>
+    </changeSet>
+    <changeSet id="1758828250805-22" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="user_brand_membership"
+                                 constraintName="FK_USER_BRAND_MEMBERSHIP_ON_USER" referencedColumnNames="id"
+                                 referencedTableName="users"/>
+    </changeSet>
+
+</databaseChangeLog>

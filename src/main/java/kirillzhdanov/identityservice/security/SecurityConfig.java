@@ -41,6 +41,7 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight
+                        .requestMatchers("/notifications/longpoll/**").authenticated()
                         .requestMatchers("/auth/v1/login")
                         .permitAll()
                         .requestMatchers("/auth/v1/register")
@@ -53,6 +54,8 @@ public class SecurityConfig {
                         .requestMatchers("/menu/v1/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/menu/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/orders").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/public/v1/**").permitAll()
+                        .requestMatchers("/cart/**").permitAll()
 
                         .requestMatchers("/swagger-ui/**")
                         .permitAll()
