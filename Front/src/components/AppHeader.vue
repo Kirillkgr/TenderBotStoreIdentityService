@@ -17,6 +17,7 @@
           <img class="qr-img" :src="qrDataUrl" alt="QR code" width="28" height="28" />
         </button>
         <router-link to="/" class="logo" @click.stop> TenderBotStore</router-link>
+        <span v-if="brandLabel" :title="`Бренд: ${brandLabel}`" class="brand-chip">{{ brandLabel }}</span>
       </div>
 
       <div class="burger" @click="toggleMenu" :class="{ 'is-active': isMenuOpen }">
@@ -90,6 +91,7 @@ import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {useAuthStore} from '../store/auth';
 import {useCartStore} from '../store/cart';
+import {getBrandHint} from '../utils/brandHint';
 
 import qrInline from '../assets/qr-code.svg?raw';
 import userIcon from '../assets/user.svg';
@@ -110,6 +112,16 @@ const qrInlineRef = ref(qrInline);
 const qrDataUrl = computed(() =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
 );
+
+// Отображение текущего бренда из субдомена (нижний регистр)
+const brandLabel = computed(() => {
+  try {
+    const hint = getBrandHint();
+    return hint || '';
+  } catch (_) {
+    return '';
+  }
+});
 
 // Тема: общий ключ с админкой
 const THEME_KEY = 'admin_theme_mode'; // 'auto' | 'light' | 'dark'
@@ -374,6 +386,18 @@ watch(showQr, (open) => {
 .qr-small svg { width: 100% !important; height: 100% !important; display: block; }
 .qr-img { width: 28px; height: 28px; display: block; }
 .qr-img { object-fit: contain; }
+
+.brand-chip {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f0f0f0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-transform: lowercase;
+}
 
 /* Logo container with QR icon */
 .logo-wrap {
