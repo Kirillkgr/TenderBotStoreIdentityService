@@ -81,6 +81,7 @@ import GroupCard from '../components/cards/GroupCard.vue';
 import {getPublicBrands} from '../services/brandService';
 import tagService from '../services/tagService';
 import {useTagStore} from '@/store/tag';
+import {getBrandHint} from '@/utils/brandHint';
 
 const productStore = useProductStore();
 const tagStore = useTagStore();
@@ -146,14 +147,61 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 // Товары как было
 onMounted(async () => {
   await loadBrands();
-  // Попробуем взять бренд из query (?brand=ID)
-  const params = new URLSearchParams(window.location.search);
-  const qBrand = params.get('brand');
-  const exists = qBrand && (brands.value || []).some(b => Number(b.id) === Number(qBrand));
-  if (exists) {
-    await selectBrand(Number(qBrand));
-  } else if (brands.value.length > 0) {
-    // Если есть хотя бы один бренд — выберем первый, чтобы показать контент
+
+  // 1) Приоритет: параметр ?brand=ID
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const qBrand = params.get('brand');
+    const exists = qBrand && (brands.value || []).some(b => Number(b.id) === Number(qBrand));
+    if (exists) {
+      await selectBrand(Number(qBrand));
+      return;
+    }
+  } catch (_) {
+  }
+
+  // 2) Затем localStorage: ранее выбранный бренд
+  try {
+    const storedId = localStorage.getItem('current_brand_id');
+    const existsStored = storedId && (brands.value || []).some(b => Number(b.id) === Number(storedId));
+    if (existsStored) {
+      await selectBrand(Number(storedId));
+      return;
+    }
+  } catch (_) {
+  }
+
+  // 3) Затем подсказка из субдомена: сравниваем по имени без учета регистра
+  try {
+    const hint = (getBrandHint() || '').toLowerCase();
+    if (hint && Array.isArray(brands.value) && brands.value.length > 0) {
+      const normalize = (s) => String(s || '').toLowerCase().trim();
+      const byName = brands.value.find(b => normalize(b.name) === hint);
+      // также пробуем поля slug/code/subdomain/domain
+      const bySlug = brands.value.find(b => normalize(b.slug || b.code || b.subdomain || b.domain) === hint);
+      if (byName) {
+        await selectBrand(byName.id);
+        return;
+      }
+      if (bySlug) {
+        await selectBrand(bySlug.id);
+        return;
+      }
+      // fallback: частичное совпадение (напр., brand-2 vs brand2)
+      const compact = (s) => normalize(s).replace(/[^a-z0-9а-яё]+/gi, '');
+      let relaxed = brands.value.find(b => compact(b.name) === compact(hint));
+      if (!relaxed) relaxed = brands.value.find(b => compact(b.slug || b.code || b.subdomain || b.domain) === compact(hint));
+      if (!relaxed) relaxed = brands.value.find(b => normalize(b.name).includes(hint));
+      if (relaxed) {
+        await selectBrand(relaxed.id);
+        return;
+      }
+    }
+  } catch (_) {
+  }
+
+  // 4) Финальный запасной вариант — первый бренд, если есть
+  if (brands.value.length > 0) {
     await selectBrand(brands.value[0].id);
   }
 });
@@ -170,14 +218,6 @@ const loadBrands = async () => {
       brands.value = response.data.data;
     } else {
       brands.value = [];
-    }
-    // Если админ/овнер и у пользователя есть список брендов — ограничим видимость доступными
-    const roles = authStore.user?.roles || [];
-    const isAdmin = roles.includes('ADMIN') || roles.includes('ROLE_ADMIN') || roles.includes('OWNER') || roles.includes('ROLE_OWNER');
-    const userBrands = Array.isArray(authStore.user?.brands) ? authStore.user.brands : [];
-    if (isAdmin && userBrands.length > 0) {
-      const allowedIds = new Set(userBrands.map(b => Number(b.id ?? b)));
-      brands.value = (brands.value || []).filter(b => allowedIds.has(Number(b.id)));
     }
   } catch (e) {
     console.error('Не удалось загрузить бренды:', e);
