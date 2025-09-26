@@ -8,6 +8,7 @@ import 'vue-datepicker-next/index.css';
 import App from './App.vue';
 import router from './router';
 import {useAuthStore} from './store/auth';
+import {getBrandHint} from './utils/brandHint';
 
 import './style.css';
 import './theme.css';
@@ -26,6 +27,24 @@ try {
     html.classList.remove('theme-light', 'theme-dark');
     html.classList.add(initial === 'dark' ? 'theme-dark' : 'theme-light');
 } catch (_) {}
+
+// Parse brand hint from subdomain once, store locally, and set brand class early
+try {
+    const hint = getBrandHint(); // already lowercased
+    const html = document.documentElement;
+    // Clean previous brand-* classes if any
+    html.classList.forEach(cls => {
+        if (cls.startsWith('brand-')) html.classList.remove(cls);
+    });
+    if (hint) {
+        localStorage.setItem('brand_hint', hint);
+        html.classList.add(`brand-${hint}`);
+    } else {
+        localStorage.removeItem('brand_hint');
+        html.classList.add('brand-default');
+    }
+} catch (_) {
+}
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -69,6 +88,4 @@ if (auth.isAuthenticated && lastPath && lastPath !== router.currentRoute.value.f
 }
 
 app.mount('#app');
-
-// Attach default brand class so brand variables apply
-document.documentElement.classList.add('brand-default');
+// Brand class is applied above during initial boot to avoid flashes
