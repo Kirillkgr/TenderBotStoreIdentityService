@@ -5,18 +5,13 @@ services:
     image: postgres:13
     restart: on-failure
     environment:
-      POSTGRES_DB: identity_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - /home/user/postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"  # Открываем порт для подключения с хоста (psql/GUI), чтобы вручную создать БД
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d identity_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      POSTGRES_DB: tenderbotstore_db
+      POSTGRES_USER: user_db
+      POSTGRES_PASSWORD: password_db
+  #    volumes:
+  #      - /home/user/postgres-data:/var/lib/postgresql/data
+  #    ports:
+  #      - "5432:5432"  # Открываем порт для подключения с хоста (psql/GUI), чтобы вручную создать БД
 
 
   backend:
@@ -25,9 +20,9 @@ services:
     restart: on-failure
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tenderbotstore_db
+      SPRING_DATASOURCE_USERNAME: user_db
+      SPRING_DATASOURCE_PASSWORD: password_db
       # Google OAuth2 client credentials (injected from CI/CD secrets)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}

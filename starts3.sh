@@ -41,7 +41,7 @@ docker-compose down
 
 # Clear images
 echo "Clear images..."
-docker system prune -af
+docker system prune -af --volumes
 
 # Container up
 echo "Container up..."
