@@ -10,11 +10,13 @@ import kirillzhdanov.identityservice.model.order.Order;
 import kirillzhdanov.identityservice.model.order.OrderItem;
 import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.model.userbrand.DeliveryAddress;
+import kirillzhdanov.identityservice.notification.longpoll.LongPollService;
 import kirillzhdanov.identityservice.repository.cart.CartItemRepository;
 import kirillzhdanov.identityservice.repository.order.OrderItemRepository;
 import kirillzhdanov.identityservice.repository.order.OrderRepository;
 import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import kirillzhdanov.identityservice.repository.userbrand.DeliveryAddressRepository;
+import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRepository;
 import kirillzhdanov.identityservice.service.CheckoutService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,8 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final DeliveryAddressRepository deliveryAddressRepository;
     private final PickupPointRepository pickupPointRepository;
     private final ObjectMapper objectMapper;
+    private final UserBrandMembershipRepository membershipRepository;
+    private final LongPollService longPollService;
 
     @Override
     @Transactional
@@ -56,7 +60,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
 
         // Бренд из первой позиции и проверим однородность
-        Brand brand = items.get(0).getBrand();
+        Brand brand = items.getFirst().getBrand();
         Long brandId = brand != null ? brand.getId() : null;
         for (CartItem ci : items) {
             if (ci.getBrand() != null && brandId != null && !Objects.equals(ci.getBrand().getId(), brandId)) {
@@ -123,6 +127,19 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         // Очистим корзину
         cartRepo.deleteByUser_Id(user.getId());
+
+        // Оповестим персонал бренда о новом заказе
+        try {
+            if (brandId != null) {
+                var userIds = membershipRepository.findUserIdsByBrandId(brandId);
+                if (userIds != null) {
+                    for (Long uid : userIds) {
+                        if (uid != null) longPollService.publishNewOrder(uid, order.getId());
+                    }
+                }
+            }
+        } catch (Exception ignore) {
+        }
 
         return order;
     }

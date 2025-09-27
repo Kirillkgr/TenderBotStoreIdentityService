@@ -1,7 +1,7 @@
 server:
   port: ${SERVER_PORT:9900}
   tomcat:
-    connection-timeout: 70s
+    connection-timeout: 120s
   servlet:
     session:
       cookie:
@@ -18,7 +18,7 @@ spring:
     open-in-view: false
   mvc:
     async:
-      request-timeout: 65s
+      request-timeout: 120s
   show-sql: false
   properties:
     hibernate:

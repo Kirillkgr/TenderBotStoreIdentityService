@@ -1,23 +1,43 @@
+// Специальная обработка для long-poll: никогда не блокируем этот эндпоинт анти-штормом
+function isLongpollUrl(url = '') {
+    try {
+        return url.startsWith('/notifications/longpoll');
+    } catch (_) {
+        return false;
+    }
+}
+
 import axios from 'axios';
 import {useAuthStore} from '../store/auth';
 import {useCartStore} from '../store/cart';
 
 const DEBUG_HTTP = import.meta.env.VITE_DEBUG_HTTP === 'true';
 
+let base = import.meta.env.VITE_API_BASE_URL;
+try {
+    const malformed = !base || base === '/' ? false : /^(https?:\/\/)$/i.test(base.trim());
+    if (!base || malformed) {
+        base = '/';
+    }
+} catch (_) {
+    base = '/';
+}
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+    baseURL: base,
   withCredentials: true, // Разрешаем отправку и получение cookies
 });
 
 // Одноразовый стартовый лог диагностики HTTP-клиента
 (function bootstrapHttpDiagnostics() {
   try {
-    const base = import.meta.env.VITE_API_BASE_URL;
+      const baseEnv = import.meta.env.VITE_API_BASE_URL;
     const cookiesEnabled = navigator.cookieEnabled;
     const hasDocCookie = typeof document !== 'undefined' && !!document.cookie;
     if (DEBUG_HTTP) {
       console.log('[HTTP] bootstrap', {
         baseURL: base,
+          baseEnv,
         withCredentials: true,
         cookiesEnabled,
         documentCookiePresent: hasDocCookie,
@@ -104,7 +124,8 @@ apiClient.interceptors.request.use(
       try {
           const reqUrl = config.url || '';
           const isAuthEndpoint = reqUrl.startsWith('/auth/v1/');
-          if (!isAuthEndpoint && isEndpointDisabled(reqUrl)) {
+          // long-poll никогда не блокируем
+          if (!isAuthEndpoint && !isLongpollUrl(reqUrl) && isEndpointDisabled(reqUrl)) {
               const err = new Error('Функция временно недоступна. Повторите попытку позже.');
               err.code = 'ENDPOINT_DISABLED';
               err.isTemporarilyDisabled = true;
@@ -233,8 +254,7 @@ apiClient.interceptors.response.use(
 
       processQueue(null, accessToken);
         // Повторяем исходный запрос один раз
-        const retried = await apiClient(originalRequest);
-        return retried;
+        return await apiClient(originalRequest);
 
     } catch (refreshError) {
       processQueue(refreshError, null);
@@ -258,8 +278,10 @@ apiClient.interceptors.response.use(
             const status = error.response?.status;
             const url = originalRequest.url || '';
             const isAuthEndpoint = url.startsWith('/auth/v1/');
+            const isLp = isLongpollUrl(url);
             // Если это не auth и мы уже делали _retry, а ответ снова 401/403/5xx — отключаем эндпоинт на 5 минут
-            if (!isAuthEndpoint && originalRequest._retry && (status === 401 || status === 403 || (status >= 500 && status <= 599))) {
+            // НО: никогда не отключаем long-poll — иначе сломаем фоновую доставку событий
+            if (!isAuthEndpoint && !isLp && originalRequest._retry && (status === 401 || status === 403 || (status >= 500 && status <= 599))) {
                 disableEndpoint(url);
                 const err = new Error('Функция временно недоступна. Повторите попытку через несколько минут.');
                 err.code = 'ENDPOINT_DISABLED_AFTER_RETRY';

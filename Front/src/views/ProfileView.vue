@@ -58,7 +58,10 @@
       <div v-else-if="orderStore.orders.length === 0">У вас еще нет заказов.</div>
       <div v-else>
         <div v-for="order in orderStore.orders" :key="order.id" class="order-row">
-          <OrderListItem :order="order" @open-message="openMessage"/>
+          <OrderListItem :order="order"
+                         @open-message="openMessage"
+                         @open-review="openReview"
+                         @open-review-text="openReview"/>
         </div>
       </div>
     </div>
@@ -68,12 +71,17 @@
 
     <!-- Общая модалка чата -->
     <ChatModal v-if="messageModal.visible" :order="messageModal.order" role="client" @close="closeMessage"/>
+
+    <!-- Модалки отзывов -->
+    <ReviewModal v-if="reviewModal.visible" :order="reviewModal.order" @close="closeReview"
+                 @submitted="onReviewSubmitted"/>
+    <ReviewTextModal v-if="reviewTextModal.visible" :order="reviewTextModal.order" @close="closeReviewText"/>
   </div>
 
 </template>
 
 <script setup>
-import {computed, onMounted, onBeforeUnmount, ref} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import {useAuthStore} from '../store/auth';
 import {useOrderStore} from '../store/order';
 import OrderListItem from '../components/OrderListItem.vue';
@@ -81,6 +89,8 @@ import ProfileEditModal from '../components/modals/ProfileEditModal.vue';
 import orderClientService from '@/services/orderClientService';
 import {getNotificationsClient} from '@/services/notifications';
 import ChatModal from '@/components/ChatModal.vue';
+import ReviewModal from '@/components/ReviewModal.vue';
+import ReviewTextModal from '@/components/ReviewTextModal.vue';
 
 const authStore = useAuthStore();
 const orderStore = useOrderStore();
@@ -88,6 +98,9 @@ const showEdit = ref(false);
 
 // Модалка чата по выбранному заказу (общий ChatModal)
 const messageModal = ref({visible: false, order: null});
+// Модалки отзывов
+const reviewModal = ref({visible: false, order: null});
+const reviewTextModal = ref({visible: false, order: null});
 
 const formattedDateOfBirth = computed(() => {
   if (!authStore.user || !authStore.user.dateOfBirth) return '';
@@ -145,6 +158,27 @@ function closeMessage() {
   messageModal.value.visible = false;
 }
 
+function openReview(order) {
+  reviewModal.value = {visible: true, order};
+}
+
+function closeReview() {
+  reviewModal.value.visible = false;
+}
+
+function onReviewSubmitted() {
+  // После успешной отправки подтянуть обновлённые данные заказов
+  try {
+    orderStore.fetchOrders();
+  } catch (_) {
+  }
+  closeReview();
+}
+
+function closeReviewText() {
+  reviewTextModal.value.visible = false;
+}
+
 async function sendMessage() {
   const {order, text} = messageModal.value;
   if (!order || !text || !text.trim()) {
@@ -169,10 +203,6 @@ async function sendMessage() {
   margin: auto;
   padding: 2rem;
   text-align: left; /* Улучшение читаемости */
-}
-
-.user-info {
-  margin-bottom: 2rem;
 }
 
 .profile-card {

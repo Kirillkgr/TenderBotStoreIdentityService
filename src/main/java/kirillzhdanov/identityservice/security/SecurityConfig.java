@@ -41,7 +41,10 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight
-                        .requestMatchers("/notifications/longpoll/**").authenticated()
+                        // Long-poll: GET /notifications/longpoll доступен всем (контроллер вернёт 204 для неавторизованных)
+                        .requestMatchers(HttpMethod.GET, "/notifications/longpoll").permitAll()
+                        // ACK и unreadCount доступны только авторизованным
+                        .requestMatchers("/notifications/longpoll/ack", "/notifications/longpoll/unreadCount").authenticated()
                         .requestMatchers("/auth/v1/login")
                         .permitAll()
                         .requestMatchers("/auth/v1/register")

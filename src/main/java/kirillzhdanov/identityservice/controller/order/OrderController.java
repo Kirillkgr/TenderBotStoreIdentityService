@@ -2,27 +2,30 @@ package kirillzhdanov.identityservice.controller.order;
 
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.order.CourierMessageRequest;
-import kirillzhdanov.identityservice.dto.order.OrderItemDto;
 import kirillzhdanov.identityservice.dto.order.OrderDto;
+import kirillzhdanov.identityservice.dto.order.OrderItemDto;
 import kirillzhdanov.identityservice.dto.order.UpdateOrderStatusRequest;
+import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.order.Order;
 import kirillzhdanov.identityservice.model.order.OrderMessage;
 import kirillzhdanov.identityservice.model.order.OrderStatus;
 import kirillzhdanov.identityservice.notification.longpoll.LongPollService;
 import kirillzhdanov.identityservice.repository.UserRepository;
-import kirillzhdanov.identityservice.repository.order.OrderRepository;
 import kirillzhdanov.identityservice.repository.order.OrderMessageRepository;
+import kirillzhdanov.identityservice.repository.order.OrderRepository;
+import kirillzhdanov.identityservice.repository.order.OrderReviewRepository;
 import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRepository;
 import kirillzhdanov.identityservice.service.admin.OrderAdminService;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
@@ -34,6 +37,7 @@ public class OrderController {
     private final OrderAdminService orderAdminService;
     private final OrderRepository orderRepository;
     private final OrderMessageRepository orderMessageRepository;
+    private final OrderReviewRepository orderReviewRepository;
     private final UserRepository userRepository;
     private final UserBrandMembershipRepository membershipRepository;
     private final LongPollService longPollService;
@@ -60,6 +64,16 @@ public class OrderController {
                         .price(oi.getPrice())
                         .build()));
             }
+            Integer rating = null;
+            String reviewComment = null;
+            try {
+                var rev = orderReviewRepository.findByOrder_Id(o.getId()).orElse(null);
+                if (rev != null) {
+                    rating = rev.getRating();
+                    reviewComment = rev.getComment();
+                }
+            } catch (Exception ignored) {
+            }
             return OrderDto.builder()
                     .id(o.getId())
                     .clientId(user.getId())
@@ -74,6 +88,8 @@ public class OrderController {
                     .createdAt(o.getCreatedAt())
                     .comment(o.getComment())
                     .items(items)
+                    .rating(rating)
+                    .reviewComment(reviewComment)
                     .build();
         }).toList();
         return ResponseEntity.ok(dtos);
@@ -121,7 +137,7 @@ public class OrderController {
         User user = resolveUser(authentication);
         if (user == null) return ResponseEntity.status(401).build();
         // check membership for order's brand
-        Long brandId = Optional.ofNullable(order.getBrand()).map(b -> b.getId()).orElse(null);
+        Long brandId = Optional.ofNullable(order.getBrand()).map(Brand::getId).orElse(null);
         if (brandId == null) return ResponseEntity.status(409).build();
         boolean allowed = membershipRepository.findByUser_IdAndBrand_Id(user.getId(), brandId).isPresent();
         if (!allowed) return ResponseEntity.status(403).build();
@@ -134,10 +150,7 @@ public class OrderController {
         order.setStatus(newStatus);
         orderRepository.save(order);
         // publish user notification
-        Long clientId = Optional.ofNullable(order.getClient()).map(User::getId).orElse(null);
-        if (clientId != null) {
-            longPollService.publishStatusChanged(clientId, order.getId(), oldStatus.name(), newStatus.name());
-        }
+        Optional.ofNullable(order.getClient()).map(User::getId).ifPresent(clientId -> longPollService.publishStatusChanged(clientId, order.getId(), oldStatus.name(), newStatus.name()));
         return ResponseEntity.noContent().build();
     }
 
@@ -151,20 +164,21 @@ public class OrderController {
         Order order = opt.get();
         User user = resolveUser(authentication);
         if (user == null) return ResponseEntity.status(401).build();
-        Long brandId = Optional.ofNullable(order.getBrand()).map(b -> b.getId()).orElse(null);
+        Long brandId = Optional.ofNullable(order.getBrand()).map(Brand::getId).orElse(null);
         if (brandId == null) return ResponseEntity.status(409).build();
         boolean allowed = membershipRepository.findByUser_IdAndBrand_Id(user.getId(), brandId).isPresent();
         if (!allowed) return ResponseEntity.status(403).build();
         Long clientId = Optional.ofNullable(order.getClient()).map(User::getId).orElse(null);
         if (clientId != null) {
             // persist message (admin/staff -> client)
-            orderMessageRepository.save(OrderMessage.builder()
+            OrderMessage saved = orderMessageRepository.save(OrderMessage.builder()
                     .order(order)
                     .fromClient(false)
                     .text(req.getText())
                     .senderUserId(user.getId())
                     .build());
-            longPollService.publishCourierMessage(clientId, order.getId(), req.getText());
+            Long msgId = Optional.of(saved).map(OrderMessage::getId).orElse(null);
+            longPollService.publishCourierMessage(clientId, order.getId(), req.getText(), msgId);
         }
         return ResponseEntity.noContent().build();
     }
@@ -191,23 +205,63 @@ public class OrderController {
                     return ResponseEntity.status(409).build();
             }
         }
-        Long brandId = Optional.ofNullable(order.getBrand()).map(b -> b.getId()).orElse(null);
+        Long brandId = Optional.ofNullable(order.getBrand()).map(Brand::getId).orElse(null);
         // Сохраняем сообщение (client -> admin)
-        orderMessageRepository.save(OrderMessage.builder()
+        OrderMessage saved = orderMessageRepository.save(OrderMessage.builder()
                 .order(order)
                 .fromClient(true)
                 .text(req.getText())
                 .senderUserId(user.getId())
                 .build());
+        Long msgId = Optional.of(saved).map(OrderMessage::getId).orElse(null);
         // Оповестим персонал бренда: всем участникам membership по brandId
         if (brandId != null) {
             var userIds = membershipRepository.findUserIdsByBrandId(brandId);
             if (userIds != null) {
+                java.util.Set<Long> unique = new java.util.HashSet<>();
                 for (Long uid : userIds) {
-                    if (uid != null) longPollService.publishClientMessage(uid, order.getId(), req.getText());
+                    if (uid == null) continue;
+                    if (uid.equals(clientId)) continue; // не уведомляем отправителя (клиента)
+                    if (unique.add(uid)) { // только первый раз
+                        longPollService.publishClientMessage(uid, order.getId(), req.getText(), msgId);
+                    }
                 }
             }
         }
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/orders/{id}/review")
+    public ResponseEntity<Void> submitReview(@PathVariable Long id,
+                                             @Valid @RequestBody ReviewRequest req,
+                                             Authentication authentication) {
+        if (!isAuthenticated(authentication)) return ResponseEntity.status(401).build();
+        if (req == null || req.getRating() == null || req.getRating() < 1 || req.getRating() > 5) {
+            return ResponseEntity.badRequest().build();
+        }
+        Optional<Order> opt = orderRepository.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+        Order order = opt.get();
+        User user = resolveUser(authentication);
+        if (user == null) return ResponseEntity.status(401).build();
+        // Только клиент этого заказа может оставлять отзыв
+        Long clientId = Optional.ofNullable(order.getClient()).map(User::getId).orElse(null);
+        if (clientId == null || !clientId.equals(user.getId())) return ResponseEntity.status(403).build();
+        // Отзыв разрешён только после завершения заказа
+        if (order.getStatus() == null || order.getStatus() != OrderStatus.COMPLETED) {
+            return ResponseEntity.status(409).build();
+        }
+        // Запрещаем повторную отправку отзыва
+        var existing = orderReviewRepository.findByOrder_Id(order.getId()).orElse(null);
+        if (existing != null) return ResponseEntity.status(409).build();
+
+        orderReviewRepository.save(kirillzhdanov.identityservice.model.order.OrderReview.builder()
+                .order(order)
+                .client(user)
+                .rating(req.getRating())
+                .comment(req.getComment())
+                .createdAt(java.time.LocalDateTime.now())
+                .build());
         return ResponseEntity.noContent().build();
     }
 
@@ -220,16 +274,33 @@ public class OrderController {
         Order order = opt.get();
         User user = resolveUser(authentication);
         if (user == null) return ResponseEntity.status(401).build();
+        // Разрешаем: клиент своего заказа или сотрудник бренда
         Long clientId = Optional.ofNullable(order.getClient()).map(User::getId).orElse(null);
-        Long brandId = Optional.ofNullable(order.getBrand()).map(b -> b.getId()).orElse(null);
-        boolean isClient = clientId != null && clientId.equals(user.getId());
-        boolean isStaff = brandId != null && membershipRepository.findByUser_IdAndBrand_Id(user.getId(), brandId).isPresent();
-        if (!isClient && !isStaff) return ResponseEntity.status(403).build();
+        Long brandId = Optional.ofNullable(order.getBrand()).map(Brand::getId).orElse(null);
+        boolean allowed = (clientId != null && clientId.equals(user.getId()))
+                || (brandId != null && membershipRepository.findByUser_IdAndBrand_Id(user.getId(), brandId).isPresent());
+        if (!allowed) return ResponseEntity.status(403).build();
         return ResponseEntity.ok(orderMessageRepository.findByOrder_IdOrderByIdAsc(id));
     }
 
-    private boolean isAuthenticated(Authentication auth) {
-        return auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken);
+    private boolean isValidTransition(OrderStatus from, OrderStatus to) {
+        if (from == to) return true;
+        return switch (from) {
+            case QUEUED -> to == OrderStatus.PREPARING || to == OrderStatus.CANCELED;
+            case PREPARING ->
+                    to == OrderStatus.READY_FOR_PICKUP || to == OrderStatus.OUT_FOR_DELIVERY || to == OrderStatus.CANCELED;
+            case READY_FOR_PICKUP ->
+                    to == OrderStatus.DELIVERED || to == OrderStatus.COMPLETED || to == OrderStatus.CANCELED;
+            case OUT_FOR_DELIVERY -> to == OrderStatus.DELIVERED || to == OrderStatus.CANCELED;
+            case DELIVERED -> to == OrderStatus.COMPLETED;
+            case COMPLETED, CANCELED -> false;
+        };
+    }
+
+    private boolean isAuthenticated(Authentication authentication) {
+        return authentication != null
+                && !(authentication instanceof AnonymousAuthenticationToken)
+                && authentication.isAuthenticated();
     }
 
     private User resolveUser(Authentication authentication) {
@@ -241,24 +312,9 @@ public class OrderController {
         }
     }
 
-    private boolean isValidTransition(OrderStatus from, OrderStatus to) {
-        if (from == to) return true;
-        switch (from) {
-            case QUEUED:
-                return to == OrderStatus.PREPARING || to == OrderStatus.CANCELED;
-            case PREPARING:
-                return to == OrderStatus.READY_FOR_PICKUP || to == OrderStatus.OUT_FOR_DELIVERY || to == OrderStatus.CANCELED;
-            case READY_FOR_PICKUP:
-                return to == OrderStatus.DELIVERED || to == OrderStatus.COMPLETED || to == OrderStatus.CANCELED;
-            case OUT_FOR_DELIVERY:
-                return to == OrderStatus.DELIVERED || to == OrderStatus.CANCELED;
-            case DELIVERED:
-                return to == OrderStatus.COMPLETED;
-            case COMPLETED:
-            case CANCELED:
-                return false;
-            default:
-                return false;
-        }
+    @Data
+    public static class ReviewRequest {
+        private Integer rating; // 1..5
+        private String comment;
     }
 }

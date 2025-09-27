@@ -230,16 +230,8 @@ const loadBrands = async () => {
 const selectBrand = async (brandId) => {
   const nextId = Number(brandId);
   const currentId = selectedBrandId.value == null ? null : Number(selectedBrandId.value);
-  const roles = authStore.user?.roles || [];
-  const isAdmin = roles.includes('ADMIN') || roles.includes('ROLE_ADMIN') || roles.includes('OWNER') || roles.includes('ROLE_OWNER');
-
-  if (!isAdmin && currentId != null && currentId !== nextId) {
-    // Для неадминов открываем другой бренд в новой вкладке
-    const url = new URL(window.location.href);
-    url.searchParams.set('brand', String(nextId));
-    window.open(url.toString(), '_blank', 'noopener');
-    return;
-  }
+  // Ранее для неадминов открывали новый бренд в новой вкладке.
+  // Теперь всегда переключаем бренд in-place без открытия новой вкладки.
 
   selectedBrandId.value = nextId;
   try {

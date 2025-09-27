@@ -1,18 +1,19 @@
 package kirillzhdanov.identityservice.controller.order;
 
+import kirillzhdanov.identityservice.config.BrandContextInterceptor;
 import kirillzhdanov.identityservice.dto.order.OrderDto;
-import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.order.OrderMessage;
 import kirillzhdanov.identityservice.notification.longpoll.LongPollService;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.order.OrderMessageRepository;
 import kirillzhdanov.identityservice.repository.order.OrderRepository;
+import kirillzhdanov.identityservice.repository.order.OrderReviewRepository;
 import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRepository;
-import kirillzhdanov.identityservice.service.admin.OrderAdminService;
-import kirillzhdanov.identityservice.config.BrandContextInterceptor;
 import kirillzhdanov.identityservice.security.JwtAuthenticator;
 import kirillzhdanov.identityservice.security.JwtTokenExtractor;
+import kirillzhdanov.identityservice.service.admin.OrderAdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -24,8 +25,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.MediaType;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -39,7 +40,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(value = OrderController.class,
@@ -63,6 +65,8 @@ class OrderControllerTest {
     UserRepository userRepository;
     @MockitoBean
     UserBrandMembershipRepository membershipRepository;
+    @MockitoBean
+    OrderReviewRepository orderReviewRepository;
     @MockitoBean
     LongPollService longPollService;
 
@@ -119,6 +123,18 @@ class OrderControllerTest {
         order.setClient(client);
         Mockito.when(orderRepository.findById(12L)).thenReturn(Optional.of(order));
         Mockito.when(membershipRepository.findByUser_IdAndBrand_Id(5L, 10L)).thenReturn(Optional.of(new kirillzhdanov.identityservice.model.userbrand.UserBrandMembership()));
+        // repo should return persisted entity with id to avoid NPE in controller
+        Mockito.when(orderMessageRepository.save(any(OrderMessage.class)))
+                .thenAnswer(inv -> {
+                    OrderMessage m = inv.getArgument(0);
+                    return OrderMessage.builder()
+                            .id(100L)
+                            .order(m.getOrder())
+                            .fromClient(false)
+                            .text(m.getText())
+                            .senderUserId(m.getSenderUserId())
+                            .build();
+                });
 
         String body = "{\"text\":\"hi\"}";
         mockMvc.perform(post("/order/v1/orders/12/message")
@@ -127,7 +143,7 @@ class OrderControllerTest {
                 .andExpect(status().isNoContent());
 
         Mockito.verify(orderMessageRepository).save(any(OrderMessage.class));
-        Mockito.verify(longPollService).publishCourierMessage(eq(1L), eq(12L), eq("hi"));
+        Mockito.verify(longPollService).publishCourierMessage(eq(1L), eq(12L), eq("hi"), eq(100L));
     }
 
     @Test
@@ -147,6 +163,18 @@ class OrderControllerTest {
         Mockito.when(orderRepository.findById(13L)).thenReturn(Optional.of(order));
         // staff users to notify
         Mockito.when(membershipRepository.findUserIdsByBrandId(10L)).thenReturn(List.of(2L, 3L));
+        // repo should return persisted entity with id to avoid NPE in controller
+        Mockito.when(orderMessageRepository.save(any(OrderMessage.class)))
+                .thenAnswer(inv -> {
+                    OrderMessage m = inv.getArgument(0);
+                    return OrderMessage.builder()
+                            .id(101L)
+                            .order(m.getOrder())
+                            .fromClient(true)
+                            .text(m.getText())
+                            .senderUserId(m.getSenderUserId())
+                            .build();
+                });
 
         String body = "{\"text\":\"client\"}";
         mockMvc.perform(post("/order/v1/orders/13/client-message")
@@ -155,7 +183,7 @@ class OrderControllerTest {
                 .andExpect(status().isNoContent());
 
         Mockito.verify(orderMessageRepository).save(any(OrderMessage.class));
-        Mockito.verify(longPollService, Mockito.atLeastOnce()).publishClientMessage(anyLong(), eq(13L), eq("client"));
+        Mockito.verify(longPollService, Mockito.atLeastOnce()).publishClientMessage(anyLong(), eq(13L), eq("client"), eq(101L));
     }
 
     @Test

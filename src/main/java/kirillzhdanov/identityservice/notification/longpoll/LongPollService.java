@@ -4,19 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * In-memory long-poll broker per user.
@@ -56,10 +45,11 @@ public class LongPollService {
         enqueue(userId, evt);
     }
 
-    public void publishCourierMessage(Long userId, Long orderId, String text) {
+    public void publishCourierMessage(Long userId, Long orderId, String text, Long messageId) {
         LongPollEvent evt = LongPollEvent.builder()
                 .type(LongPollEventType.COURIER_MESSAGE)
                 .orderId(orderId)
+                .messageId(messageId)
                 .text(text)
                 .at(Instant.now())
                 .build();
@@ -67,10 +57,11 @@ public class LongPollService {
         enqueue(userId, evt);
     }
 
-    public void publishClientMessage(Long userId, Long orderId, String text) {
+    public void publishClientMessage(Long userId, Long orderId, String text, Long messageId) {
         LongPollEvent evt = LongPollEvent.builder()
                 .type(LongPollEventType.CLIENT_MESSAGE)
                 .orderId(orderId)
+                .messageId(messageId)
                 .text(text)
                 .at(Instant.now())
                 .build();
@@ -78,7 +69,13 @@ public class LongPollService {
         enqueue(userId, evt);
     }
 
-    public void publish(Long userId, LongPollEvent evt) {
+    public void publishNewOrder(Long userId, Long orderId) {
+        LongPollEvent evt = LongPollEvent.builder()
+                .type(LongPollEventType.NEW_ORDER)
+                .orderId(orderId)
+                .at(Instant.now())
+                .build();
+        log.debug("[LP] publishNewOrder userId={} orderId={}", userId, orderId);
         enqueue(userId, evt);
     }
 
@@ -105,6 +102,10 @@ public class LongPollService {
                 }
             }
         }
+    }
+
+    public void publish(Long userId, LongPollEvent evt) {
+        enqueue(userId, evt);
     }
 
     /**
@@ -135,7 +136,7 @@ public class LongPollService {
                 events = new ArrayList<>(uq.buffer.subList(fromIdx, uq.buffer.size()));
             }
             if (!events.isEmpty()) {
-                long nextSince = events.get(events.size() - 1).getId();
+                long nextSince = events.getLast().getId();
                 boolean hasMore = uq.buffer.stream().anyMatch(e -> e.getId() > nextSince);
                 log.info("[LP] poll immediate userId={} since={} -> nextSince={} events={} hasMore={} bufferSize={} waiters={}",
                         userId, since, nextSince, events.size(), hasMore, uq.buffer.size(), uq.waiters.size());
@@ -143,6 +144,7 @@ public class LongPollService {
                         .events(Collections.unmodifiableList(events))
                         .nextSince(nextSince)
                         .hasMore(hasMore)
+                        .unreadCount(uq.buffer.size())
                         .build());
                 return promise;
             }
@@ -163,6 +165,7 @@ public class LongPollService {
                             .events(List.of())
                             .nextSince(since)
                             .hasMore(false)
+                            .unreadCount(uq2.buffer.size())
                             .build());
                 }
             } catch (Exception ignored) {
@@ -211,13 +214,14 @@ public class LongPollService {
         List<LongPollEvent> events = uq.buffer.stream()
                 .filter(e -> e.getId() > since)
                 .limit(maxBatch)
-                .collect(Collectors.toList());
-        long nextSince = events.isEmpty() ? since : events.get(events.size() - 1).getId();
+                .toList();
+        long nextSince = events.isEmpty() ? since : events.getLast().getId();
         boolean hasMore = !events.isEmpty() && uq.buffer.stream().anyMatch(e -> e.getId() > nextSince);
         w.complete(LongPollEnvelope.builder()
-                .events(Collections.unmodifiableList(events))
+                .events(events)
                 .nextSince(nextSince)
                 .hasMore(hasMore)
+                .unreadCount(uq.buffer.size())
                 .build());
     }
 
