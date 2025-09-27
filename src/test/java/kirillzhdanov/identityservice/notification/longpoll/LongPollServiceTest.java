@@ -3,10 +3,7 @@ package kirillzhdanov.identityservice.notification.longpoll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,8 +32,8 @@ class LongPollServiceTest {
     void publishThenPollDeliversEventsAndIncreasesNextSince() throws Exception {
         long userId = 1L;
         // publish couple of events
-        service.publishClientMessage(userId, 100L, "hello");
-        service.publishCourierMessage(userId, 100L, "world");
+        service.publishClientMessage(userId, 100L, "hello", null);
+        service.publishCourierMessage(userId, 100L, "world", null);
 
         LongPollEnvelope env = service.poll(userId, 0, 10, 50).get();
         assertEquals(2, env.getEvents().size());
@@ -54,14 +51,14 @@ class LongPollServiceTest {
         service.publishStatusChanged(userId, 101L, "QUEUED", "PREPARING");
         LongPollEnvelope env = f.get();
         assertEquals(1, env.getEvents().size());
-        assertTrue(env.getNextSince() >= env.getEvents().get(0).getId());
+        assertTrue(env.getNextSince() >= env.getEvents().getFirst().getId());
     }
 
     @Test
     void ackTrimsBufferUpToLastReceived() throws Exception {
         long userId = 1L;
-        service.publishClientMessage(userId, 1L, "a");
-        service.publishClientMessage(userId, 1L, "b");
+        service.publishClientMessage(userId, 1L, "a", null);
+        service.publishClientMessage(userId, 1L, "b", null);
         LongPollEnvelope env = service.poll(userId, 0, 10, 50).get();
         long last = env.getNextSince();
         // ack up to last
@@ -75,7 +72,7 @@ class LongPollServiceTest {
     @Test
     void paginationMaxBatchRespectedAndHasMoreSet() throws Exception {
         long userId = 1L;
-        for (int i = 0; i < 10; i++) service.publishClientMessage(userId, 1L, "m" + i);
+        for (int i = 0; i < 10; i++) service.publishClientMessage(userId, 1L, "m" + i, null);
         LongPollEnvelope env = service.poll(userId, 0, 10, 3).get();
         assertEquals(3, env.getEvents().size());
         assertTrue(env.isHasMore());

@@ -104,6 +104,10 @@ public class LongPollService {
         }
     }
 
+    public void publish(Long userId, LongPollEvent evt) {
+        enqueue(userId, evt);
+    }
+
     /**
      * Long poll for events after 'since' (exclusive). If none, wait up to timeoutMs.
      */
