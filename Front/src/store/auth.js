@@ -14,6 +14,8 @@ export const useAuthStore = defineStore('auth', {
         isRestoringSession: false,
         // Флаг, чтобы не запускать refresh во время выхода
         isLoggingOut: false,
+        // Кол-во непрочитанных (приближённо): берём с сервера при логине
+        unreadCount: 0,
     }),
 
     getters: {
@@ -25,6 +27,7 @@ export const useAuthStore = defineStore('auth', {
         setAccessToken(accessToken) {
             this.accessToken = accessToken;
         },
+
 
         setUser(userData) {
             // Если пришёл null — явная очистка пользователя
@@ -61,6 +64,7 @@ export const useAuthStore = defineStore('auth', {
 
             this.setAccessToken(accessToken);
             this.setUser(userData);
+            // unreadCount обновляется через long-poll
         },
 
         async register(credentials) {
@@ -69,6 +73,7 @@ export const useAuthStore = defineStore('auth', {
 
             this.setAccessToken(accessToken);
             this.setUser(userData);
+            // unreadCount обновляется через long-poll
         },
 
         async checkUsername(username) {
@@ -114,6 +119,7 @@ export const useAuthStore = defineStore('auth', {
 
             this.setUser(null);
             this.setAccessToken(null);
+            this.unreadCount = 0;
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
 
             await router.push('/');
@@ -124,6 +130,7 @@ export const useAuthStore = defineStore('auth', {
         async clearSession() {
             this.setUser(null);
             this.setAccessToken(null);
+            this.unreadCount = 0;
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
             // Те же очистки корзины при клиентском сбросе
             try {
@@ -181,6 +188,7 @@ export const useAuthStore = defineStore('auth', {
                 return false;
             } finally {
                 this.isRestoringSession = false;
+                // unreadCount обновляется через long-poll
             }
         },
 

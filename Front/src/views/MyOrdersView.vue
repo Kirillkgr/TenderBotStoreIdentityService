@@ -29,11 +29,27 @@
         </div>
         <div class="actions">
           <button
-              v-if="isActive(o.status)"
-              class="btn"
+              class="btn btn-chat"
               @click="openMessage(o)">
-            Написать администратору
+            {{ isActive(o.status) ? 'Написать администратору' : 'Просмотреть сообщения' }}
+            <span v-if="nStore.hasUnreadByOrder(o.id)" class="btn-unread-dot" title="Есть новые сообщения"></span>
           </button>
+          <button
+              v-if="isCompleted(o.status) && !hasReview(o)"
+              class="btn btn-sm"
+              style="margin-left: 8px;"
+              type="button"
+              @click="openReview(o)">
+            Оценить заказ
+          </button>
+          <div v-if="o.rating" class="rating-wrap" style="margin-top:6px;">
+            <span aria-hidden="true" class="stars">
+              <span v-for="n in 5" :key="n" :class="{ active: n <= Number(o.rating) }" class="star">★</span>
+            </span>
+            <span class="rating-text">{{ Number(o.rating).toFixed(1) }}/5</span>
+            <button class="btn btn-sm" style="margin-left:8px;" type="button" @click="openReview(o)">Посмотреть отзыв
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -41,18 +57,27 @@
 
   <!-- Общая модалка чата -->
   <ChatModal v-if="messageModal.visible" :order="messageModal.order" role="client" @close="closeMessage"/>
+  <ReviewModal v-if="reviewModal.visible" :order="reviewModal.order" @close="closeReview"
+               @submitted="onReviewSubmitted"/>
+  <ReviewTextModal v-if="reviewTextModal.visible" :order="reviewTextModal.order" @close="closeReviewText"/>
 </template>
 
 <script setup>
-import {onMounted, onBeforeUnmount, ref} from 'vue';
+import {onBeforeUnmount, onMounted, ref} from 'vue';
 import {useOrderStore} from '@/store/order';
 import {getNotificationsClient} from '@/services/notifications';
 import ChatModal from '@/components/ChatModal.vue';
+import {useNotificationsStore} from '@/store/notifications';
+import ReviewModal from '@/components/ReviewModal.vue';
+import ReviewTextModal from '@/components/ReviewTextModal.vue';
 
 const loading = ref(false);
 const orders = ref([]);
 const orderStore = useOrderStore();
 const messageModal = ref({visible: false, order: null});
+const reviewModal = ref({visible: false, order: null});
+const reviewTextModal = ref({visible: false, order: null});
+const nStore = useNotificationsStore();
 
 function formatPrice(val) {
   try {
@@ -75,15 +100,75 @@ function formatDate(iso) {
 }
 
 function isActive(status) {
-  return status !== 'COMPLETED' && status !== 'CANCELED';
+  const s = String(status || '').toUpperCase();
+  const active = new Set(['QUEUED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED']);
+  return active.has(s);
+}
+
+function isCompleted(status) {
+  const s = String(status || '').toUpperCase();
+  return s === 'COMPLETED';
 }
 
 function openMessage(order) {
+  try {
+    nStore.clearOrder(order?.id);
+  } catch (_) {
+  }
   messageModal.value = {visible: true, order};
 }
 
 function closeMessage() {
   messageModal.value.visible = false;
+}
+
+function openReview(order) {
+  try {
+    console.log('[MyOrders] openReview orderId=', order?.id);
+  } catch (_) {
+  }
+  reviewModal.value = {visible: true, order};
+}
+
+function closeReview() {
+  reviewModal.value.visible = false;
+}
+
+function reviewed(orderId) {
+  try {
+    return localStorage.getItem('reviewed_' + orderId) === '1';
+  } catch (_) {
+    return false;
+  }
+}
+
+function onReviewSubmitted(orderId) {
+  try {
+    localStorage.setItem('reviewed_' + orderId, '1');
+  } catch (_) {
+  }
+  // Обновим список заказов, чтобы подтянулись rating/reviewComment
+  try {
+    orderStore.fetchOrders().then(() => {
+      orders.value = orderStore.orders;
+    });
+  } catch (_) {
+  }
+  closeReview();
+}
+
+function hasReview(order) {
+  if (!order) return false;
+  const rated = Number.isFinite(Number(order.rating)) && Number(order.rating) > 0;
+  return rated || reviewed(order.id);
+}
+
+function openReviewText(order) {
+  reviewTextModal.value = {visible: true, order};
+}
+
+function closeReviewText() {
+  reviewTextModal.value.visible = false;
 }
 
 let unsubscribe = null;
@@ -204,49 +289,19 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.input {
-  width: 100%;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 6px 10px;
+.btn-chat {
+  position: relative;
 }
 
-.error {
-  color: var(--danger);
+.btn-unread-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #e53935;
+  box-shadow: 0 0 0 2px rgba(36, 36, 36, 0.9);
 }
 
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal__dialog {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  width: min(600px, 96vw);
-}
-
-.modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal__body {
-  margin: 8px 0;
-}
-
-.modal__footer {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
 </style>

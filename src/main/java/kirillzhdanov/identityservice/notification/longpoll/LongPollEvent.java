@@ -24,5 +24,6 @@ public class LongPollEvent {
     private String newStatus;
 
     // Courier message payload
+    private Long messageId; // id записи OrderMessage для дедупликации
     private String text;
 }

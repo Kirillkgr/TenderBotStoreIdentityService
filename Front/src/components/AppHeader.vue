@@ -39,7 +39,10 @@
             Корзина ({{ cartStore.items.length }})
           </button>
           <router-link v-if="isAdminOrOwner" to="/admin/archive">Корзина (архив)</router-link>
-          <router-link v-if="isAdminOrOwner" to="/admin">Админ</router-link>
+          <span v-if="isAdminOrOwner" class="nav-link-wrap">
+            <router-link to="/admin">Админ</router-link>
+            <span v-if="nStore.hasQueued" class="nav-dot" title="Новый заказ"></span>
+          </span>
         </template>
         <template v-else>
           <button @click="openLogin" class="nav-link btn-primary">Войти</button>
@@ -58,6 +61,7 @@
                height="28" width="28"/>
           <img v-else :src="userIcon" alt="user" class="user-chip__img user-chip__img--placeholder" height="28"
                width="28"/>
+          <span v-if="nStore.hasAnyUnread" :title="`Есть непрочитанные сообщения`" class="unread-dot"></span>
         </button>
         <transition name="fade-scale">
           <div v-if="chipHover" class="user-menu" @mouseenter="chipHover = true" @mouseleave="chipHover = false">
@@ -90,6 +94,7 @@
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {useAuthStore} from '../store/auth';
+import {useNotificationsStore} from '../store/notifications';
 import {useCartStore} from '../store/cart';
 import {getBrandHint} from '../utils/brandHint';
 
@@ -106,6 +111,7 @@ const props = defineProps({
 const emit = defineEmits(['open-login-modal', 'open-register-modal', 'open-mini-cart']);
 const route = useRoute();
 const authStore = useAuthStore();
+const nStore = useNotificationsStore();
 const cartStore = useCartStore();
 const router = useRouter();
 const qrInlineRef = ref(qrInline);
@@ -283,6 +289,69 @@ watch(showQr, (open) => {
   outline: none;
   border-radius: 4px;
   color: #fff !important;
+}
+
+/* Avatar chip and tiny unread dot */
+.user-chip-wrap {
+  position: relative;
+}
+
+.user-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0;
+  cursor: pointer;
+}
+
+.user-chip__img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-chip__img--placeholder {
+  background: #2f3640;
+}
+
+.unread-dot {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #e53935;
+  box-shadow: 0 0 0 2px rgba(36, 36, 36, 0.9);
+}
+
+.nav-link-wrap {
+  position: relative;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.nav-link-wrap > a {
+  padding-right: 14px;
+}
+
+.nav-dot {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #e53935;
+  box-shadow: 0 0 0 2px rgba(36, 36, 36, 0.9);
 }
 
 </style>

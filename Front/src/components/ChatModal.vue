@@ -20,21 +20,25 @@
           </div>
         </div>
       </div>
-      <div class="modal__footer">
+      <div v-if="isActive(props.order?.status)" class="modal__footer">
         <textarea v-model="text" class="input" placeholder="Введите сообщение" rows="3"></textarea>
         <div class="actions">
           <button :disabled="sending || !canSend" class="btn" @click="send">Отправить</button>
         </div>
+      </div>
+      <div v-else class="modal__footer">
+        <div class="muted" style="width: 100%;">Заказ завершён или отменён. Сообщения недоступны.</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import {onMounted, onBeforeUnmount, ref, watch, nextTick, computed} from 'vue';
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import orderAdminService from '@/services/orderAdminService';
 import orderClientService from '@/services/orderClientService';
 import {getNotificationsClient} from '@/services/notifications';
+import {useNotificationsStore} from '@/store/notifications';
 
 const props = defineProps({
   order: {type: Object, required: true},
@@ -48,6 +52,9 @@ const text = ref('');
 const sending = ref(false);
 const listEl = ref(null);
 let unsubscribe = null;
+const nStore = useNotificationsStore();
+let io;
+const seenIds = new Set(); // messageId для дедупликации
 
 const canSend = computed(() => !!text.value.trim() && isActive(props.order?.status));
 
@@ -80,7 +87,20 @@ async function loadHistory() {
   try {
     const {data} = await orderAdminService.getMessages(props.order.id);
     messages.value = Array.isArray(data) ? data : [];
+    try {
+      // Заполним seenIds уже загруженными id, чтобы не дублировать при приходе события
+      seenIds.clear();
+      for (const m of messages.value) {
+        if (m && m.id != null) seenIds.add(Number(m.id));
+      }
+    } catch (_) {
+    }
     scrollToBottom();
+    // После первичной загрузки — очищаем индикатор по этому заказу
+    try {
+      nStore.clearOrder(props.order?.id);
+    } catch (_) {
+    }
   } catch (e) {
     messages.value = [];
   } finally {
@@ -133,29 +153,65 @@ onMounted(() => {
     try {
       if (!evt || evt.orderId !== props.order.id) return;
       if (evt.type === 'COURIER_MESSAGE' && props.role === 'client') {
+        if (evt.messageId != null && seenIds.has(Number(evt.messageId))) return;
         messages.value.push({
           _tmpId: 'evt-' + Date.now(),
           fromClient: false,
           text: evt.text,
           createdAt: new Date().toISOString()
         });
+        if (evt.messageId != null) seenIds.add(Number(evt.messageId));
         scrollToBottom();
       } else if (evt.type === 'CLIENT_MESSAGE' && props.role === 'admin') {
+        if (evt.messageId != null && seenIds.has(Number(evt.messageId))) return;
         messages.value.push({
           _tmpId: 'evt-' + Date.now(),
           fromClient: true,
           text: evt.text,
           createdAt: new Date().toISOString()
         });
+        if (evt.messageId != null) seenIds.add(Number(evt.messageId));
         scrollToBottom();
       }
     } catch {
     }
   });
+  // Помечаем активный заказ, чтобы входящие не увеличивали непрочитанные
+  try {
+    nStore.setActive(props.order?.id);
+  } catch (_) {
+  }
+  // И сразу очистим индикатор (на случай, если кнопка открыта вручную без IO)
+  try {
+    nStore.clearOrder(props.order?.id);
+  } catch (_) {
+  }
+  // Авто-сброс, если контент чата виден хотя бы на 10%
+  try {
+    io = new IntersectionObserver((entries) => {
+      const e = entries && entries[0];
+      if (e && e.isIntersecting && e.intersectionRatio >= 0.1) {
+        try {
+          nStore.clearOrder(props.order?.id);
+        } catch (_) {
+        }
+      }
+    }, {threshold: [0, 0.1, 0.25, 0.5, 1]});
+    if (listEl.value) io.observe(listEl.value);
+  } catch (_) {
+  }
 });
 
 onBeforeUnmount(() => {
   if (typeof unsubscribe === 'function') unsubscribe();
+  try {
+    nStore.clearActive();
+  } catch (_) {
+  }
+  try {
+    if (io) io.disconnect();
+  } catch (_) {
+  }
 });
 
 watch(() => props.order?.id, () => {
@@ -223,16 +279,6 @@ watch(() => props.order?.id, () => {
   padding: 8px 10px;
   border-radius: 10px;
   background: #2f2f2f;
-}
-
-.msg.from-client {
-  align-self: flex-start;
-  background: #334155;
-}
-
-.msg.from-admin {
-  align-self: flex-end;
-  background: #3f3f3f;
 }
 
 .msg .meta {

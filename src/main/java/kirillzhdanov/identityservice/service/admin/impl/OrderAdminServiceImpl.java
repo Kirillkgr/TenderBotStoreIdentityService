@@ -9,6 +9,7 @@ import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.order.Order;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.order.OrderRepository;
+import kirillzhdanov.identityservice.repository.order.OrderReviewRepository;
 import kirillzhdanov.identityservice.service.admin.OrderAdminService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -18,29 +19,26 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class OrderAdminServiceImpl implements OrderAdminService {
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final OrderReviewRepository orderReviewRepository;
 
-    public OrderAdminServiceImpl(OrderRepository orderRepository, UserRepository userRepository) {
+    public OrderAdminServiceImpl(OrderRepository orderRepository, UserRepository userRepository, OrderReviewRepository orderReviewRepository) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
+        this.orderReviewRepository = orderReviewRepository;
     }
 
     private static String safe(String s) {
@@ -79,7 +77,8 @@ public class OrderAdminServiceImpl implements OrderAdminService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderDto> findOrders(Pageable pageable, String search, Long brandId, String dateFrom, String dateTo) {
-        Specification<Order> spec = Specification.where(null);
+        // Neutral specification instead of deprecated Specification.where(null)
+        Specification<Order> spec = (root, query, cb) -> cb.conjunction();
 
         // Фильтр: поиск
         if (StringUtils.hasText(search)) {
@@ -135,7 +134,8 @@ public class OrderAdminServiceImpl implements OrderAdminService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderDto> findOrdersForBrands(Pageable pageable, String search, List<Long> brandIds, String dateFrom, String dateTo) {
-        Specification<Order> spec = Specification.where(null);
+        // Neutral specification instead of deprecated Specification.where(null)
+        Specification<Order> spec = (root, query, cb) -> cb.conjunction();
 
         if (brandIds != null && !brandIds.isEmpty()) {
             spec = spec.and((root, query, cb) -> root.get("brand").get("id").in(brandIds));
@@ -201,6 +201,17 @@ public class OrderAdminServiceImpl implements OrderAdminService {
                     .price(Optional.ofNullable(oi.getPrice()).orElse(BigDecimal.ZERO))
                     .build()));
         }
+        Integer rating = null;
+        String reviewComment = null;
+        try {
+            var rev = orderReviewRepository.findByOrder_Id(o.getId()).orElse(null);
+            if (rev != null) {
+                rating = rev.getRating();
+                reviewComment = rev.getComment();
+            }
+        } catch (Exception ignored) {
+        }
+
         return OrderDto.builder()
                 .id(o.getId())
                 .clientId(clientId)
@@ -214,9 +225,12 @@ public class OrderAdminServiceImpl implements OrderAdminService {
                 .createdAt(o.getCreatedAt())
                 .comment(o.getComment())
                 .items(items)
+                .rating(rating)
+                .reviewComment(reviewComment)
                 .build();
     }
 
+    @SuppressWarnings("unused")
     private Long resolveAdminMasterId() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();

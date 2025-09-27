@@ -22,6 +22,8 @@
         <th>Бренд</th>
         <th>Клиент (ФИО)</th>
         <th>Контакты</th>
+        <th>Товары</th>
+        <th>Новые</th>
         <th>Комментарий</th>
         <th>Сумма</th>
         <th>Статус</th>
@@ -30,14 +32,23 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="o in paged" :key="o.id">
-        <td>{{ o.id }}</td>
+      <tr v-for="o in paged" :key="o.id"
+          :class="{ 'row-unread': nStore.hasUnreadByOrder(o.id), 'row-queued': nStore.isQueued(o.id) || String(o.status).toUpperCase()==='QUEUED' }">
+        <td class="id-cell">
+          <span class="id-text">{{ o.id }}</span>
+          <span v-if="nStore.isQueued(o.id) || String(o.status).toUpperCase()==='QUEUED'" class="queued-dot"
+                title="Новый заказ"></span>
+        </td>
         <td>{{ o.brandName || o.brandId || '—' }}</td>
         <td>{{ o.clientName || '—' }}</td>
         <td>
           <div>{{ o.clientPhone || '—' }}</div>
           <div v-if="o.clientEmail && !o.clientPhone" class="text-muted">{{ o.clientEmail }}</div>
         </td>
+        <td style="max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          {{ formatItems(o.items) }}
+        </td>
+        <td class="text-center" style="min-width:70px;">{{ nStore.countByOrder(o.id) }}</td>
         <td style="max-width: 240px; word-break: break-word;">{{ o.comment || '—' }}</td>
         <td>{{ formatPrice(o.total) }} ₽</td>
         <td>
@@ -51,7 +62,20 @@
         </td>
         <td>{{ formatLocalDateTime(o.createdAt) }}</td>
         <td>
-          <button class="btn btn-sm" type="button" @click.stop="openMessage(o)">Сообщение</button>
+          <button class="btn btn-sm btn-chat" type="button" @click.stop="openMessage(o)">
+            Сообщение
+            <span v-if="nStore.hasUnreadByOrder(o.id)" class="btn-unread-dot" title="Есть новые сообщения"></span>
+          </button>
+          <div v-if="o.rating" class="rating-wrap">
+            <span aria-hidden="true" class="stars">
+              <span v-for="n in 5" :key="n" :class="{ active: n <= Number(o.rating) }" class="star">★</span>
+            </span>
+            <span class="rating-text">{{ Number(o.rating).toFixed(1) }}/5</span>
+          </div>
+          <div v-else class="rating-wrap muted">Нет оценки</div>
+          <button class="btn btn-sm" style="margin-top:6px;" type="button"
+                  @click="openReviewText(o)">Отзыв
+          </button>
         </td>
       </tr>
       <tr v-if="(orders||[]).length === 0">
@@ -73,15 +97,18 @@
 
     <!-- Модалка отправки сообщения клиенту -->
     <ChatModal v-if="messageModal.visible" :order="messageModal.order" role="admin" @close="closeMessage"/>
+    <ReviewTextModal v-if="reviewTextModal.visible" :order="reviewTextModal.order" @close="closeReviewText"/>
   </div>
 </template>
 
 <script setup>
-import {computed, onMounted, onBeforeUnmount, ref, watch} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {formatLocalDateTime} from '@/utils/datetime';
 import orderAdminService, {ORDER_STATUSES} from '@/services/orderAdminService';
 import {getNotificationsClient} from '@/services/notifications';
 import ChatModal from '@/components/ChatModal.vue';
+import ReviewTextModal from '@/components/ReviewTextModal.vue';
+import {useNotificationsStore} from '@/store/notifications';
 
 const orders = ref([]);
 const loading = ref(false);
@@ -98,6 +125,23 @@ function formatPrice(val) {
   const n = Number(val);
   if (!Number.isFinite(n)) return '—';
   return new Intl.NumberFormat('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(n);
+}
+
+
+function formatItems(items) {
+  try {
+    const arr = Array.isArray(items) ? items : [];
+    if (arr.length === 0) return '—';
+    const head = arr.slice(0, 3).map(it => {
+      const name = it?.productName || ('Товар #' + (it?.productId ?? ''));
+      const qty = Number(it?.quantity || 0);
+      return `${name} × ${qty}`;
+    }).join(', ');
+    const rest = arr.length - 3;
+    return rest > 0 ? `${head} +${rest} ещё` : head;
+  } catch {
+    return '—';
+  }
 }
 
 const savingStatusId = ref(null);
@@ -134,6 +178,10 @@ async function reload() {
     const body = res?.data ?? {};
     if (Array.isArray(body.content)) {
       orders.value = body.content || [];
+      try {
+        nStore.resetQueuedFromList(orders.value);
+      } catch (_) {
+      }
       totalPages.value = Math.max(1, Number(body.totalPages) || 1);
       // синхронизация страницы и размера, если сервер вернул другие значения
       if (typeof body.number === 'number') page.value = Number(body.number) + 1;
@@ -157,6 +205,7 @@ async function reload() {
 onMounted(reload);
 
 let unsubscribe = null;
+const nStore = useNotificationsStore();
 onMounted(() => {
   const client = getNotificationsClient();
   client.start();
@@ -179,6 +228,13 @@ onMounted(() => {
         } else {
           // Если заказ не найден на текущей странице — можно перезагрузить
           reload();
+        }
+      } else if (evt?.type === 'NEW_ORDER' && evt.orderId) {
+        // Новый заказ: перезагружаем список и проигрываем короткий звук
+        reload();
+        try {
+          playBeep();
+        } catch (_) {
         }
       }
     } catch (_) {
@@ -211,8 +267,8 @@ const filtered = computed(() => {
       const d = o.createdAt ? new Date(o.createdAt) : null;
       if (!d || isNaN(d)) return false;
       if (from && d < from) return false;
-      if (to && d > to) return false;
-      return true;
+      return !(to && d > to);
+
     });
   }
   return arr;
@@ -254,7 +310,19 @@ async function applyStatus(order) {
   savingStatusId.value = order.id;
   try {
     await orderAdminService.updateStatus(order.id, draft);
+    // Обновим локально
     order.status = draft;
+    if (String(draft).toUpperCase() !== 'QUEUED') {
+      try {
+        nStore.clearQueued(order.id);
+      } catch (_) {
+      }
+    } else {
+      try {
+        nStore.markQueued(order.id);
+      } catch (_) {
+      }
+    }
   } catch (e) {
     alert(e?.response?.status === 409 ? 'Недопустимый переход статуса' : 'Не удалось сохранить статус');
     statusDraft.value[order.id] = order.status; // откат
@@ -264,17 +332,51 @@ async function applyStatus(order) {
 }
 
 const messageModal = ref({visible: false, order: null});
+const reviewTextModal = ref({visible: false, order: null});
 
 function openMessage(order) {
   try {
     console.log('[AdminOrders] openMessage orderId=', order?.id);
   } catch (e) {
   }
+  try {
+    nStore.clearOrder(order?.id);
+  } catch (_) {
+  }
   messageModal.value = {visible: true, order};
 }
 
 function closeMessage() {
   messageModal.value.visible = false;
+}
+
+function openReviewText(order) {
+  reviewTextModal.value = {visible: true, order};
+}
+
+function closeReviewText() {
+  reviewTextModal.value.visible = false;
+}
+
+// Короткий звуковой сигнал при новом заказе
+let audioCtx = null;
+
+function playBeep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880; // A5
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.25);
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + 0.26);
+  } catch (e) {
+    // ignore if blocked
+  }
 }
 </script>
 
@@ -326,6 +428,50 @@ function closeMessage() {
   cursor: default;
 }
 
+.btn-chat {
+  position: relative;
+}
+
+.btn-unread-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #e53935;
+  box-shadow: 0 0 0 2px rgba(36, 36, 36, 0.9);
+}
+
+.row-unread {
+  background: rgba(229, 57, 53, 0.08);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.rating-wrap {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stars .star {
+  color: #888;
+}
+
+.stars .star.active {
+  color: #ffd54f;
+  text-shadow: 0 0 4px rgba(255, 213, 79, .5);
+}
+
+.rating-text {
+  color: #bbb;
+  font-size: .9rem;
+}
+
 .input {
   border: 1px solid var(--border);
   background: var(--input-bg);
@@ -339,38 +485,5 @@ function closeMessage() {
   align-items: center;
   gap: 8px;
   margin-top: 10px;
-}
-
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal__dialog {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  width: min(600px, 96vw);
-}
-
-.modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal__body {
-  margin: 8px 0;
-}
-
-.modal__footer {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
 }
 </style>

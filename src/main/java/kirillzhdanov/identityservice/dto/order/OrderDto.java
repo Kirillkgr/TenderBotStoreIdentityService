@@ -27,4 +27,7 @@ public class OrderDto {
     private LocalDateTime createdAt;
     private String comment;
     private List<OrderItemDto> items;
+    // Client review summary
+    private Integer rating; // 1..5
+    private String reviewComment;
 }
