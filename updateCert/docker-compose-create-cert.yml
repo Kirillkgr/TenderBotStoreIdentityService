@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    restart: "no"
+    ports:
+      - "80:80"
+    volumes:
+      - ./ssl:/etc/letsencrypt
+    # HTTP-01 standalone. Выпускаем для apex домена kirillkgr.ru (без поддоменов)
+    command: >
+      certonly --standalone --non-interactive --agree-tos --no-eff-email
+      --email ${CERT_EMAIL}
+      -d kirillkgr.ru

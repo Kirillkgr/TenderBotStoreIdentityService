@@ -1,0 +1,41 @@
+name: Update SSL Certificate
+
+on:
+  push:
+    branches:
+      - master-update-cert
+  schedule:
+    # Every month on the 20th at 03:30 UTC
+    - cron: '30 3 20 * *'
+
+jobs:
+  renew-cert:
+    runs-on: ubuntu-latest
+    env:
+      CERT_EMAIL: ${{ secrets.CERT_EMAIL }}
+      SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Ensure server variables are set
+        run: |
+          if [ -z "${{ vars.IP_ADDRESS }}" ]; then echo "vars.IP_ADDRESS is required" >&2; exit 1; fi
+          if [ -z "${SERVER_PASSWORD}" ]; then echo "secrets.SERVER_PASSWORD is required" >&2; exit 1; fi
+          if [ -z "${CERT_EMAIL}" ]; then echo "secrets.CERT_EMAIL is required" >&2; exit 1; fi
+
+      - name: Create work directory on server
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'mkdir -p /home/user/updateCert'
+
+      - name: Copy updateCert directory
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no -r ./updateCert/* root@${{ vars.IP_ADDRESS }}:/home/user/updateCert/
+
+      - name: Make script executable
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'chmod +x /home/user/updateCert/renew-and-deploy.sh'
+
+      - name: Run certificate renewal script on server
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "CERT_EMAIL='${{ secrets.CERT_EMAIL }}' /home/user/updateCert/renew-and-deploy.sh"
