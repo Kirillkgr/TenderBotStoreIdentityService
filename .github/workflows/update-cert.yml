@@ -1,9 +1,9 @@
 name: Update SSL Certificate
 
 on:
-  push:
-    branches:
-      - master-update-cert
+  #  push:
+  #    branches:
+  #      - master-update-cert
   schedule:
     # Every month on the 20th at 03:30 UTC
     - cron: '30 3 20 * *'
