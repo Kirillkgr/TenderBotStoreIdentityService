@@ -1,8 +1,10 @@
 package kirillzhdanov.identityservice.security;
 
 import kirillzhdanov.identityservice.googleOAuth2.CustomOidcUserService;
+import kirillzhdanov.identityservice.tenant.ContextEnforcementFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -17,6 +19,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -26,19 +30,27 @@ public class SecurityConfig {
     private final CustomOidcUserService oidcUserService = new CustomOidcUserService();
     private final kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
+    private final Environment environment;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginSuccessHandler successHandler,
-                          kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginFailureHandler failureHandler) {
+                          kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginFailureHandler failureHandler,
+                          Environment environment) {
 
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.oAuth2LoginSuccessHandler = successHandler;
         this.oAuth2LoginFailureHandler = failureHandler;
+        this.environment = environment;
     }
 
     @Bean
     public OncePerRequestFilter tenantContextFilter() {
         return new kirillzhdanov.identityservice.tenant.TenantContextFilter();
+    }
+
+    @Bean
+    public ContextEnforcementFilter contextEnforcementFilter() {
+        return new ContextEnforcementFilter();
     }
 
     @Bean
@@ -84,8 +96,18 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, accessDeniedException) -> response.sendError(403))
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(tenantContextFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // Add dev-only header-based tenant context filter
+        if (Arrays.asList(environment.getActiveProfiles()).contains("dev")) {
+            http.addFilterAfter(tenantContextFilter(), UsernamePasswordAuthenticationFilter.class);
+            http.addFilterAfter(contextEnforcementFilter(), tenantContextFilter().getClass());
+        } else {
+            // Without dev filter, enforce right after JWT auth
+            http.addFilterAfter(contextEnforcementFilter(), UsernamePasswordAuthenticationFilter.class);
+        }
+
+        http
                 .oauth2Login(o -> o
                         .userInfoEndpoint(u -> u.oidcUserService(oidcUserService))
                         .successHandler(oAuth2LoginSuccessHandler)

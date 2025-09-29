@@ -104,6 +104,28 @@ public class JwtUtils {
 		return createToken(claims, userDetails.getUsername(), accessTokenExpiration);
 	}
 
+	public String generateAccessToken(UserDetails userDetails,
+									  Long membershipId,
+									  Long masterId,
+									  Long brandId,
+									  Long locationId) {
+		Map<String, Object> claims = new HashMap<>();
+		claims.put("tokenType", Token.TokenType.ACCESS.name());
+		if (userDetails instanceof CustomUserDetails(User user)) {
+			claims.put("userId", user.getId());
+			claims.put("username", user.getUsername());
+			List<Long> brandIds = user.getBrands().stream().map(Brand::getId).collect(Collectors.toList());
+			claims.put("brandIds", brandIds);
+			List<String> roles = user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toList());
+			claims.put("roles", roles);
+		}
+		if (membershipId != null) claims.put("membershipId", membershipId);
+		if (masterId != null) claims.put("masterId", masterId);
+		if (brandId != null) claims.put("brandId", brandId);
+		if (locationId != null) claims.put("locationId", locationId);
+		return createToken(claims, userDetails.getUsername(), accessTokenExpiration);
+	}
+
 	public String generateRefreshToken(UserDetails userDetails) {
 
 		Map<String, Object> claims = new HashMap<>();
@@ -165,6 +187,34 @@ public class JwtUtils {
 		return extractClaim(token, claims -> {
 			Object roles = claims.get("roles");
 			return roles != null ? (List<String>) roles : Collections.emptyList();
+		});
+	}
+
+	public Long extractMembershipId(String token) {
+		return extractClaim(token, claims -> {
+			Object v = claims.get("membershipId");
+			return v != null ? ((Number) v).longValue() : null;
+		});
+	}
+
+	public Long extractMasterIdClaim(String token) {
+		return extractClaim(token, claims -> {
+			Object v = claims.get("masterId");
+			return v != null ? ((Number) v).longValue() : null;
+		});
+	}
+
+	public Long extractBrandIdClaim(String token) {
+		return extractClaim(token, claims -> {
+			Object v = claims.get("brandId");
+			return v != null ? ((Number) v).longValue() : null;
+		});
+	}
+
+	public Long extractLocationIdClaim(String token) {
+		return extractClaim(token, claims -> {
+			Object v = claims.get("locationId");
+			return v != null ? ((Number) v).longValue() : null;
 		});
 	}
 
