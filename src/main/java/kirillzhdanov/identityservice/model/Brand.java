@@ -1,8 +1,9 @@
 package kirillzhdanov.identityservice.model;
 
-import jakarta.persistence.*;
-import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import kirillzhdanov.identityservice.model.master.MasterAccount;
+import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -28,6 +29,11 @@ public class Brand {
 	@Column(unique = true)
 	@EqualsAndHashCode.Include
 	private String organizationName;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "master_id")
+	@JsonIgnore
+	private MasterAccount master;
 
 	private String telegramBotToken;
 

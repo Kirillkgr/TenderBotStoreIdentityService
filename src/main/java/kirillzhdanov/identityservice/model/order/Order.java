@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.model.order;
 import jakarta.persistence.*;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.User;
+import kirillzhdanov.identityservice.model.master.MasterAccount;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -32,6 +33,11 @@ public class Order {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
     private Brand brand;
+
+    // Мастер (владелец) — для быстрых фильтров и изоляции
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "master_id")
+    private MasterAccount master;
 
     @Column(name = "total", precision = 15, scale = 2)
     private BigDecimal total;
@@ -68,6 +74,12 @@ public class Order {
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
         if (updatedAt == null) updatedAt = createdAt;
+        if (master == null && brand != null) {
+            try {
+                master = brand.getMaster();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @PreUpdate

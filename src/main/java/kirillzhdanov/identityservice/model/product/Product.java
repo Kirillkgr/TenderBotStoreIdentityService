@@ -2,6 +2,7 @@ package kirillzhdanov.identityservice.model.product;
 
 import jakarta.persistence.*;
 import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,6 +38,10 @@ public class Product {
     @JoinColumn(name = "brand_id", nullable = false)
     private Brand brand;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "master_id")
+    private MasterAccount master;
+
     // null означает, что товар находится в "корне" бренда
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_tag_id")
@@ -65,6 +70,12 @@ public class Product {
         updatedAt = now;
         if (anonymousCartInterest == null) anonymousCartInterest = 0L;
         if (authCartInterest == null) authCartInterest = 0L;
+        if (master == null && brand != null) {
+            try {
+                master = brand.getMaster();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @PreUpdate
