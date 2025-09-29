@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -33,6 +34,11 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.oAuth2LoginSuccessHandler = successHandler;
         this.oAuth2LoginFailureHandler = failureHandler;
+    }
+
+    @Bean
+    public OncePerRequestFilter tenantContextFilter() {
+        return new kirillzhdanov.identityservice.tenant.TenantContextFilter();
     }
 
     @Bean
@@ -79,6 +85,7 @@ public class SecurityConfig {
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(tenantContextFilter(), UsernamePasswordAuthenticationFilter.class)
                 .oauth2Login(o -> o
                         .userInfoEndpoint(u -> u.oidcUserService(oidcUserService))
                         .successHandler(oAuth2LoginSuccessHandler)
