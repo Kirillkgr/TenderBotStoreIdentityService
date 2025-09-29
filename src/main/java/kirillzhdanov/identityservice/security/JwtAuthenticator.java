@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.security;
 import jakarta.servlet.http.HttpServletRequest;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.service.TokenService;
+import kirillzhdanov.identityservice.tenant.TenantContext;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,14 +79,10 @@ public class JwtAuthenticator {
 
 	/**
 	 * Аутентифицирует пользователя, если токен валиден
-	 *
-	 * @param request  HTTP запрос
-	 * @param jwt      JWT токен
-	 * @param username имя пользователя
-	 * @return true, если аутентификация прошла успешно
 	 */
-	private boolean authenticateUser(@NonNull HttpServletRequest request, @NonNull String jwt, @NonNull String username) {
-
+	private boolean authenticateUser(@NonNull HttpServletRequest request,
+									 @NonNull String jwt,
+									 @NonNull String username) {
 		try {
 			UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 			Objects.requireNonNull(userDetails, "UserDetailsService вернул null");
@@ -94,11 +91,20 @@ public class JwtAuthenticator {
 			if (isTokenValid(jwt, userDetails)) {
 				UsernamePasswordAuthenticationToken authToken = createAuthenticationToken(userDetails);
 				authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-				SecurityContextHolder.getContext()
-									 .setAuthentication(authToken);
+				SecurityContextHolder.getContext().setAuthentication(authToken);
 
-				if (log.isDebugEnabled()) {
-					log.debug("Пользователь успешно аутентифицирован");
+				// Заполняем TenantContext из клеймов (membership/master/brand/location)
+				try {
+					Long membershipId = jwtUtils.extractMembershipId(jwt);
+					Long masterId = jwtUtils.extractMasterIdClaim(jwt);
+					Long brandId = jwtUtils.extractBrandIdClaim(jwt);
+					Long locationId = jwtUtils.extractLocationIdClaim(jwt);
+					if (membershipId != null) TenantContext.setMembershipId(membershipId);
+					if (masterId != null) TenantContext.setMasterId(masterId);
+					if (brandId != null) TenantContext.setBrandId(brandId);
+					if (locationId != null) TenantContext.setLocationId(locationId);
+				} catch (Exception ignore) {
+					// если клеймов нет/некорректны — оставляем контекст пустым; защищенные эндпоинты проверят наличие
 				}
 				return true;
 			} else {
@@ -115,8 +121,7 @@ public class JwtAuthenticator {
 			clearSecurityContext();
 			return false;
 		} catch (Exception e) {
-			log.error("Ошибка при аутентификации пользователя: {}", e.getClass()
-																	 .getSimpleName());
+			log.error("Ошибка при аутентификации пользователя: {}", e.getClass().getSimpleName());
 			clearSecurityContext();
 			return false;
 		}
