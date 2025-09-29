@@ -135,3 +135,135 @@ select option, select optgroup, .form-select option, .form-select optgroup {
 .bg-surface { background: var(--surface); }
 .bg-card { background: var(--card); }
 .text-muted { color: var(--muted); }
+
+/* Chat modal (global) */
+.chat-modal .modal__dialog {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  width: min(760px, 96vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 48px var(--shadow-color);
+}
+
+.chat-modal .modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-modal .modal__body {
+  padding: 0 12px;
+}
+
+.chat-modal .modal__footer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-modal .chat {
+  height: 56vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-modal .chat__list {
+  flex: 1;
+  overflow: auto;
+  display: grid;
+  gap: -12px; /* small, but noticeable spacing between bubbles */
+  padding: 12px 8px;
+}
+
+.chat-modal .msg {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-modal .msg .meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 8px 2px 8px; /* reduce space above bubble */
+  display: flex;
+  gap: 8px;
+}
+
+.chat-modal .msg .bubble {
+  max-width: 78ch;
+  width: fit-content;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--input-border);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--shadow-color) 45%, transparent);
+  margin-bottom: 0; /* spacing controlled by grid gap */
+}
+
+/* Alignment */
+.chat-modal .msg.is-own {
+  align-items: flex-end;
+}
+
+.chat-modal .msg.is-own .bubble {
+  background: color-mix(in srgb, var(--primary) 24%, var(--input-bg));
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--input-border));
+}
+
+.chat-modal .msg.from-client:not(.is-own) {
+  align-items: flex-start;
+}
+
+.chat-modal .msg.from-admin:not(.is-own) {
+  align-items: flex-start;
+}
+
+.chat-modal .muted {
+  color: var(--muted);
+  padding: 12px;
+}
+
+.chat-modal .btn {
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.chat-modal .input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+/* Composer (input area) */
+.chat-modal .composer {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 8px 0 2px 0;
+  border-top: 1px solid var(--border);
+}
+
+.chat-modal .composer .actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-modal .composer .send-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
