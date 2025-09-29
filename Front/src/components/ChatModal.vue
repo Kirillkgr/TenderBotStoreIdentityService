@@ -1,36 +1,45 @@
 <template>
-  <div class="modal" @click.self="close">
-    <div class="modal__dialog">
-      <div class="modal__header">
-        <h3>Чат по заказу #{{ order?.id }}</h3>
-        <button class="btn" @click="close">×</button>
-      </div>
-      <div class="modal__body">
+  <Modal :is-modal-visible="true" :width="560" :z-index="20000" @close="close">
+    <template #header>
+      <h3>Чат по заказу #{{ order?.id }}</h3>
+    </template>
+    <template #content>
+      <div class="chat-modal">
         <div class="chat">
           <div v-if="loading" class="muted">Загрузка...</div>
           <div v-else ref="listEl" class="chat__list">
-            <div v-for="m in messages" :key="m.id || m._tmpId"
-                 :class="['msg', m.fromClient ? 'from-client':'from-admin']">
+            <div
+                v-for="m in messages"
+                :key="m.id || m._tmpId"
+                :class="['msg', m.fromClient ? 'from-client' : 'from-admin', isOwn(m) ? 'is-own' : '']"
+            >
               <div class="meta">
-                <span class="who">{{ m.fromClient ? 'Клиент' : 'Админ' }}</span>
+                <span class="who">{{ displayWho(m) }}</span>
                 <span class="at">{{ formatDate(m.createdAt) }}</span>
               </div>
-              <div class="text">{{ m.text }}</div>
+              <div class="bubble">{{ m.text }}</div>
             </div>
           </div>
         </div>
-      </div>
-      <div v-if="isActive(props.order?.status)" class="modal__footer">
-        <textarea v-model="text" class="input" placeholder="Введите сообщение" rows="3"></textarea>
-        <div class="actions">
-          <button :disabled="sending || !canSend" class="btn" @click="send">Отправить</button>
+
+        <div v-if="isActive(props.order?.status)" class="composer">
+          <textarea
+              ref="inputEl"
+              v-model="text"
+              class="input"
+              placeholder="Введите сообщение"
+              rows="3"
+              @keydown="onKeyDown"
+          ></textarea>
+          <div class="actions">
+            <div class="send-hint">Ctrl+Enter — отправить</div>
+            <button :disabled="sending || !canSend" class="btn" @click="send">Отправить</button>
+          </div>
         </div>
+        <div v-else class="muted" style="padding: 12px 0;">Заказ завершён или отменён. Сообщения недоступны.</div>
       </div>
-      <div v-else class="modal__footer">
-        <div class="muted" style="width: 100%;">Заказ завершён или отменён. Сообщения недоступны.</div>
-      </div>
-    </div>
-  </div>
+    </template>
+  </Modal>
 </template>
 
 <script setup>
@@ -39,6 +48,8 @@ import orderAdminService from '@/services/orderAdminService';
 import orderClientService from '@/services/orderClientService';
 import {getNotificationsClient} from '@/services/notifications';
 import {useNotificationsStore} from '@/store/notifications';
+import {useAuthStore} from '@/store/auth';
+import Modal from '@/components/Modal.vue';
 
 const props = defineProps({
   order: {type: Object, required: true},
@@ -51,15 +62,24 @@ const messages = ref([]);
 const text = ref('');
 const sending = ref(false);
 const listEl = ref(null);
+const inputEl = ref(null);
 let unsubscribe = null;
 const nStore = useNotificationsStore();
 let io;
 const seenIds = new Set(); // messageId для дедупликации
+const authStore = useAuthStore();
 
 const canSend = computed(() => !!text.value.trim() && isActive(props.order?.status));
 
 function isActive(status) {
   return status !== 'COMPLETED' && status !== 'CANCELED';
+}
+
+function onKeyDown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (!sending.value && canSend.value) send();
+  }
 }
 
 function scrollToBottom() {
@@ -79,6 +99,60 @@ function formatDate(iso) {
     return d.toLocaleString('ru-RU');
   } catch {
     return '';
+  }
+}
+
+function initials(firstName, patronymic) {
+  const f = String(firstName || '').trim();
+  const p = String(patronymic || '').trim();
+  const fi = f ? f[0].toUpperCase() + '.' : '';
+  const pi = p ? p[0].toUpperCase() + '.' : '';
+  return (fi + pi).trim();
+}
+
+function isOwn(m) {
+  // Свои сообщения: для админа — те, что не fromClient; для клиента — те, что fromClient
+  return props.role === 'admin' ? !m.fromClient : !!m.fromClient;
+}
+
+function displayWho(m) {
+  try {
+    if (m.fromClient) {
+      // Полное ФИО клиента, если доступно в заказе
+      const name = props.order?.clientName || [
+        props.order?.lastName,
+        props.order?.firstName,
+        props.order?.patronymic,
+      ].filter(Boolean).join(' ');
+      return name || 'Клиент';
+    }
+    // Сообщение от администратора/оператора
+    if (props.role === 'admin') {
+      const u = authStore?.user || {};
+      const ln = u.lastName || '';
+      const ini = initials(u.firstName, u.patronymic);
+      return (ln ? ln : 'Админ') + (ini ? ' ' + ini : '');
+    }
+    // Для клиента пробуем вытащить имя оператора из заказа (если бэкенд отдаёт)
+    const staffName = props.order?.adminName
+        || props.order?.operatorName
+        || props.order?.managerName
+        || props.order?.handlerName
+        || '';
+    if (staffName) {
+      // Преобразуем в формат «Фамилия И.О.» при наличии
+      const parts = String(staffName).trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const last = parts[0];
+        const fi = parts[1]?.[0] ? parts[1][0].toUpperCase() + '.' : '';
+        const pi = parts[2]?.[0] ? parts[2][0].toUpperCase() + '.' : '';
+        return `${last} ${fi}${pi}`.trim();
+      }
+      return staffName;
+    }
+    return 'Админ';
+  } catch (_) {
+    return m.fromClient ? 'Клиент' : 'Админ';
   }
 }
 
@@ -219,96 +293,4 @@ watch(() => props.order?.id, () => {
 });
 </script>
 
-<style scoped>
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal__dialog {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  width: min(760px, 96vw);
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal__body {
-  padding: 0 12px;
-}
-
-.modal__footer {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
-  padding: 12px;
-  border-top: 1px solid var(--border);
-}
-
-.chat {
-  height: 56vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.chat__list {
-  flex: 1;
-  overflow: auto;
-  display: grid;
-  gap: 10px;
-  padding: 12px 4px;
-}
-
-.msg {
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #2f2f2f;
-}
-
-.msg .meta {
-  font-size: 12px;
-  color: #bbb;
-  margin-bottom: 4px;
-  display: flex;
-  gap: 8px;
-}
-
-.btn {
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-
-.input {
-  width: 100%;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 6px 10px;
-}
-
-.muted {
-  color: #999;
-  padding: 12px;
-}
-</style>
+<!-- Styles migrated to global theme.css (.chat-modal namespace) -->
