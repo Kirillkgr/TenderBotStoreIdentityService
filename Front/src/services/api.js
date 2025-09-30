@@ -157,6 +157,20 @@ apiClient.interceptors.request.use(
     } else if (!token && !hasBasicHeader && !isPublicAuthEndpoint) {
       if (DEBUG_HTTP) console.warn('Токен авторизации отсутствует (используем HttpOnly cookie, если они установлены)');
     }
+
+      // Прокидываем идентификатор выбранного membership (для dev и диагностики)
+      try {
+          const membershipId = authStore?.membershipId || null;
+          const masterId = authStore?.masterId || null;
+          if (membershipId) {
+              config.headers['X-Membership-Id'] = String(membershipId);
+          }
+          // В dev-режиме дублируем masterId для совместимости со старым беком
+          if (import.meta.env.DEV && masterId) {
+              config.headers['X-Master-Id'] = String(masterId);
+          }
+      } catch (_) {
+      }
     return config;
   },
   (error) => {

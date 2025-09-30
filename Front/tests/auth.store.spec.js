@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {createPinia, setActivePinia} from 'pinia';
 import {useAuthStore} from '@/store/auth';
+import * as authService from '@/services/authService';
 
 const USER_STORAGE_KEY = 'user_data';
 
@@ -24,6 +25,8 @@ describe('auth store', () => {
   it('restoreSession success stores accessToken', async () => {
     // Mock fetch to return new accessToken
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ accessToken: 'token123' }) }));
+    // Mock whoami to avoid real axios call and stderr noise
+    vi.spyOn(authService, 'getCurrentUser').mockResolvedValue({id: 1, username: 'u'});
     const auth = useAuthStore();
     const ok = await auth.restoreSession();
     expect(ok).toBe(true);

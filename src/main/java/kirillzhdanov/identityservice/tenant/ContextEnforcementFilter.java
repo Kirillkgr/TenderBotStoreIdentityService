@@ -25,6 +25,7 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
             "/auth/v1/register",
             "/auth/v1/refresh",
             "/auth/v1/checkUsername",
+            "/auth/v1/memberships",
             "/auth/v1/context/switch",
             "/auth/v1/revoke",
             "/auth/v1/revoke-all",

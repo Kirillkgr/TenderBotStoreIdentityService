@@ -17,7 +17,7 @@
           <img class="qr-img" :src="qrDataUrl" alt="QR code" width="28" height="28" />
         </button>
         <router-link to="/" class="logo" @click.stop> TenderBotStore</router-link>
-        <span v-if="brandLabel" :title="`Бренд: ${brandLabel}`" class="brand-chip">{{ brandLabel }}</span>
+        <span v-if="brandChip" :title="brandChipTitle" class="brand-chip">{{ brandChip }}</span>
       </div>
 
       <div class="burger" @click="toggleMenu" :class="{ 'is-active': isMenuOpen }">
@@ -39,6 +39,10 @@
             Корзина ({{ cartStore.items.length }})
           </button>
           <router-link v-if="isAdminOrOwner" to="/admin/archive">Корзина (архив)</router-link>
+          <button v-if="authStore.isAuthenticated" class="nav-link btn-primary" type="button"
+                  @click.stop="openContextModal">
+            Контекст
+          </button>
           <span v-if="isAdminOrOwner" class="nav-link-wrap">
             <router-link to="/admin">Админ</router-link>
             <span v-if="nStore.hasQueued" class="nav-dot" title="Новый заказ"></span>
@@ -87,6 +91,9 @@
         </div>
       </transition>
     </teleport>
+
+    <!-- Context select modal -->
+    <ContextSelectModal :visible="showContext" @close="showContext=false"/>
   </div>
 </template>
 
@@ -97,6 +104,7 @@ import {useAuthStore} from '../store/auth';
 import {useNotificationsStore} from '../store/notifications';
 import {useCartStore} from '../store/cart';
 import {getBrandHint} from '../utils/brandHint';
+import ContextSelectModal from './modals/ContextSelectModal.vue';
 
 import qrInline from '../assets/qr-code.svg?raw';
 import userIcon from '../assets/user.svg';
@@ -119,14 +127,29 @@ const qrDataUrl = computed(() =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
 );
 
-// Отображение текущего бренда из субдомена (нижний регистр)
-const brandLabel = computed(() => {
+function openContextModal() {
+  showContext.value = true;
+}
+
+// Чип контекста: бренд из выбранного membership или подсказка из субдомена
+const brandChip = computed(() => {
   try {
+    const selectedBrand = authStore.brandId ? (authStore.memberships || []).find(m => m.brandId === authStore.brandId)?.brandName : null;
+    if (selectedBrand) return selectedBrand;
     const hint = getBrandHint();
     return hint || '';
   } catch (_) {
     return '';
   }
+});
+const brandChipTitle = computed(() => {
+  const mId = authStore.membershipId;
+  const m = (authStore.memberships || []).find(x => x.membershipId === mId);
+  const master = m?.masterName || m?.masterId || '';
+  const brand = m?.brandName || m?.brandId || '';
+  const loc = m?.locationName || m?.locationId || '';
+  const parts = [master, brand, loc].filter(Boolean);
+  return parts.length ? `Контекст: ${parts.join(' / ')}` : 'Контекст не выбран';
 });
 
 // Тема: общий ключ с админкой
@@ -153,6 +176,7 @@ function setTheme(mode) {
 }
 const isMenuOpen = ref(false);
 const showQr = ref(false);
+const showContext = ref(false);
 const chipHover = ref(false);
 const isProfilePage = computed(() => route.name === 'Profile');
 const isHeaderVisible = ref(true);
@@ -235,6 +259,8 @@ function onKeydown(e) {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll);
+  // Автопоказ модалки выбора контекста после логина (инициирует store/auth)
+  window.addEventListener('open-context-modal', openContextModal);
   // init theme
   const saved = localStorage.getItem(THEME_KEY);
   if (saved === 'light' || saved === 'dark') themeMode.value = saved; // иначе остаёмся в auto
@@ -254,6 +280,7 @@ onBeforeUnmount(() => {
     });
   }
   window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('open-context-modal', openContextModal);
 });
 
 watch(themeMode, (v) => {
