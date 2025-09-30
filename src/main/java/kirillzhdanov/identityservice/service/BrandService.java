@@ -32,6 +32,17 @@ public class BrandService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Public-facing list of brands without requiring tenant context.
+     * Intended for /menu/v1/brands on the public homepage.
+     */
+    public List<BrandDto> getAllBrandsPublic() {
+        return brandRepository.findAll()
+                .stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     public List<BrandDto> getMyBrands() {
         Long masterId = getMasterIdOrThrow();
@@ -115,6 +126,15 @@ public class BrandService {
         Long masterId = getMasterIdOrThrow();
         Brand brand = brandRepository.findByIdAndMaster_Id(id, masterId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id in current master: " + id));
+        return convertToDto(brand);
+    }
+
+    /**
+     * Public fetch by ID without requiring tenant context; used by public menu endpoints.
+     */
+    public BrandDto getBrandByIdPublic(Long id) {
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + id));
         return convertToDto(brand);
     }
 }

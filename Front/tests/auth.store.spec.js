@@ -23,8 +23,8 @@ describe('auth store', () => {
   });
 
   it('restoreSession success stores accessToken', async () => {
-    // Mock fetch to return new accessToken
-    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ accessToken: 'token123' }) }));
+    // Mock refresh via authService (axios client under the hood)
+    vi.spyOn(authService, 'refresh').mockResolvedValue({data: {accessToken: 'token123'}});
     // Mock whoami to avoid real axios call and stderr noise
     vi.spyOn(authService, 'getCurrentUser').mockResolvedValue({id: 1, username: 'u'});
     const auth = useAuthStore();
@@ -34,7 +34,7 @@ describe('auth store', () => {
   });
 
   it('restoreSession failure clears session', async () => {
-    global.fetch = vi.fn(async () => ({ ok: false }));
+    vi.spyOn(authService, 'refresh').mockRejectedValue(new Error('no cookie'));
     const auth = useAuthStore();
     auth.setUser({ username: 'u' });
     auth.setAccessToken('a');

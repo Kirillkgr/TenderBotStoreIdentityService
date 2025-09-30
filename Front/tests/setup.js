@@ -28,6 +28,7 @@ vi.mock('vue-router', async () => {
         back: vi.fn(),
     };
     return {
+        useRoute: () => ({name: 'Home', fullPath: '/', params: {}, query: {}}),
         useRouter: () => routerStub,
         createRouter: () => routerStub,
         createWebHistory: () => ({}),

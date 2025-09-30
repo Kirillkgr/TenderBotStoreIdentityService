@@ -11,6 +11,7 @@ vi.mock('@/services/authService', () => ({
     checkUsername: vi.fn(),
     logout: vi.fn(),
     getCurrentUser: vi.fn(),
+    refresh: vi.fn(),
 }));
 
 function setupStore() {
@@ -69,8 +70,8 @@ describe('auth store context flow', () => {
         authService.switchContext.mockResolvedValue({data: {accessToken: 'AT_CTX2'}});
 
         const store = setupStore();
-        // simulate backend refresh success
-        global.fetch = vi.fn().mockResolvedValue({ok: true, json: async () => ({accessToken: 'AT_REFRESH'})});
+        // simulate backend refresh success via authService
+        authService.refresh.mockResolvedValue({data: {accessToken: 'AT_REFRESH'}});
 
         // save previously selected id
         window.localStorage.setItem('selected_membership_id', '7');
