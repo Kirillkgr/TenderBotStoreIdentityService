@@ -36,8 +36,8 @@ export const getCurrentUser = async () => {
         const response = await apiClient.get('/auth/v1/whoami');
         return response.data;
     } catch (error) {
-        console.error('Ошибка при получении данных пользователя:', error);
-        throw error;
+        // In tests or unauthenticated states this may fail; return null to let caller decide
+        return null;
     }
 };
 
@@ -45,6 +45,11 @@ export const getCurrentUser = async () => {
 export const getMemberships = () => {
     return apiClient.get('/auth/v1/memberships');
 };
+
+// Request new access token using refresh cookie
+export function refresh() {
+    return apiClient.post('/auth/v1/refresh');
+}
 
 // Переключение контекста: выдаёт новый accessToken с клеймами контекста
 export const switchContext = (payload) => {

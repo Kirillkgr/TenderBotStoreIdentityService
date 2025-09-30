@@ -227,6 +227,11 @@ apiClient.interceptors.response.use(
     // Если мы выходим или помечено пропустить рефреш — не делаем refresh
     const skipOnce = (() => { try { return localStorage.getItem('skip_refresh_once') === '1'; } catch(_) { return false; } })();
     if (authStore.isLoggingOut || skipOnce) {
+        // Очистим флаг единовременного пропуска рефреша, чтобы последующие сессии работали штатно
+        try {
+            if (skipOnce) localStorage.removeItem('skip_refresh_once');
+        } catch (_) {
+        }
       return Promise.reject(error);
     }
 

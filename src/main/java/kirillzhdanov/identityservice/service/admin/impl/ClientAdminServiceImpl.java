@@ -32,7 +32,7 @@ public class ClientAdminServiceImpl implements ClientAdminService {
 
     @Override
     public Page<ClientDto> findClients(Pageable pageable, String search, Long masterIdParam) {
-        Specification<User> spec = Specification.where(null);
+        Specification<User> spec = Specification.allOf();
 
         // Только клиенты (роль USER)
         spec = spec.and(UserSpecifications.byRole("USER"));

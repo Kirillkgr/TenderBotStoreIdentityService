@@ -28,7 +28,7 @@ public class MenuController {
     // 1) Публичный список брендов (минимум данных)
     @GetMapping("/brands")
     public ResponseEntity<List<PublicBrandResponse>> getBrands() {
-        List<BrandDto> brands = brandService.getAllBrands();
+        List<BrandDto> brands = brandService.getAllBrandsPublic();
         List<PublicBrandResponse> response = brands.stream()
                 .map(b -> new PublicBrandResponse(b.getId(), b.getName()))
                 .collect(Collectors.toList());

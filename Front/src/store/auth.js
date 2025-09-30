@@ -185,18 +185,9 @@ export const useAuthStore = defineStore('auth', {
             // помечаем, что идёт восстановление, чтобы роутер мог учитывать это при редиректах
             this.isRestoringSession = true;
             try {
-                // Явный вызов refresh: сервер читает httpOnly refreshToken из cookie и вернёт новый accessToken
-                const refreshResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/v1/refresh`, {
-                    method: 'POST',
-                    credentials: 'include',
-                });
-                if (!refreshResp.ok) {
-                    // 4xx/5xx — refresh невалиден
-                    await this.clearSession();
-                    return false;
-                }
-                const data = await refreshResp.json();
-                const { accessToken } = data || {};
+                // Явный вызов refresh через axios-клиент (withCredentials уже активен в apiClient)
+                const resp = await authService.refresh();
+                const {accessToken} = resp?.data || {};
                 if (!accessToken) {
                     await this.clearSession();
                     return false;

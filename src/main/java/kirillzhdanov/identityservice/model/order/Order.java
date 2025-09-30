@@ -50,10 +50,12 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 64, nullable = false)
+    @Builder.Default
     private OrderStatus status = OrderStatus.QUEUED;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_mode", length = 32, nullable = false)
+    @Builder.Default
     private DeliveryMode deliveryMode = DeliveryMode.PICKUP;
 
     // Snapshots to keep chosen delivery address or pickup point at the time of ordering

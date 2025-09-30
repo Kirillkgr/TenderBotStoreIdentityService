@@ -43,6 +43,21 @@
                   @click.stop="openContextModal">
             Контекст
           </button>
+          <!-- Быстрый селектор контекста (Master / Brand / Point) -->
+          <select
+              v-if="authStore.isAuthenticated && (authStore.memberships?.length || 0) > 0"
+              :value="selectedMembershipId"
+              class="ctx-select"
+              @change="onSelectMembership"
+          >
+            <option
+                v-for="opt in membershipOptions"
+                :key="opt.value"
+                :value="opt.value"
+            >
+              {{ opt.label }}
+            </option>
+          </select>
           <span v-if="isAdminOrOwner" class="nav-link-wrap">
             <router-link to="/admin">Админ</router-link>
             <span v-if="nStore.hasQueued" class="nav-dot" title="Новый заказ"></span>
@@ -131,6 +146,49 @@ function openContextModal() {
   showContext.value = true;
 }
 
+async function onSelectMembership(e) {
+  const val = e?.target?.value;
+  if (!val) return;
+  const m = (authStore.memberships || []).find(x => String(x.membershipId || x.id) === String(val));
+  if (!m) return;
+  await authStore.selectMembership(m);
+}
+
+// Бренд-класс на <html>: brand--{brandId|brandName}
+const prevBrandClass = ref('');
+
+function toBrandClass() {
+  const mId = authStore.membershipId;
+  const m = (authStore.memberships || []).find(x => x.membershipId === mId);
+  const key = m?.brandId || m?.brandName;
+  if (!key) return '';
+  const norm = String(key).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+  return norm ? `brand--${norm}` : '';
+}
+
+function applyBrandClass() {
+  try {
+    const html = document.documentElement;
+    if (prevBrandClass.value) html.classList.remove(prevBrandClass.value);
+    const cls = toBrandClass();
+    if (cls) {
+      html.classList.add(cls);
+      prevBrandClass.value = cls;
+      try {
+        localStorage.setItem('current_brand_class', cls);
+      } catch (_) {
+      }
+    } else {
+      prevBrandClass.value = '';
+      try {
+        localStorage.removeItem('current_brand_class');
+      } catch (_) {
+      }
+    }
+  } catch (_) {
+  }
+}
+
 // Чип контекста: бренд из выбранного membership или подсказка из субдомена
 const brandChip = computed(() => {
   try {
@@ -151,6 +209,18 @@ const brandChipTitle = computed(() => {
   const parts = [master, brand, loc].filter(Boolean);
   return parts.length ? `Контекст: ${parts.join(' / ')}` : 'Контекст не выбран';
 });
+
+// Селектор контекста: список опций и выбранный id
+const membershipOptions = computed(() => {
+  const list = authStore.memberships || [];
+  return list.map(m => ({
+    value: String(m.membershipId ?? m.id),
+    label: [m.masterName || m.masterId, m.brandName || m.brandId, m.locationName || m.locationId]
+        .filter(Boolean)
+        .join(' / ')
+  }));
+});
+const selectedMembershipId = computed(() => authStore.membershipId ? String(authStore.membershipId) : '');
 
 // Тема: общий ключ с админкой
 const THEME_KEY = 'admin_theme_mode'; // 'auto' | 'light' | 'dark'
@@ -271,6 +341,17 @@ onMounted(() => {
   }
   applyTheme();
   window.addEventListener('keydown', onKeydown);
+
+  // Применим бренд-класс с учётом сохранённого значения, затем актуализируем по store
+  try {
+    const savedBrandCls = localStorage.getItem('current_brand_class');
+    if (savedBrandCls) {
+      document.documentElement.classList.add(savedBrandCls);
+      prevBrandClass.value = savedBrandCls;
+    }
+  } catch (_) {
+  }
+  applyBrandClass();
 });
 
 onBeforeUnmount(() => {
@@ -286,6 +367,11 @@ onBeforeUnmount(() => {
 watch(themeMode, (v) => {
   localStorage.setItem(THEME_KEY, v);
   applyTheme();
+});
+
+// Следим за сменой контекста и применяем бренд-класс
+watch(() => [authStore.membershipId, authStore.brandId], () => {
+  applyBrandClass();
 });
 
 // Lock body scroll when modal is open
