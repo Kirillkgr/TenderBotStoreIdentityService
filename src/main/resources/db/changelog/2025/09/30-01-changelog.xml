@@ -10,10 +10,11 @@
 
     <!-- Ensure OWNER role exists -->
     <changeSet id="1759228800000-ensure-owner-role" author="RillG">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sqlCheck expectedResult="1">select 1 from roles where name = 'OWNER'</sqlCheck>
-            </not>
+        <preConditions onFail="CONTINUE">
+            <!-- Run this changeSet when OWNER role is missing -->
+            <sqlCheck expectedResult="0">SELECT COUNT(*)
+                                         FROM roles
+                                         WHERE name = 'OWNER'</sqlCheck>
         </preConditions>
         <sql>
             INSERT INTO roles(name)
@@ -68,9 +69,10 @@
     <!-- Grant OWNER role to users that have their own master_id (self-registered owners) -->
     <changeSet id="1759228800000-grant-owner-role" author="RillG">
         <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="1">select 1
-                                         from roles
-                                         where name = 'OWNER'</sqlCheck>
+            <!-- Proceed only if OWNER role exists -->
+            <sqlCheck expectedResult="1">SELECT COUNT(*)
+                                         FROM roles
+                                         WHERE name = 'OWNER'</sqlCheck>
         </preConditions>
         <sql>
             INSERT INTO user_roles(user_id, role_id)
