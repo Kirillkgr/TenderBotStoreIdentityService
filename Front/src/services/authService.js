@@ -40,3 +40,14 @@ export const getCurrentUser = async () => {
         throw error;
     }
 };
+
+// Список membership текущего пользователя
+export const getMemberships = () => {
+    return apiClient.get('/auth/v1/memberships');
+};
+
+// Переключение контекста: выдаёт новый accessToken с клеймами контекста
+export const switchContext = (payload) => {
+    // payload: { membershipId, brandId?, locationId? }
+    return apiClient.post('/auth/v1/context/switch', payload);
+};

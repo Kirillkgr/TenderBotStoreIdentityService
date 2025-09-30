@@ -16,6 +16,12 @@ export const useAuthStore = defineStore('auth', {
         isLoggingOut: false,
         // Кол-во непрочитанных (приближённо): берём с сервера при логине
         unreadCount: 0,
+        // Контекст (membership/master/brand/location) для tenant-aware запросов
+        memberships: [],
+        membershipId: null,
+        masterId: null,
+        brandId: null,
+        locationId: null,
     }),
 
     getters: {
@@ -65,6 +71,25 @@ export const useAuthStore = defineStore('auth', {
             this.setAccessToken(accessToken);
             this.setUser(userData);
             // unreadCount обновляется через long-poll
+
+            // После логина получаем доступные memberships
+            try {
+                const res = await authService.getMemberships();
+                const list = Array.isArray(res?.data) ? res.data : [];
+                this.memberships = list;
+                // Если доступен только один membership — выбираем автоматически
+                if (list.length === 1) {
+                    await this.selectMembership(list[0]);
+                } else if (list.length > 1) {
+                    // Сообщаем UI открыть модалку выбора контекста
+                    try {
+                        window.dispatchEvent(new CustomEvent('open-context-modal'));
+                    } catch (_) {
+                    }
+                }
+            } catch (e) {
+                // игнорируем: возможно, пользователь без membership (приглашение не принято и т.п.)
+            }
         },
 
         async register(credentials) {
@@ -120,6 +145,7 @@ export const useAuthStore = defineStore('auth', {
             this.setUser(null);
             this.setAccessToken(null);
             this.unreadCount = 0;
+            this.clearMembership();
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
 
             await router.push('/');
@@ -131,6 +157,7 @@ export const useAuthStore = defineStore('auth', {
             this.setUser(null);
             this.setAccessToken(null);
             this.unreadCount = 0;
+            this.clearMembership();
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
             // Те же очистки корзины при клиентском сбросе
             try {
@@ -181,6 +208,23 @@ export const useAuthStore = defineStore('auth', {
                     if (!raw) {
                         await this.fetchProfile();
                     }
+                } catch (_) {
+                }
+                // Попытка подтянуть memberships для UI (без автоселекта)
+                try {
+                    const res = await authService.getMemberships();
+                    this.memberships = Array.isArray(res?.data) ? res.data : [];
+                    // Если ранее пользователь выбирал контекст — восстановим его
+                    try {
+                        const savedId = localStorage.getItem('selected_membership_id');
+                        if (savedId && !this.membershipId) {
+                            const m = this.memberships.find(x => String(x.membershipId || x.id) === String(savedId));
+                            if (m) {
+                                await this.selectMembership(m);
+                            }
+                        }
+                    } catch (_) {
+                    }
                 } catch (_) {}
                 return true;
             } catch (e) {
@@ -213,6 +257,44 @@ export const useAuthStore = defineStore('auth', {
                 }
             } catch (_) {
                 // игнорируем: отсутствие авторизации/ошибка сети
+            }
+        },
+
+        // Выбор membership: сохраняем контекст и переключаем JWT на бэке
+        async selectMembership(m) {
+            if (!m) return;
+            const payload = {
+                membershipId: m.membershipId || m.id,
+                brandId: m.brandId || null,
+                locationId: m.locationId || null,
+            };
+            // Вызов switch выдаёт новый accessToken с клеймами контекста
+            const resp = await authService.switchContext(payload);
+            const newAccessToken = resp?.data?.accessToken;
+            if (newAccessToken) {
+                this.setAccessToken(newAccessToken);
+            }
+            // Сохраняем выбранный контекст в store (для отрисовки и заголовков)
+            this.membershipId = payload.membershipId || null;
+            this.masterId = m.masterId || null;
+            this.brandId = m.brandId || null;
+            this.locationId = m.locationId || null;
+            try {
+                localStorage.setItem('selected_membership_id', String(this.membershipId));
+            } catch (_) {
+            }
+        },
+
+        // Очистка контекста на клиенте (без server-side действий)
+        clearMembership() {
+            this.membershipId = null;
+            this.masterId = null;
+            this.brandId = null;
+            this.locationId = null;
+            this.memberships = [];
+            try {
+                localStorage.removeItem('selected_membership_id');
+            } catch (_) {
             }
         }
     },

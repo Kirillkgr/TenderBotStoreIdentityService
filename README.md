@@ -71,3 +71,47 @@ TenderBotStore. Он предоставляет REST API для регистра
 
 Подробную информацию о доступных эндпоинтах можно найти в Swagger UI по адресу `http://localhost:8081/swagger-ui.html`
 после запуска сервиса.
+
+## Tenant Context (JWT) и контекст переключения
+
+Для изоляции данных между владельцами (master/brand/location) backend использует контекст в JWT.
+
+- В access-token добавлены клеймы:
+    - `membershipId`, `masterId`, опционально `brandId`, `locationId`.
+- Вход по логину/refresh выдаёт обычный access-token. Для выбора рабочего контекста используйте эндпоинт переключения.
+
+### Переключение контекста
+
+`POST /auth/v1/context/switch`
+
+Body:
+
+```json
+{
+  "membershipId": 123,            
+  "brandId": 456,                 
+  "locationId": 789               
+}
+```
+
+- `membershipId` — обязателен; должен принадлежать текущему пользователю.
+- `brandId`/`locationId` — опциональные. Если указаны, должны совпадать с brand/pickup, связанными с переданным
+  membership.
+
+Response:
+
+```json
+{ "accessToken": "<JWT-with-context>" }
+```
+
+Frontend-поток:
+
+1. Login → получить accessToken (без контекста).
+2. Пользователь выбирает контекст (membership/brand/location) → вызвать `/auth/v1/context/switch`.
+3. Сохранить новый accessToken и использовать его для защищённых запросов. Контекст подтягивается на backend из клеймов
+   JWT автоматически.
+
+### Dev fallback
+
+Для локальной отладки в профиле `dev` доступен заголовок `X-Master-Id`, который устанавливает masterId на время запроса.
+В production этот механизм отключён и использоваться не должен.
