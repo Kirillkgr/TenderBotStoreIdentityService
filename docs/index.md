@@ -16,3 +16,11 @@
 - Архитектура → [Многотенантность и контекст](architecture/multitenancy.md)
 - Backend → [Гайд по миграциям (Liquibase)](backend/migrations.md)
 - Frontend → [Контекст на фронте](frontend/context.md)
+
+### Сервисы (стабильные)
+
+- [Auth](services/auth.md)
+- [Context](services/context.md)
+- [Public Menu](services/menu.md)
+- [Health](services/health.md)
+- [Ошибки и коды](services/errors.md)
