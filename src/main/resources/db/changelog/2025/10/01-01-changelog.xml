@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.31.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+    <!-- BL-2-RBAC: привести user_membership.role к обязательному, с дефолтом и ограничением значений -->
+
+    <!-- 1) Проставить CLIENT там, где role = NULL (миграция данных) -->
+    <changeSet id="2025-10-01-rbac-role-backfill-null-to-client" author="RBAC">
+        <sql>
+            UPDATE user_membership
+            SET role = 'CLIENT'
+            WHERE role IS NULL;
+        </sql>
+        <rollback>
+            -- no-op (data change)
+        </rollback>
+    </changeSet>
+
+    <!-- 2) Установить значение по умолчанию для role = 'CLIENT' -->
+    <changeSet id="2025-10-01-rbac-role-default-client" author="RBAC">
+        <addDefaultValue tableName="user_membership"
+                         columnName="role"
+                         defaultValue="CLIENT"/>
+        <rollback>
+            <dropDefaultValue tableName="user_membership" columnName="role"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 3) Сделать колонку role NOT NULL -->
+    <changeSet id="2025-10-01-rbac-role-not-null" author="RBAC">
+        <addNotNullConstraint tableName="user_membership" columnName="role" columnDataType="VARCHAR(32)"/>
+        <rollback>
+            <dropNotNullConstraint tableName="user_membership" columnName="role" columnDataType="VARCHAR(32)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 4) Ограничить допустимые значения роли (CHECK) -->
+    <changeSet id="2025-10-01-rbac-role-check-constraint" author="RBAC">
+        <preConditions onFail="MARK_RAN">
+            <!-- Если CHECK уже существует, пропускаем -->
+            <not>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*)
+                    FROM information_schema.table_constraints
+                    WHERE table_name = 'user_membership'
+                    AND constraint_name = 'ck_user_membership_role'
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <sql>
+            ALTER TABLE user_membership
+                ADD CONSTRAINT ck_user_membership_role
+                    CHECK (role IN ('OWNER', 'ADMIN', 'CASHIER', 'COOK', 'CLIENT'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE user_membership DROP CONSTRAINT IF EXISTS ck_user_membership_role;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- 5) Полезные индексы: по user_id и master_id -->
+    <changeSet id="2025-10-01-rbac-index-user" author="RBAC">
+        <createIndex tableName="user_membership" indexName="ix_um_user_id">
+            <column name="user_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="ix_um_user_id" tableName="user_membership"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="2025-10-01-rbac-index-master" author="RBAC">
+        <createIndex tableName="user_membership" indexName="ix_um_master_id">
+            <column name="master_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="ix_um_master_id" tableName="user_membership"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
