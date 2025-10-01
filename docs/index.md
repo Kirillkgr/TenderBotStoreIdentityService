@@ -14,5 +14,5 @@
 
 - Архитектура → [ER‑схема](architecture/er-schema.md)
 - Архитектура → [Многотенантность и контекст](architecture/multitenancy.md)
-- Backend → [Гайд по миграциям (Liquibase)](../backend/migrations.md)
-- Frontend → [Контекст на фронте](../frontend/context.md)
+- Backend → [Гайд по миграциям (Liquibase)](backend/migrations.md)
+- Frontend → [Контекст на фронте](frontend/context.md)
