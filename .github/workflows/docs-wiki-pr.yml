@@ -1,0 +1,60 @@
+name: Docs PR → GitHub Wiki
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install MkDocs and plugins
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs-material mkdocs-mermaid2-plugin
+
+      - name: Build docs (strict)
+        run: mkdocs build --strict
+
+      - name: Checkout Wiki repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+
+      - name: Sync built site to Wiki
+        run: |
+          shopt -s extglob
+          cd wiki
+          # remove all except .git
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cd ..
+          cp -r site/* wiki/
+
+      - name: Commit and push to Wiki
+        run: |
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update wiki from PR #${{ github.event.pull_request.number }}"
+            git push
+          fi
