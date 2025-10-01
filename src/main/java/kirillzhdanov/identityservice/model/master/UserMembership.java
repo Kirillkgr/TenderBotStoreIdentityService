@@ -40,7 +40,7 @@ public class UserMembership {
     @JoinColumn(name = "pickup_point_id")
     private PickupPoint pickupPoint;
 
-    @Column(name = "role", length = 32)
+    @Column(name = "role", length = 32, nullable = false)
     private String role; // Owner/Admin/Cashier/Cook/Client
 
     @Column(name = "status", length = 32)
@@ -61,6 +61,7 @@ public class UserMembership {
         if (updatedAt == null) updatedAt = createdAt;
         if (twoFactorEnabled == null) twoFactorEnabled = Boolean.FALSE;
         if (status == null) status = "ACTIVE";
+        if (role == null) role = "CLIENT";
     }
 
     @PreUpdate
