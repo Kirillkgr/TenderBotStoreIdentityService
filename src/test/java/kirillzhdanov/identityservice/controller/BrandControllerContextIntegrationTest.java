@@ -4,11 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import kirillzhdanov.identityservice.config.IntegrationTestBase;
 import kirillzhdanov.identityservice.dto.BrandDto;
+import kirillzhdanov.identityservice.dto.ContextSwitchRequest;
 import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
 import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
+import kirillzhdanov.identityservice.model.master.RoleMembership;
+import kirillzhdanov.identityservice.model.master.UserMembership;
+import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
+import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,6 +49,12 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
     @Autowired
     private MasterAccountRepository masterRepo;
 
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private UserMembershipRepository membershipRepo;
+
     private Cookie authCookie;
 
     private Cookie registerAndLogin() throws Exception {
@@ -66,6 +77,19 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
         return new Cookie("accessToken", created.getAccessToken());
     }
 
+    private Cookie switchContext(Cookie auth, Long membershipId) throws Exception {
+        ContextSwitchRequest req = new ContextSwitchRequest();
+        req.setMembershipId(membershipId);
+        MvcResult sw = mockMvc.perform(post("/auth/v1/context/switch")
+                        .cookie(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andReturn();
+        String accessToken = objectMapper.readTree(sw.getResponse().getContentAsString()).get("accessToken").asText();
+        return new Cookie("accessToken", accessToken);
+    }
+
     @BeforeEach
     void setup() throws Exception {
         authCookie = registerAndLogin();
@@ -77,11 +101,19 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
         // Arrange: два мастера
         MasterAccount m1 = masterRepo.save(MasterAccount.builder().name("M1").status("ACTIVE").build());
         MasterAccount m2 = masterRepo.save(MasterAccount.builder().name("M2").status("ACTIVE").build());
+        // Создаём membership с ролью ADMIN в M1 для текущего пользователя и переключаемся в контекст
+        Long userId = userRepo.findByUsername("ctx-user").orElseThrow().getId();
+        UserMembership um1 = new UserMembership();
+        um1.setUser(userRepo.findById(userId).orElseThrow());
+        um1.setMaster(m1);
+        um1.setRole(RoleMembership.ADMIN);
+        Long mem1 = membershipRepo.save(um1).getId();
+        Cookie adminCtx = switchContext(authCookie, mem1);
 
-        // Act: создаём бренд в M1
+        // Act: создаём бренд в M1 (требуется OWNER/ADMIN)
         BrandDto dto = BrandDto.builder().name("Brand-A").organizationName("OrgA").build();
         mockMvc.perform(post("/auth/v1/brands")
-                        .cookie(authCookie)
+                        .cookie(adminCtx)
                         .header("X-Master-Id", m1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
@@ -90,7 +122,7 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
 
         // Проверяем, что в M1 видим 1 бренд
         MvcResult listM1 = mockMvc.perform(get("/auth/v1/brands")
-                        .cookie(authCookie)
+                        .cookie(adminCtx)
                         .header("X-Master-Id", m1.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -99,7 +131,7 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
 
         // А в M2 список пуст
         MvcResult listM2 = mockMvc.perform(get("/auth/v1/brands")
-                        .cookie(authCookie)
+                        .cookie(adminCtx)
                         .header("X-Master-Id", m2.getId()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -112,9 +144,16 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
     void getForeignMasterBrand_NotFound() throws Exception {
         // Arrange: создаём мастера и бренд под M1
         MasterAccount m1 = masterRepo.save(MasterAccount.builder().name("M1").status("ACTIVE").build());
+        Long userId = userRepo.findByUsername("ctx-user").orElseThrow().getId();
+        UserMembership um1 = new UserMembership();
+        um1.setUser(userRepo.findById(userId).orElseThrow());
+        um1.setMaster(m1);
+        um1.setRole(RoleMembership.ADMIN);
+        Long mem1 = membershipRepo.save(um1).getId();
+        Cookie adminCtx = switchContext(authCookie, mem1);
         BrandDto dto = BrandDto.builder().name("Brand-X").organizationName("OrgX").build();
         MvcResult createdRes = mockMvc.perform(post("/auth/v1/brands")
-                        .cookie(authCookie)
+                        .cookie(adminCtx)
                         .header("X-Master-Id", m1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
@@ -125,7 +164,7 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
         // Act: другой мастер
         MasterAccount m2 = masterRepo.save(MasterAccount.builder().name("M2").status("ACTIVE").build());
         mockMvc.perform(get("/auth/v1/brands/" + created.getId())
-                        .cookie(authCookie)
+                        .cookie(adminCtx)
                         .header("X-Master-Id", m2.getId()))
                 .andExpect(status().is4xxClientError()); // 404 по нашей бизнес-логике
     }

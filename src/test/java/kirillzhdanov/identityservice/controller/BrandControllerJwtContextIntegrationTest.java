@@ -9,6 +9,7 @@ import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
 import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
+import kirillzhdanov.identityservice.model.master.RoleMembership;
 import kirillzhdanov.identityservice.model.master.UserMembership;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
@@ -91,9 +92,11 @@ public class BrandControllerJwtContextIntegrationTest extends IntegrationTestBas
         UserMembership um1 = new UserMembership();
         um1.setUser(userRepo.findById(userId).orElseThrow());
         um1.setMaster(m1);
+        um1.setRole(RoleMembership.ADMIN);
         UserMembership um2 = new UserMembership();
         um2.setUser(userRepo.findById(userId).orElseThrow());
         um2.setMaster(m2);
+        um2.setRole(RoleMembership.ADMIN);
         Long mem1 = membershipRepo.save(um1).getId();
         Long mem2 = membershipRepo.save(um2).getId();
 

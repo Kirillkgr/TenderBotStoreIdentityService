@@ -2,6 +2,7 @@ package kirillzhdanov.identityservice.controller;
 
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.group.*;
+import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.GroupTagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,10 +21,12 @@ import java.util.List;
 public class GroupTagController {
 
     private final GroupTagService groupTagService;
+    private final RbacGuard rbacGuard;
 
     @PostMapping
     public ResponseEntity<GroupTagResponse> createGroupTag(
             @Valid @RequestBody CreateGroupTagRequest request) {
+        rbacGuard.requireOwnerOrAdmin();
         GroupTagResponse response = groupTagService.createGroupTag(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -68,6 +71,7 @@ public class GroupTagController {
             @PathVariable Long groupTagId,
             @RequestParam String name
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(groupTagService.rename(groupTagId, name));
     }
 
@@ -77,6 +81,7 @@ public class GroupTagController {
             @PathVariable Long groupTagId,
             @Valid @RequestBody UpdateGroupTagRequest request
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(groupTagService.updateGroupTag(groupTagId, request));
     }
 
@@ -85,6 +90,7 @@ public class GroupTagController {
             @PathVariable Long groupTagId,
             @RequestParam(required = false) Long parentId
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(groupTagService.move(groupTagId, parentId));
     }
 
@@ -93,6 +99,7 @@ public class GroupTagController {
             @PathVariable Long groupTagId,
             @RequestParam Long brandId
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(groupTagService.changeBrand(groupTagId, brandId));
     }
 
@@ -103,12 +110,14 @@ public class GroupTagController {
 
     @DeleteMapping("/{groupTagId}")
     public ResponseEntity<Void> deleteWithArchive(@PathVariable Long groupTagId) {
+        rbacGuard.requireOwnerOrAdmin();
         groupTagService.deleteWithArchive(groupTagId);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/archive/purge")
     public ResponseEntity<Long> purgeArchive(@RequestParam(defaultValue = "90") int olderThanDays) {
+        rbacGuard.requireOwnerOrAdmin();
         long deleted = groupTagService.purgeArchive(olderThanDays);
         return ResponseEntity.ok(deleted);
     }
@@ -136,11 +145,13 @@ public class GroupTagController {
             @PathVariable Long archiveId,
             @RequestParam(required = false) Long targetParentId
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(groupTagService.restoreGroupFromArchive(archiveId, targetParentId));
     }
 
     @DeleteMapping("/archive/{archiveId}")
     public ResponseEntity<Void> deleteGroupArchive(@PathVariable Long archiveId) {
+        rbacGuard.requireOwnerOrAdmin();
         groupTagService.deleteGroupArchive(archiveId);
         return ResponseEntity.noContent().build();
     }
