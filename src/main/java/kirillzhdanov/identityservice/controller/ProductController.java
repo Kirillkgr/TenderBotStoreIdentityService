@@ -6,6 +6,7 @@ import kirillzhdanov.identityservice.dto.product.ProductArchiveResponse;
 import kirillzhdanov.identityservice.dto.product.ProductCreateRequest;
 import kirillzhdanov.identityservice.dto.product.ProductResponse;
 import kirillzhdanov.identityservice.dto.product.ProductUpdateRequest;
+import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,12 +23,14 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final RbacGuard rbacGuard;
 
     /**
      * Создание товара в корне бренда или внутри выбранного тега
      */
     @PostMapping
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductCreateRequest request) {
+        rbacGuard.requireOwnerOrAdmin();
         ProductResponse response = productService.create(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -63,6 +66,7 @@ public class ProductController {
             @PathVariable Long productId,
             @Valid @RequestBody ProductUpdateRequest request
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         ProductResponse response = productService.update(productId, request);
         return ResponseEntity.ok(response);
     }
@@ -75,6 +79,7 @@ public class ProductController {
             @PathVariable Long productId,
             @RequestParam @NotNull Boolean visible
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         ProductResponse response = productService.updateVisibility(productId, visible);
         return ResponseEntity.ok(response);
     }
@@ -87,6 +92,7 @@ public class ProductController {
             @PathVariable Long productId,
             @RequestParam @NotNull Long brandId
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         ProductResponse response = productService.changeBrand(productId, brandId);
         return ResponseEntity.ok(response);
     }
@@ -96,6 +102,7 @@ public class ProductController {
      */
     @DeleteMapping("/{productId}")
     public ResponseEntity<Void> deleteToArchive(@PathVariable Long productId) {
+        rbacGuard.requireOwnerOrAdmin();
         productService.deleteToArchive(productId);
         return ResponseEntity.noContent().build();
     }
@@ -108,6 +115,7 @@ public class ProductController {
             @PathVariable Long productId,
             @RequestParam(required = false) Long targetGroupTagId
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         ProductResponse response = productService.move(productId, targetGroupTagId);
         return ResponseEntity.ok(response);
     }
@@ -139,6 +147,7 @@ public class ProductController {
             @PathVariable Long archiveId,
             @RequestParam(required = false) Long targetGroupTagId
     ) {
+        rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(productService.restoreFromArchive(archiveId, targetGroupTagId));
     }
 
@@ -147,6 +156,7 @@ public class ProductController {
      */
     @DeleteMapping("/archive/{archiveId}")
     public ResponseEntity<Void> deleteArchive(@PathVariable Long archiveId) {
+        rbacGuard.requireOwnerOrAdmin();
         productService.deleteArchive(archiveId);
         return ResponseEntity.noContent().build();
     }
@@ -156,6 +166,7 @@ public class ProductController {
      */
     @DeleteMapping("/archive/purge")
     public ResponseEntity<Long> purgeArchive(@RequestParam(defaultValue = "90") int olderThanDays) {
+        rbacGuard.requireOwnerOrAdmin();
         long deleted = productService.purgeArchive(olderThanDays);
         return ResponseEntity.ok(deleted);
     }
