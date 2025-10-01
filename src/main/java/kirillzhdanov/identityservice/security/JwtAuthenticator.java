@@ -2,6 +2,8 @@ package kirillzhdanov.identityservice.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import kirillzhdanov.identityservice.model.Token;
+import kirillzhdanov.identityservice.model.master.RoleMembership;
+import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
 import kirillzhdanov.identityservice.service.TokenService;
 import kirillzhdanov.identityservice.tenant.TenantContext;
 import lombok.NonNull;
@@ -31,6 +33,8 @@ public class JwtAuthenticator {
 	private final UserDetailsService userDetailsService;
 
 	private final TokenService tokenService;
+
+	private final UserMembershipRepository userMembershipRepository;
 
 	/**
 	 * Обрабатывает JWT токен, проверяя его тип и аутентифицируя пользователя
@@ -99,7 +103,14 @@ public class JwtAuthenticator {
 					Long masterId = jwtUtils.extractMasterIdClaim(jwt);
 					Long brandId = jwtUtils.extractBrandIdClaim(jwt);
 					Long locationId = jwtUtils.extractLocationIdClaim(jwt);
-					if (membershipId != null) TenantContext.setMembershipId(membershipId);
+					if (membershipId != null) {
+						TenantContext.setMembershipId(membershipId);
+						// Загрузим роль membership из БД и положим в контекст
+						userMembershipRepository.findById(membershipId).ifPresent(um -> {
+							RoleMembership role = um.getRole();
+							if (role != null) TenantContext.setRole(role);
+						});
+					}
 					if (masterId != null) TenantContext.setMasterId(masterId);
 					if (brandId != null) TenantContext.setBrandId(brandId);
 					if (locationId != null) TenantContext.setLocationId(locationId);
