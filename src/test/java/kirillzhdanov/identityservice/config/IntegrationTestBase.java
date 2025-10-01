@@ -1,11 +1,17 @@
 package kirillzhdanov.identityservice.config;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 // Контейнеры поднимает TestEnvironment один раз на JVM
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class IntegrationTestBase {
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
@@ -28,10 +34,39 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.hikari.validation-timeout", () -> "1000");
         registry.add("spring.datasource.hikari.idle-timeout", () -> "5000");
         registry.add("spring.datasource.hikari.max-lifetime", () -> "15000");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        // Use Liquibase to create schema in tests; avoid Hibernate auto DDL
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
         registry.add("spring.jpa.open-in-view", () -> "false");
-        registry.add("spring.liquibase.enabled", () -> "false");
+        registry.add("spring.liquibase.enabled", () -> "true");
+        registry.add("spring.liquibase.change-log", () -> "classpath:/db/changelog/db.changelog-master.xml");
         registry.add("logging.level.root", () -> "WARN");
         registry.add("logging.level.org.hibernate.SQL", () -> "INFO");
+    }
+
+    @BeforeEach
+    void cleanDatabase() {
+        // Очистка всех пользовательских таблиц между тестами (сохраняем таблицы Liquibase)
+        jdbc.execute("""
+                DO $$
+                DECLARE
+                  stm TEXT;
+                BEGIN
+                  SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' RESTART IDENTITY CASCADE'
+                  INTO stm
+                  FROM pg_tables
+                  WHERE schemaname = 'public'
+                    AND tablename NOT IN ('databasechangelog', 'databasechangeloglock', 'roles');
+                  IF stm IS NOT NULL THEN EXECUTE stm; END IF;
+                END$$;""");
+
+        // Базовые роли для регистрации пользователей
+        Integer roleCount = jdbc.queryForObject("SELECT COUNT(*) FROM roles", Integer.class);
+        if (roleCount != null && roleCount == 0) {
+            jdbc.batchUpdate(
+                    "INSERT INTO roles(name) VALUES ('OWNER') ON CONFLICT DO NOTHING",
+                    "INSERT INTO roles(name) VALUES ('ADMIN') ON CONFLICT DO NOTHING",
+                    "INSERT INTO roles(name) VALUES ('USER') ON CONFLICT DO NOTHING"
+            );
+        }
     }
 }

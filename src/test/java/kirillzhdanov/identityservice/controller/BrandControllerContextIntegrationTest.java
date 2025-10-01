@@ -46,9 +46,10 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
 
     private Cookie authCookie;
 
-    private Cookie registerAndLogin(String username) throws Exception {
+    private Cookie registerAndLogin() throws Exception {
         UserRegistrationRequest req = new UserRegistrationRequest();
-        req.setUsername(username);
+        req.setUsername("ctx-user");
+        req.setEmail("ctx-user" + "@test.local");
         req.setPassword("Password123!");
         Set<Role.RoleName> roles = new HashSet<>();
         roles.add(Role.RoleName.USER);
@@ -67,7 +68,7 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
 
     @BeforeEach
     void setup() throws Exception {
-        authCookie = registerAndLogin("ctx-user");
+        authCookie = registerAndLogin();
     }
 
     @Test
