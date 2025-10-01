@@ -115,3 +115,44 @@ Frontend-поток:
 
 Для локальной отладки в профиле `dev` доступен заголовок `X-Master-Id`, который устанавливает masterId на время запроса.
 В production этот механизм отключён и использоваться не должен.
+
+## Многотенантность и контекст — кратко (DoD 1.8)
+
+Ниже — самое важное для понимания изоляции данных и контекста. Полные версии смотрите в docs/.
+
+- ER‑картинка (упрощённо):
+    - `MasterAccount` (владелец) → `Brand` → (`GroupTag`/`Product`/`Order`)
+    - `User` и его `UserMembership` связывают пользователя с `MasterAccount` (и опционально `Brand`/`PickupPoint`).
+    - Подробнее: `docs/architecture/er-schema.md`.
+
+- Формат токена (JWT клеймы контекста):
+  ```json
+  {
+    "sub": "username",
+    "iat": 1710000000,
+    "exp": 1710003600,
+    "membershipId": 11,
+    "masterId": 101,
+    "brandId": 1001,
+    "locationId": 0
+  }
+  ```
+    - Контекст попадает в токен после `POST /auth/v1/context/switch`.
+    - Подробнее: `docs/architecture/multitenancy.md`.
+
+- Заголовки:
+    - `Authorization: Bearer <accessToken>` — обязательно для защищённых ручек `/auth/v1/**`.
+    - `X-Membership-Id: <id>` — ставит фронт для трассировки (полезно, но не обязателен).
+    - `X-Master-Id: <id>` — dev‑фолбэк для локальной отладки (только профиль dev).
+
+- Миграции (Liquibase):
+    - Мастер‑файл: `src/main/resources/db/changelog/db.changelog-master.xml`.
+    - Новые файлы кладём по дате и подключаем через `<include/>`.
+    - Best practices и примеры: `docs/backend/migrations.md`.
+
+- Фронт и контекст:
+    - Login → `GET /auth/v1/memberships` → выбор → `POST /auth/v1/context/switch` → новый `accessToken`.
+    - E2E smoke тест (полностью мокнутый): `Front/tests/AuthContextE2ESmoke.spec.js`.
+    - Подробнее: `docs/frontend/context.md`.
+
+Если вы новичок, начните с `docs/index.md` — там есть короткий путеводитель.
