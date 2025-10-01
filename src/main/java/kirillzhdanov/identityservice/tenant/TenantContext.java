@@ -1,10 +1,13 @@
 package kirillzhdanov.identityservice.tenant;
 
+import kirillzhdanov.identityservice.model.master.RoleMembership;
+
 public final class TenantContext {
     private static final ThreadLocal<Long> MASTER_ID = new ThreadLocal<>();
     private static final ThreadLocal<Long> MEMBERSHIP_ID = new ThreadLocal<>();
     private static final ThreadLocal<Long> BRAND_ID = new ThreadLocal<>();
     private static final ThreadLocal<Long> LOCATION_ID = new ThreadLocal<>();
+    private static final ThreadLocal<RoleMembership> ROLE = new ThreadLocal<>();
 
     private TenantContext() {
     }
@@ -28,6 +31,7 @@ public final class TenantContext {
         MEMBERSHIP_ID.remove();
         BRAND_ID.remove();
         LOCATION_ID.remove();
+        ROLE.remove();
     }
 
     public static Long getMembershipId() {
@@ -52,5 +56,19 @@ public final class TenantContext {
 
     public static void setLocationId(Long locationId) {
         LOCATION_ID.set(locationId);
+    }
+
+    public static RoleMembership getRole() {
+        return ROLE.get();
+    }
+
+    public static void setRole(RoleMembership role) {
+        ROLE.set(role);
+    }
+
+    public static RoleMembership getRoleOrThrow() {
+        RoleMembership r = ROLE.get();
+        if (r == null) throw new IllegalStateException("Role context is not set");
+        return r;
     }
 }
