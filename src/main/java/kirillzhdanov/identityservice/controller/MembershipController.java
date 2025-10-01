@@ -45,7 +45,7 @@ public class MembershipController {
                 .brandName(um.getBrand() != null ? um.getBrand().getName() : null)
                 .locationId(um.getPickupPoint() != null ? um.getPickupPoint().getId() : null)
                 .locationName(um.getPickupPoint() != null ? um.getPickupPoint().getName() : null)
-                .role(um.getRole())
+                .role(um.getRole() != null ? um.getRole().name() : null)
                 .status(um.getStatus())
                 .build()).collect(Collectors.toList());
         return ResponseEntity.ok(result);

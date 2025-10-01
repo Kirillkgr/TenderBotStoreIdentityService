@@ -40,8 +40,9 @@ public class UserMembership {
     @JoinColumn(name = "pickup_point_id")
     private PickupPoint pickupPoint;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 32, nullable = false)
-    private String role; // Owner/Admin/Cashier/Cook/Client
+    private RoleMembership role; // OWNER/ADMIN/CASHIER/COOK/CLIENT
 
     @Column(name = "status", length = 32)
     private String status; // ACTIVE/INVITED/BLOCKED
@@ -61,7 +62,7 @@ public class UserMembership {
         if (updatedAt == null) updatedAt = createdAt;
         if (twoFactorEnabled == null) twoFactorEnabled = Boolean.FALSE;
         if (status == null) status = "ACTIVE";
-        if (role == null) role = "CLIENT";
+        if (role == null) role = RoleMembership.CLIENT;
     }
 
     @PreUpdate
