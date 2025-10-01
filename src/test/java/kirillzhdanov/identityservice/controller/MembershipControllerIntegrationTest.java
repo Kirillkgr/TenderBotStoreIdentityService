@@ -49,6 +49,7 @@ public class MembershipControllerIntegrationTest extends IntegrationTestBase {
     private Cookie registerAndLogin(String username) throws Exception {
         UserRegistrationRequest req = new UserRegistrationRequest();
         req.setUsername(username);
+        req.setEmail(username + "@test.local");
         req.setPassword("Password123!");
         Set<Role.RoleName> roles = new HashSet<>();
         roles.add(Role.RoleName.USER);

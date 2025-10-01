@@ -47,9 +47,10 @@ public class BrandControllerJwtContextIntegrationTest extends IntegrationTestBas
     @Autowired
     private UserMembershipRepository membershipRepo;
 
-    private Cookie registerAndLogin(String username) throws Exception {
+    private Cookie registerAndLogin() throws Exception {
         UserRegistrationRequest req = new UserRegistrationRequest();
-        req.setUsername(username);
+        req.setUsername("jwtctx-user");
+        req.setEmail("jwtctx-user" + "@test.local");
         req.setPassword("Password123!");
         Set<Role.RoleName> roles = new HashSet<>();
         roles.add(Role.RoleName.USER);
@@ -81,7 +82,7 @@ public class BrandControllerJwtContextIntegrationTest extends IntegrationTestBas
     @Test
     @DisplayName("JWT-контекст: изоляция брендов по master")
     void brandsIsolationByMaster_WithJwtContext() throws Exception {
-        Cookie login = registerAndLogin("jwtctx-user");
+        Cookie login = registerAndLogin();
         Long userId = userRepo.findByUsername("jwtctx-user").orElseThrow().getId();
 
         // Два мастера и членства

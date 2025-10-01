@@ -47,6 +47,7 @@ public class AuthControllerTest extends IntegrationTestBase {
     void setUp() {
         registrationRequest = new UserRegistrationRequest();
         registrationRequest.setUsername("testuser");
+        registrationRequest.setEmail("testuser@test.local");
         registrationRequest.setPassword("Password123!");
         Set<Role.RoleName> roles = new HashSet<>();
         roles.add(Role.RoleName.USER);
