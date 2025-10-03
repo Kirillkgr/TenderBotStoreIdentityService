@@ -6,6 +6,7 @@ import jakarta.servlet.http.Cookie;
 import kirillzhdanov.identityservice.dto.BrandDto;
 import kirillzhdanov.identityservice.dto.product.ProductCreateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Вспомогательный билдер сценариев: быстрые создания Brand/Product через реальные API.
  */
 @Component
+@Profile("dev")
 public class ScenarioBuilder {
 
     @Autowired

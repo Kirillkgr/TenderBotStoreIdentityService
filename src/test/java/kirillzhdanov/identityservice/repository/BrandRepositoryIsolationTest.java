@@ -6,11 +6,13 @@ import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Transactional
 public class BrandRepositoryIsolationTest extends IntegrationTestBase {
 
     @Autowired

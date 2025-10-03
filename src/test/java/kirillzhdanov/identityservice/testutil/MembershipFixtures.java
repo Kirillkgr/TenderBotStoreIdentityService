@@ -14,6 +14,7 @@ import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Cookie adminCtx = contexts.get(RoleMembership.ADMIN).cookie();
  */
 @Component
+@Profile("dev")
 public class MembershipFixtures {
 
     private final Map<String, Cookie> userTokenCache = new ConcurrentHashMap<>();
