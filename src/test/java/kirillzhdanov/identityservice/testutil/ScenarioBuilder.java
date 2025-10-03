@@ -37,6 +37,7 @@ public class ScenarioBuilder {
         BrandDto dto = BrandDto.builder().name(name).organizationName(orgName).build();
         MvcResult res = mockMvc.perform(post("/auth/v1/brands")
                         .cookie(ctxCookie)
+                        .header("Authorization", "Bearer " + ctxCookie.getValue())
                         .header("X-Master-Id", masterId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
@@ -50,13 +51,15 @@ public class ScenarioBuilder {
     /**
      * Создаёт продукт и возвращает его id.
      */
-    public long createProduct(Cookie ctxCookie, String name, BigDecimal price, long brandId) throws Exception {
+    public long createProduct(Cookie ctxCookie, Long masterId, String name, BigDecimal price, long brandId) throws Exception {
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName(name);
         req.setPrice(price);
         req.setBrandId(brandId);
         MvcResult res = mockMvc.perform(post("/auth/v1/products")
                         .cookie(ctxCookie)
+                        .header("Authorization", "Bearer " + ctxCookie.getValue())
+                        .header("X-Master-Id", masterId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
