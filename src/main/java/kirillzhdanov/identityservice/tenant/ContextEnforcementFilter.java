@@ -38,6 +38,9 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
             "/login/oauth2/code",
             "/notifications/longpoll",
             "/menu/",
+            // Информация о пользователе
+            "/auth/v1/whoami",
+            "/order/v1/my",
             // Корзина не зависит от tenant-контекста
             "/cart",
             // Список заказов доступен без tenant-контекста (возвращает пусто без членства)

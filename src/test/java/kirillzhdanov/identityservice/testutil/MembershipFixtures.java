@@ -64,6 +64,7 @@ public class MembershipFixtures {
         req.setRoleNames(roles);
         MvcResult res = mockMvc
                 .perform(post("/auth/v1/register")
+                        .header("X-Brand-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -83,6 +84,7 @@ public class MembershipFixtures {
         String basic = "Basic " + java.util.Base64.getEncoder()
                 .encodeToString((username + ":" + password).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         MvcResult res = mockMvc.perform(post("/auth/v1/login")
+                        .header("X-Brand-Id", "1")
                         .header("Authorization", basic))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -113,6 +115,7 @@ public class MembershipFixtures {
         ContextSwitchRequest req = new ContextSwitchRequest();
         req.setMembershipId(membershipId);
         MvcResult sw = mockMvc.perform(post("/auth/v1/context/switch")
+                        .header("X-Brand-Id", "1")
                         .cookie(authCookie)
                         .header("Authorization", "Bearer " + authCookie.getValue())
                         .contentType(MediaType.APPLICATION_JSON)
