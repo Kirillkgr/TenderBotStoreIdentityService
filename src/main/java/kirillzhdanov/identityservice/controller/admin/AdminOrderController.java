@@ -1,6 +1,7 @@
 package kirillzhdanov.identityservice.controller.admin;
 
 import kirillzhdanov.identityservice.dto.order.OrderDto;
+import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.admin.OrderAdminService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,9 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminOrderController {
 
     private final OrderAdminService orderAdminService;
+    private final RbacGuard rbacGuard;
 
-    public AdminOrderController(OrderAdminService orderAdminService) {
+    public AdminOrderController(OrderAdminService orderAdminService, RbacGuard rbacGuard) {
         this.orderAdminService = orderAdminService;
+        this.rbacGuard = rbacGuard;
     }
 
     @GetMapping
@@ -32,6 +35,8 @@ public class AdminOrderController {
             @RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo
     ) {
+        // Enforce membership-based RBAC: only OWNER/ADMIN in current tenant context
+        rbacGuard.requireOwnerOrAdmin();
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
         Page<OrderDto> result = orderAdminService.findOrders(pageable, search, brandId, dateFrom, dateTo);
         return ResponseEntity.ok(result);
