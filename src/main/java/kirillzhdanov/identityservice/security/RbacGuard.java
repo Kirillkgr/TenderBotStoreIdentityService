@@ -13,20 +13,25 @@ import org.springframework.stereotype.Component;
 public class RbacGuard {
 
     private RoleMembership roleOrThrow() {
-        return TenantContext.getRoleOrThrow();
-    }
-
-    public void requireOwnerOrAdmin() {
-        RoleMembership r = roleOrThrow();
-        if (!(r == RoleMembership.OWNER || r == RoleMembership.ADMIN)) {
-            throw new AccessDeniedException("Недостаточно прав: требуется OWNER или ADMIN");
+        RoleMembership role = TenantContext.getRole();
+        if (role == null) {
+            // Вместо IllegalStateException кидаем AccessDenied -> 403, а не 500
+            throw new AccessDeniedException("Контекст роли не установлен");
         }
+        return role;
     }
 
     public void requireOwner() {
         RoleMembership r = roleOrThrow();
         if (r != RoleMembership.OWNER) {
             throw new AccessDeniedException("Недостаточно прав: требуется OWNER");
+        }
+    }
+
+    public void requireOwnerOrAdmin() {
+        RoleMembership r = roleOrThrow();
+        if (!(r == RoleMembership.OWNER || r == RoleMembership.ADMIN)) {
+            throw new AccessDeniedException("Недостаточно прав: требуется OWNER или ADMIN");
         }
     }
 

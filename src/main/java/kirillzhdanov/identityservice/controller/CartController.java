@@ -3,23 +3,23 @@ package kirillzhdanov.identityservice.controller;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.cart.CartItem;
 import kirillzhdanov.identityservice.model.product.Product;
+import kirillzhdanov.identityservice.repository.BrandRepository;
+import kirillzhdanov.identityservice.repository.ProductRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.cart.CartItemRepository;
-import kirillzhdanov.identityservice.repository.ProductRepository;
-import kirillzhdanov.identityservice.repository.BrandRepository;
-import kirillzhdanov.identityservice.model.Brand;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -75,8 +75,8 @@ public class CartController {
                                        HttpServletResponse response) {
         try {
             Long productId = payload.get("productId") == null ? null : Long.valueOf(String.valueOf(payload.get("productId")));
-            Integer quantity = payload.get("quantity") == null ? 1 : Integer.valueOf(String.valueOf(payload.get("quantity")));
-            if (productId == null || quantity == null || quantity <= 0) {
+            Integer quantity = payload.get("quantity") == null ? 1 : Integer.parseInt(String.valueOf(payload.get("quantity")));
+            if (productId == null || quantity <= 0) {
                 return ResponseEntity.badRequest().body(Map.of("message", "productId и quantity обязательны"));
             }
 
@@ -171,7 +171,7 @@ public class CartController {
 
         CartItem ci = found.get();
         boolean allowed = (userOpt.isPresent() && ci.getUser() != null && Objects.equals(ci.getUser().getId(), userOpt.get().getId()))
-                || (!userOpt.isPresent() && Objects.equals(cartToken, ci.getCartToken()));
+                || (userOpt.isEmpty() && Objects.equals(cartToken, ci.getCartToken()));
         if (!allowed) {
             return ResponseEntity.status(403).body(Map.of("message", "Недостаточно прав для удаления элемента корзины"));
         }
@@ -198,7 +198,7 @@ public class CartController {
 
         CartItem ci = found.get();
         boolean allowed = (userOpt.isPresent() && ci.getUser() != null && Objects.equals(ci.getUser().getId(), userOpt.get().getId()))
-                || (!userOpt.isPresent() && Objects.equals(cartToken, ci.getCartToken()));
+                || (userOpt.isEmpty() && Objects.equals(cartToken, ci.getCartToken()));
         if (!allowed) {
             return ResponseEntity.status(403).body(Map.of("message", "Недостаточно прав для изменения элемента корзины"));
         }
@@ -237,10 +237,13 @@ public class CartController {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken)
                 return Optional.empty();
-            String username = String.valueOf(auth.getPrincipal());
-            // В зависимости от реализации principal может быть UserDetails — упростим:
-            if (auth.getPrincipal() instanceof org.springframework.security.core.userdetails.User u) {
+            String username;
+            Object principal = auth.getPrincipal();
+            // Поддержка любых реализаций UserDetails (например, CustomUserDetails)
+            if (principal instanceof org.springframework.security.core.userdetails.UserDetails u) {
                 username = u.getUsername();
+            } else {
+                username = String.valueOf(principal);
             }
             return userRepo.findByUsername(username);
         } catch (Exception e) {
