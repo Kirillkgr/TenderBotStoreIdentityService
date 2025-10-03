@@ -20,10 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,9 +100,10 @@ public class MembershipFixtures {
         Cookie cached = userTokenCache.get(username);
         if (cached != null) return cached;
         try {
-            return login(username, "Password123!");
+            Cookie fresh = login(username, "Password123!");
+            userTokenCache.put(username, fresh);
+            return fresh;
         } catch (AssertionError | Exception ex) {
-            // если логина нет — регистрируем
             return registerAndLogin(username);
         }
     }
@@ -115,6 +113,7 @@ public class MembershipFixtures {
         req.setMembershipId(membershipId);
         MvcResult sw = mockMvc.perform(post("/auth/v1/context/switch")
                         .cookie(authCookie)
+                        .header("Authorization", "Bearer " + authCookie.getValue())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -137,7 +136,15 @@ public class MembershipFixtures {
      * Возвращает карту role -> Context (membershipId, masterId, cookie после switchContext).
      */
     public Map<RoleMembership, Context> prepareAllRoleMemberships(Cookie loginCookie, String username) throws Exception {
-        Long userId = userRepo.findByUsername(username).orElseThrow().getId();
+        Long userId = Objects.requireNonNull(userRepo.findByUsername(username)
+                        .orElseGet(() -> {
+                            try {
+                                registerAndLogin(username);
+                            } catch (Exception ignored) {
+                            }
+                            return userRepo.findByUsername(username).orElse(null);
+                        }))
+                .getId();
         Map<RoleMembership, Context> map = new EnumMap<>(RoleMembership.class);
         for (RoleMembership role : RoleMembership.values()) {
             MasterAccount m = masterRepo.save(MasterAccount.builder().name("FX-" + role.name()).status("ACTIVE").build());
@@ -152,7 +159,15 @@ public class MembershipFixtures {
      * Создаёт membership для одной роли. Создаёт новый Master автоматически.
      */
     public Context prepareRoleMembership(Cookie loginCookie, String username, RoleMembership role) throws Exception {
-        Long userId = userRepo.findByUsername(username).orElseThrow().getId();
+        Long userId = Objects.requireNonNull(userRepo.findByUsername(username)
+                        .orElseGet(() -> {
+                            try {
+                                registerAndLogin(username);
+                            } catch (Exception ignored) {
+                            }
+                            return userRepo.findByUsername(username).orElse(null);
+                        }))
+                .getId();
         MasterAccount m = masterRepo.save(MasterAccount.builder().name("FX-" + role.name()).status("ACTIVE").build());
         Long memId = createMembership(userId, m, role);
         Cookie ctx = switchContext(loginCookie, memId);
@@ -163,7 +178,15 @@ public class MembershipFixtures {
      * Создаёт membership для роли в указанном master (если нужен контроль бренда/мастера в тесте).
      */
     public Context prepareRoleMembershipInMaster(Cookie loginCookie, String username, RoleMembership role, MasterAccount master) throws Exception {
-        Long userId = userRepo.findByUsername(username).orElseThrow().getId();
+        Long userId = Objects.requireNonNull(userRepo.findByUsername(username)
+                        .orElseGet(() -> {
+                            try {
+                                registerAndLogin(username);
+                            } catch (Exception ignored) {
+                            }
+                            return userRepo.findByUsername(username).orElse(null);
+                        }))
+                .getId();
         Long memId = createMembership(userId, master, role);
         Cookie ctx = switchContext(loginCookie, memId);
         return new Context(memId, master.getId(), ctx);

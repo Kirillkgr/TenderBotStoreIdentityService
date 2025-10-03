@@ -1,6 +1,9 @@
 package kirillzhdanov.identityservice.config;
 
+import kirillzhdanov.identityservice.tenant.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -70,5 +73,15 @@ public abstract class IntegrationTestBase {
                     "INSERT INTO roles(name) VALUES ('USER') ON CONFLICT DO NOTHING"
             );
         }
+    }
+
+    @BeforeEach
+    void clearTenantContextBefore() {
+        TenantContext.clear();
+    }
+
+    @AfterEach
+    void clearTenantContextAfter() {
+        TenantContext.clear();
     }
 }

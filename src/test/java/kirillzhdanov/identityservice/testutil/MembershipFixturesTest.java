@@ -33,16 +33,18 @@ public class MembershipFixturesTest extends IntegrationTestBase {
     private ScenarioBuilder sb;
 
     private Cookie login;
+    private String username;
 
     @BeforeEach
     void setup() throws Exception {
-        login = fixtures.ensureLogin("fx-user");
+        username = "fx-user-" + System.nanoTime();
+        login = fixtures.ensureLogin(username);
     }
 
     @Test
     @DisplayName("prepareAllRoleMemberships: создаёт контексты для всех ролей и позволяет читать список брендов")
     void prepareAllRoles_basic() throws Exception {
-        Map<RoleMembership, MembershipFixtures.Context> ctxs = fixtures.prepareAllRoleMemberships(login, "fx-user");
+        Map<RoleMembership, MembershipFixtures.Context> ctxs = fixtures.prepareAllRoleMemberships(login, username);
         assertThat(ctxs).containsKeys(RoleMembership.values());
 
         // любой контекст должен иметь возможность читать GET бренды (публичная операция)
@@ -57,9 +59,9 @@ public class MembershipFixturesTest extends IntegrationTestBase {
     @Test
     @DisplayName("prepareRoleMembership + ScenarioBuilder: создаёт бренд и продукт в ADMIN-контексте")
     void adminCanCreateBrandAndProduct() throws Exception {
-        var admin = fixtures.prepareRoleMembership(login, "fx-user", RoleMembership.ADMIN);
+        var admin = fixtures.prepareRoleMembership(login, username, RoleMembership.ADMIN);
         long brandId = sb.createBrand(admin.cookie(), admin.masterId(), "FX-BRAND", "FX-ORG");
-        long productId = sb.createProduct(admin.cookie(), "FX-PROD", new BigDecimal("9.99"), brandId);
+        long productId = sb.createProduct(admin.cookie(), admin.masterId(), "FX-PROD", new BigDecimal("9.99"), brandId);
         assertThat(brandId).isPositive();
         assertThat(productId).isPositive();
     }
@@ -67,8 +69,8 @@ public class MembershipFixturesTest extends IntegrationTestBase {
     @Test
     @DisplayName("Кеширование ensureLogin: повторный вызов возвращает тот же токен (пока не switchContext)")
     void ensureLoginCachesToken() throws Exception {
-        Cookie c1 = fixtures.ensureLogin("fx-user");
-        Cookie c2 = fixtures.ensureLogin("fx-user");
+        Cookie c1 = fixtures.ensureLogin(username);
+        Cookie c2 = fixtures.ensureLogin(username);
         assertThat(c1.getValue()).isEqualTo(c2.getValue());
     }
 }

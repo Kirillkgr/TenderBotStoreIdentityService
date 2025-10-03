@@ -11,6 +11,7 @@ import kirillzhdanov.identityservice.model.product.Product;
 import kirillzhdanov.identityservice.model.product.ProductArchive;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
 import kirillzhdanov.identityservice.repository.*;
+import kirillzhdanov.identityservice.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -231,8 +232,16 @@ public class ProductService {
 
     @Transactional
     public ProductResponse getById(Long productId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        Long masterId = TenantContext.getMasterId();
+        Product product;
+        if (masterId != null) {
+            product = productRepository.findByIdAndBrand_Master_Id(productId, masterId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        } else {
+            // fallback: без контекста — как раньше (для публичных ручек вне auth)
+            product = productRepository.findById(productId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        }
         return toResponse(product);
     }
 
