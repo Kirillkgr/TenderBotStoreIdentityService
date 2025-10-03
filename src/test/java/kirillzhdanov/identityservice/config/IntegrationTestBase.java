@@ -1,6 +1,7 @@
 package kirillzhdanov.identityservice.config;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -8,6 +9,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 // Контейнеры поднимает TestEnvironment один раз на JVM
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class IntegrationTestBase {
 
     @Autowired
@@ -28,7 +30,7 @@ public abstract class IntegrationTestBase {
         registry.add("spring.kafka.bootstrap-servers", () -> String.format("%s:%d", kafkaHost, kafkaPort));
 
         // Ускоряем выключение пула и уменьшаем шум логов
-        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "5");
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "10");
         registry.add("spring.datasource.hikari.minimum-idle", () -> "0");
         registry.add("spring.datasource.hikari.connection-timeout", () -> "3000");
         registry.add("spring.datasource.hikari.validation-timeout", () -> "1000");
@@ -43,8 +45,8 @@ public abstract class IntegrationTestBase {
         registry.add("logging.level.org.hibernate.SQL", () -> "INFO");
     }
 
-    @BeforeEach
-    void cleanDatabase() {
+    @BeforeAll
+    void cleanDatabaseOncePerClass() {
         // Очистка всех пользовательских таблиц между тестами (сохраняем таблицы Liquibase)
         jdbc.execute("""
                 DO $$

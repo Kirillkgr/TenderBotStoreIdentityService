@@ -3,6 +3,8 @@ spring:
     url: jdbc:postgresql://localhost:5432/identity_db_test
     username: postgres
     password: postgres
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -28,6 +30,7 @@ app:
     failure-redirect: "/login?oauth2=error"
 
 server:
+  shutdown: immediate
   servlet:
     session:
       cookie:
@@ -43,3 +46,9 @@ s3:
   publicBaseUrl: http://localhost:9000/test-bucket
   cache:
     maxAgeSeconds: 60
+
+address:
+  service:
+    front-service-cors:
+      list:
+        - "http://localhost:8080"

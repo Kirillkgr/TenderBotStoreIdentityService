@@ -56,11 +56,14 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
     private UserMembershipRepository membershipRepo;
 
     private Cookie authCookie;
+    private String currentUsername;
 
     private Cookie registerAndLogin() throws Exception {
         UserRegistrationRequest req = new UserRegistrationRequest();
-        req.setUsername("ctx-user");
-        req.setEmail("ctx-user" + "@test.local");
+        String suffix = String.valueOf(System.nanoTime());
+        currentUsername = "ctx-user-" + suffix;
+        req.setUsername(currentUsername);
+        req.setEmail(currentUsername + "@test.local");
         req.setPassword("Password123!");
         Set<Role.RoleName> roles = new HashSet<>();
         roles.add(Role.RoleName.USER);
@@ -102,7 +105,7 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
         MasterAccount m1 = masterRepo.save(MasterAccount.builder().name("M1").status("ACTIVE").build());
         MasterAccount m2 = masterRepo.save(MasterAccount.builder().name("M2").status("ACTIVE").build());
         // Создаём membership с ролью ADMIN в M1 для текущего пользователя и переключаемся в контекст
-        Long userId = userRepo.findByUsername("ctx-user").orElseThrow().getId();
+        Long userId = userRepo.findByUsername(currentUsername).orElseThrow().getId();
         UserMembership um1 = new UserMembership();
         um1.setUser(userRepo.findById(userId).orElseThrow());
         um1.setMaster(m1);
@@ -144,7 +147,7 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
     void getForeignMasterBrand_NotFound() throws Exception {
         // Arrange: создаём мастера и бренд под M1
         MasterAccount m1 = masterRepo.save(MasterAccount.builder().name("M1").status("ACTIVE").build());
-        Long userId = userRepo.findByUsername("ctx-user").orElseThrow().getId();
+        Long userId = userRepo.findByUsername(currentUsername).orElseThrow().getId();
         UserMembership um1 = new UserMembership();
         um1.setUser(userRepo.findById(userId).orElseThrow());
         um1.setMaster(m1);
