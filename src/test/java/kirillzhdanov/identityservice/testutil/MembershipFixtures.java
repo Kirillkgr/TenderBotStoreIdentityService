@@ -3,7 +3,6 @@ package kirillzhdanov.identityservice.testutil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import kirillzhdanov.identityservice.dto.ContextSwitchRequest;
-import kirillzhdanov.identityservice.dto.LoginRequest;
 import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
 import kirillzhdanov.identityservice.model.Role;
@@ -42,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class MembershipFixtures {
 
     private final Map<String, Cookie> userTokenCache = new ConcurrentHashMap<>();
-    @Autowired
+    @Autowired(required = false)
     private MockMvc mockMvc;
     @Autowired
     private ObjectMapper objectMapper;
@@ -54,6 +53,7 @@ public class MembershipFixtures {
     private UserMembershipRepository membershipRepo;
 
     public Cookie registerAndLogin(String username) throws Exception {
+        requireMockMvc();
         // Регистрация нового пользователя и первичный вход
         UserRegistrationRequest req = new UserRegistrationRequest();
         req.setUsername(username);
@@ -79,15 +79,15 @@ public class MembershipFixtures {
      * Явный логин существующего пользователя.
      */
     public Cookie login(String username, String password) throws Exception {
-        LoginRequest req = new LoginRequest();
-        req.setUsername(username);
-        req.setPassword(password);
+        requireMockMvc();
+        String basic = "Basic " + java.util.Base64.getEncoder()
+                .encodeToString((username + ":" + password).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         MvcResult res = mockMvc.perform(post("/auth/v1/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+                        .header("Authorization", basic))
                 .andExpect(status().isOk())
                 .andReturn();
-        String accessToken = objectMapper.readTree(res.getResponse().getContentAsString()).get("accessToken").asText();
+        String accessToken = objectMapper.readTree(res.getResponse().getContentAsString())
+                .get("accessToken").asText();
         Cookie cookie = new Cookie("accessToken", accessToken);
         userTokenCache.put(username, cookie);
         return cookie;
@@ -109,6 +109,7 @@ public class MembershipFixtures {
     }
 
     public Cookie switchContext(Cookie authCookie, Long membershipId) throws Exception {
+        requireMockMvc();
         ContextSwitchRequest req = new ContextSwitchRequest();
         req.setMembershipId(membershipId);
         MvcResult sw = mockMvc.perform(post("/auth/v1/context/switch")
@@ -136,6 +137,7 @@ public class MembershipFixtures {
      * Возвращает карту role -> Context (membershipId, masterId, cookie после switchContext).
      */
     public Map<RoleMembership, Context> prepareAllRoleMemberships(Cookie loginCookie, String username) throws Exception {
+        requireMockMvc();
         Long userId = Objects.requireNonNull(userRepo.findByUsername(username)
                         .orElseGet(() -> {
                             try {
@@ -159,6 +161,7 @@ public class MembershipFixtures {
      * Создаёт membership для одной роли. Создаёт новый Master автоматически.
      */
     public Context prepareRoleMembership(Cookie loginCookie, String username, RoleMembership role) throws Exception {
+        requireMockMvc();
         Long userId = Objects.requireNonNull(userRepo.findByUsername(username)
                         .orElseGet(() -> {
                             try {
@@ -178,6 +181,7 @@ public class MembershipFixtures {
      * Создаёт membership для роли в указанном master (если нужен контроль бренда/мастера в тесте).
      */
     public Context prepareRoleMembershipInMaster(Cookie loginCookie, String username, RoleMembership role, MasterAccount master) throws Exception {
+        requireMockMvc();
         Long userId = Objects.requireNonNull(userRepo.findByUsername(username)
                         .orElseGet(() -> {
                             try {
@@ -190,6 +194,12 @@ public class MembershipFixtures {
         Long memId = createMembership(userId, master, role);
         Cookie ctx = switchContext(loginCookie, memId);
         return new Context(memId, master.getId(), ctx);
+    }
+
+    private void requireMockMvc() {
+        if (mockMvc == null) {
+            throw new IllegalStateException("MockMvc is required for MembershipFixtures methods. Ensure @AutoConfigureMockMvc is present.");
+        }
     }
 
     public record Context(Long membershipId, Long masterId, Cookie cookie) {

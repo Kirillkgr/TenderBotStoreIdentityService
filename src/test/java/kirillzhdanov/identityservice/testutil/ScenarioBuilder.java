@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Profile("dev")
 public class ScenarioBuilder {
 
-    @Autowired
+    @Autowired(required = false)
     private MockMvc mockMvc;
     @Autowired
     private ObjectMapper objectMapper;
@@ -34,6 +34,7 @@ public class ScenarioBuilder {
      * Создаёт бренд и возвращает его id.
      */
     public long createBrand(Cookie ctxCookie, Long masterId, String name, String orgName) throws Exception {
+        requireMockMvc();
         BrandDto dto = BrandDto.builder().name(name).organizationName(orgName).build();
         MvcResult res = mockMvc.perform(post("/auth/v1/brands")
                         .cookie(ctxCookie)
@@ -52,6 +53,7 @@ public class ScenarioBuilder {
      * Создаёт продукт и возвращает его id.
      */
     public long createProduct(Cookie ctxCookie, Long masterId, String name, BigDecimal price, long brandId) throws Exception {
+        requireMockMvc();
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName(name);
         req.setPrice(price);
@@ -67,5 +69,11 @@ public class ScenarioBuilder {
         JsonNode node = objectMapper.readTree(res.getResponse().getContentAsString());
         assertThat(node.has("id")).isTrue();
         return node.get("id").asLong();
+    }
+
+    private void requireMockMvc() {
+        if (mockMvc == null) {
+            throw new IllegalStateException("MockMvc is required for ScenarioBuilder methods. Ensure @AutoConfigureMockMvc is present.");
+        }
     }
 }
