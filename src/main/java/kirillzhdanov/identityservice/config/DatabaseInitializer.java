@@ -16,6 +16,7 @@ import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import kirillzhdanov.identityservice.service.RoleService;
 import kirillzhdanov.identityservice.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ import java.util.*;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "app.seed.demoData", havingValue = "true", matchIfMissing = true)
 public class DatabaseInitializer {
 
     private final RoleService roleService;

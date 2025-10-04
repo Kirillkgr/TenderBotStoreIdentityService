@@ -12,7 +12,7 @@
       :style="modalStyle"
       @mousedown.capture="emitFocus"
     >
-      <div class="modal-header" @mousedown="startDrag" @touchstart.prevent="startDrag">
+      <div class="modal-header" @mousedown="startDrag" @touchstart="startDrag">
 
         <slot name="header">
           <h3>Вход</h3>
@@ -151,6 +151,13 @@ const stopDrag = () => {
 const startDrag = (event) => {
   const isTouchEvent = !!event.touches;
   if (!isTouchEvent && event.button !== 0) return;
+
+  // Do not start dragging when user interacts with interactive controls inside the header
+  const target = event.target;
+  const canClosest = target && typeof target.closest === 'function';
+  if (canClosest && target.closest('button, a, input, textarea, select, label, [role="button"], .no-drag')) {
+    return;
+  }
 
   isDragging.value = true;
   const moveEvent = isTouchEvent ? event.touches[0] : event;

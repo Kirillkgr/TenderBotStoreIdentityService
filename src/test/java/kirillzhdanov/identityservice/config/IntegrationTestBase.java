@@ -48,6 +48,7 @@ public abstract class IntegrationTestBase {
         registry.add("spring.liquibase.change-log", () -> "classpath:/db/changelog/db.changelog-master.xml");
         registry.add("logging.level.root", () -> "WARN");
         registry.add("logging.level.org.hibernate.SQL", () -> "INFO");
+
     }
 
     @BeforeAll
@@ -74,6 +75,12 @@ public abstract class IntegrationTestBase {
                     "INSERT INTO roles(name) VALUES ('ADMIN') ON CONFLICT DO NOTHING",
                     "INSERT INTO roles(name) VALUES ('USER') ON CONFLICT DO NOTHING"
             );
+        }
+
+        // Если брендов нет (после очистки) — добавим один, без фиксированного id
+        Integer brandCount = jdbc.queryForObject("SELECT COUNT(*) FROM brands", Integer.class);
+        if (brandCount == null || brandCount == 0) {
+            jdbc.update("INSERT INTO brands(name, organization_name) VALUES ('TestBrand', 'TestOrg')");
         }
     }
 
