@@ -9,6 +9,7 @@ import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.model.master.RoleMembership;
 import kirillzhdanov.identityservice.model.master.UserMembership;
+import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
@@ -48,6 +49,8 @@ public class MembershipFixtures {
     @Autowired
     private UserRepository userRepo;
     @Autowired
+    private BrandRepository brandRepository;
+    @Autowired
     private MasterAccountRepository masterRepo;
     @Autowired
     private UserMembershipRepository membershipRepo;
@@ -64,7 +67,7 @@ public class MembershipFixtures {
         req.setRoleNames(roles);
         MvcResult res = mockMvc
                 .perform(post("/auth/v1/register")
-                        .header("X-Brand-Id", "1")
+                        .header("X-Brand-Id", String.valueOf(resolveBrandId()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -84,7 +87,7 @@ public class MembershipFixtures {
         String basic = "Basic " + java.util.Base64.getEncoder()
                 .encodeToString((username + ":" + password).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         MvcResult res = mockMvc.perform(post("/auth/v1/login")
-                        .header("X-Brand-Id", "1")
+                        .header("X-Brand-Id", String.valueOf(resolveBrandId()))
                         .header("Authorization", basic))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -115,7 +118,7 @@ public class MembershipFixtures {
         ContextSwitchRequest req = new ContextSwitchRequest();
         req.setMembershipId(membershipId);
         MvcResult sw = mockMvc.perform(post("/auth/v1/context/switch")
-                        .header("X-Brand-Id", "1")
+                        .header("X-Brand-Id", String.valueOf(resolveBrandId()))
                         .cookie(authCookie)
                         .header("Authorization", "Bearer " + authCookie.getValue())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -203,6 +206,19 @@ public class MembershipFixtures {
         if (mockMvc == null) {
             throw new IllegalStateException("MockMvc is required for MembershipFixtures methods. Ensure @AutoConfigureMockMvc is present.");
         }
+    }
+
+    private long resolveBrandId() {
+        // Возвращаем id первого бренда; если брендов нет — создаём простой тестовый
+        return brandRepository.findAll().stream().findFirst()
+                .map(kirillzhdanov.identityservice.model.Brand::getId)
+                .orElseGet(() -> {
+                    var b = kirillzhdanov.identityservice.model.Brand.builder()
+                            .name("TestBrand-" + System.nanoTime())
+                            .organizationName("TestOrg")
+                            .build();
+                    return brandRepository.save(b).getId();
+                });
     }
 
     public record Context(Long membershipId, Long masterId, Cookie cookie) {
