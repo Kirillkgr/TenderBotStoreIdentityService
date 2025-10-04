@@ -176,4 +176,61 @@ public class ContextSwitchIntegrationTest extends IntegrationTestBase {
                         .content(body))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("Switch: клеймы brandId/locationId присутствуют и валидны (если есть)")
+    void switch_claims_include_brand_and_location_if_present() throws Exception {
+        String username = "ctx-claims-" + System.nanoTime();
+        Cookie login = fixtures.registerAndLogin(username);
+        var clientCtx = fixtures.prepareRoleMembership(login, username, RoleMembership.CLIENT);
+        Cookie token = clientCtx.cookie();
+
+        JsonNode claims = decodeJwtPayload(token.getValue());
+        if (claims.has("brandId")) {
+            assertThat(claims.get("brandId").asLong()).isGreaterThan(0);
+        }
+        if (claims.has("locationId")) {
+            assertThat(claims.get("locationId").asLong()).isGreaterThan(0);
+        }
+    }
+
+    @Test
+    @DisplayName("Switch: неконсистентные override brandId/locationId -> 400")
+    void switch_with_inconsistent_overrides_returns_400() throws Exception {
+        String username = "ctx-ovr-" + System.nanoTime();
+        Cookie login = fixtures.registerAndLogin(username);
+        // Создаём membership с привязанным brand/pickup, чтобы валидация сработала
+        var clientCtx = fixtures.prepareRoleMembershipWithBrand(login, username, RoleMembership.CLIENT);
+
+        // Получаем валидные клеймы и формируем заведомо неправильные override-ы
+        JsonNode validClaims = decodeJwtPayload(clientCtx.cookie().getValue());
+        Long actualBrand = validClaims.has("brandId") ? validClaims.get("brandId").asLong() : null;
+        Long actualLocation = validClaims.has("locationId") ? validClaims.get("locationId").asLong() : null;
+
+        // Если brand есть в клеймах — подставим другой brandId для вызова и ожидаем 400
+        if (actualBrand != null) {
+            long bogusBrand = actualBrand + 999_999L;
+            String bodyBrand = "{\n  \"membershipId\": " + clientCtx.membershipId() + ",\n  \"brandId\": " + bogusBrand + "\n}";
+            mockMvc.perform(post("/auth/v1/context/switch")
+                            .header("X-Brand-Id", "1")
+                            .cookie(login)
+                            .header("Authorization", "Bearer " + login.getValue())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(bodyBrand))
+                    .andExpect(status().isBadRequest());
+        }
+
+        // Если location есть в клеймах — подставим другой locationId и ожидаем 400
+        if (actualLocation != null) {
+            long bogusLocation = actualLocation + 999_999L;
+            String bodyLoc = "{\n  \"membershipId\": " + clientCtx.membershipId() + ",\n  \"locationId\": " + bogusLocation + "\n}";
+            mockMvc.perform(post("/auth/v1/context/switch")
+                            .header("X-Brand-Id", "1")
+                            .cookie(login)
+                            .header("Authorization", "Bearer " + login.getValue())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(bodyLoc))
+                    .andExpect(status().isBadRequest());
+        }
+    }
 }

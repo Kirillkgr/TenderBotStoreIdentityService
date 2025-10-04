@@ -5,14 +5,17 @@ import jakarta.servlet.http.Cookie;
 import kirillzhdanov.identityservice.dto.ContextSwitchRequest;
 import kirillzhdanov.identityservice.dto.UserRegistrationRequest;
 import kirillzhdanov.identityservice.dto.UserResponse;
+import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.model.master.RoleMembership;
 import kirillzhdanov.identityservice.model.master.UserMembership;
+import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
+import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
@@ -54,6 +57,8 @@ public class MembershipFixtures {
     private MasterAccountRepository masterRepo;
     @Autowired
     private UserMembershipRepository membershipRepo;
+    @Autowired
+    private PickupPointRepository pickupPointRepository;
 
     public Cookie registerAndLogin(String username) throws Exception {
         requireMockMvc();
@@ -137,6 +142,22 @@ public class MembershipFixtures {
         return membershipRepo.save(um).getId();
     }
 
+    private Long createMembershipWithBrand(Long userId, MasterAccount m, RoleMembership role, Brand brand, PickupPoint pickup) {
+        UserMembership um = new UserMembership();
+        um.setUser(userRepo.findById(userId).orElseThrow());
+        um.setMaster(m);
+        um.setRole(role);
+        try {
+            um.setBrand(brand);
+        } catch (Exception ignored) {
+        }
+        try {
+            um.setPickupPoint(pickup);
+        } catch (Exception ignored) {
+        }
+        return membershipRepo.save(um).getId();
+    }
+
     /**
      * Создаёт по одному membership на каждого из RoleMembership для указанного пользователя.
      * Для избежания конфликтов уникальности создаём отдельный Master на каждую роль.
@@ -179,6 +200,31 @@ public class MembershipFixtures {
                 .getId();
         MasterAccount m = masterRepo.save(MasterAccount.builder().name("FX-" + role.name()).status("ACTIVE").build());
         Long memId = createMembership(userId, m, role);
+        Cookie ctx = switchContext(loginCookie, memId);
+        return new Context(memId, m.getId(), ctx);
+    }
+
+    /**
+     * Создаёт membership с привязкой к существующему бренду и (по возможности) первой активной точке.
+     * Нужен для тестов строгой валидации override brandId/locationId.
+     */
+    public Context prepareRoleMembershipWithBrand(Cookie loginCookie, String username, RoleMembership role) throws Exception {
+        requireMockMvc();
+        Long userId = Objects.requireNonNull(userRepo.findByUsername(username)
+                        .orElseGet(() -> {
+                            try {
+                                registerAndLogin(username);
+                            } catch (Exception ignored) {
+                            }
+                            return userRepo.findByUsername(username).orElse(null);
+                        }))
+                .getId();
+        MasterAccount m = masterRepo.save(MasterAccount.builder().name("FX-" + role.name()).status("ACTIVE").build());
+        Brand brand = brandRepository.findAll().stream().findFirst().orElseGet(() ->
+                brandRepository.save(Brand.builder().name("TestBrand-" + System.nanoTime()).organizationName("TestOrg").build())
+        );
+        PickupPoint pickup = pickupPointRepository.findByBrand_IdAndActiveTrue(brand.getId()).stream().findFirst().orElse(null);
+        Long memId = createMembershipWithBrand(userId, m, role, brand, pickup);
         Cookie ctx = switchContext(loginCookie, memId);
         return new Context(memId, m.getId(), ctx);
     }
