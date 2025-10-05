@@ -72,6 +72,7 @@
 
     <div class="actions-container">
       <button
+          v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
           class="admin-action-btn"
           @click="showCreateBrandModal = true"
           :disabled="loading"
@@ -79,6 +80,7 @@
         + Создать бренд
       </button>
       <button
+          v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
           class="admin-action-btn"
           @click="showCreateGroupModal = true"
           :disabled="!selectedBrand || loading"
@@ -86,6 +88,7 @@
         + Создать тег
       </button>
       <button
+          v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
           class="admin-action-btn secondary"
           @click="showCreateProductModal = true"
           :disabled="loading"
@@ -242,6 +245,7 @@
 
             <!-- Плавающая кнопка редактирования в правом верхнем углу строки -->
             <button
+                v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
                 class="edit-fab"
                 @click.stop="editTag(tag)"
                 title="Изменить тег"
@@ -261,6 +265,7 @@
               </button>
 
               <button
+                  v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
                   class="btn btn-outline-success"
                   @click.stop="addChildTag(tag)"
                   title="Создать дочерний тег"
@@ -269,6 +274,7 @@
               </button>
 
               <button
+                  v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
                   class="btn btn-outline-secondary"
                   @click.stop="editTag(tag)"
                   title="Редактировать"
@@ -277,6 +283,7 @@
               </button>
 
               <button
+                  v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
                   class="btn btn-outline-danger"
                   @click.stop="confirmDeleteTag(tag)"
                   :disabled="tag.childrenCount > 0"
@@ -333,7 +340,9 @@
               </div>
             </div>
             <!-- Плавающая кнопка редактирования в правом верхнем углу карточки товара -->
-            <button class="pc-edit-fab" @click.stop="openEdit(p)" title="Редактировать товар" aria-label="Редактировать товар">
+            <button v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" aria-label="Редактировать товар"
+                    class="pc-edit-fab"
+                    title="Редактировать товар" @click.stop="openEdit(p)">
               <img src="@/assets/pencil.svg" alt="Редактировать" style="width: 16px; height: 16px;" />
             </button>
             <div class="pc-price">

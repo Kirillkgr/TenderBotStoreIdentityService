@@ -32,13 +32,16 @@
           <!-- Скрыли ссылки Профиль/Редактировать/Выйти: они доступны в меню аватара -->
           <router-link
             v-if="isAdminOrOwner"
+            v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
             to="/staff"
             class="nav-link btn-primary"
           >Управление персоналом</router-link>
           <button class="nav-link btn-primary" type="button" @click.stop="openMiniCart">
             Корзина ({{ cartStore.items.length }})
           </button>
-          <router-link v-if="isAdminOrOwner" to="/admin/archive">Корзина (архив)</router-link>
+          <router-link v-if="isAdminOrOwner" v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/archive">
+            Корзина (архив)
+          </router-link>
           <button v-if="authStore.isAuthenticated" class="nav-link btn-primary" type="button"
                   @click.stop="openContextModal">
             Контекст
@@ -58,12 +61,27 @@
               {{ opt.label }}
             </option>
           </select>
-          <!-- Ссылки на специализированные экраны по ролям -->
-          <router-link v-if="isCook" to="/kitchen">Кухня</router-link>
-          <router-link v-if="isCashier" to="/cashier">Касса</router-link>
+          <!-- Ссылки на специализированные экраны по ролям
+               Видимы если текущие роли или доступные memberships содержат требуемую роль.
+               При клике, если роль не активна в токене — переключаем membership и переходим. -->
+          <a
+              v-if="canSeeKitchen"
+              href="/kitchen"
+              @click.prevent="ensureRoleAndGo('COOK', '/kitchen')"
+          >Кухня</a>
+          <a
+              v-if="canSeeCashier"
+              href="/cashier"
+              @click.prevent="ensureRoleAndGo('CASHIER', '/cashier')"
+          >Касса</a>
+          <a
+              v-if="canSeeOrders"
+              href="/admin/orders"
+              @click.prevent="ensureRoleAndGo('CASHIER', '/admin/orders', ['ADMIN','OWNER','CASHIER'])"
+          >Заказы</a>
 
           <span v-if="isAdminOrOwner" class="nav-link-wrap">
-            <router-link to="/admin">Админ</router-link>
+            <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin">Админ</router-link>
             <span v-if="nStore.hasQueued" class="nav-dot" title="Новый заказ"></span>
           </span>
         </template>
@@ -261,15 +279,32 @@ const isAdminOrOwner = computed(() => {
   return roles.includes('ADMIN') || roles.includes('OWNER');
 });
 
+function hasRoleInMemberships(role) {
+  try {
+    const list = Array.isArray(authStore.memberships) ? authStore.memberships : [];
+    const norm = (r) => String(r || '').toUpperCase().replace(/^ROLE_/, '');
+    return list.some(m => {
+      const r = norm(m.role || m.membershipRole || m.brandRole || m.locationRole);
+      return r === norm(role);
+    });
+  } catch {
+    return false;
+  }
+}
+
 const isCook = computed(() => {
   const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
-  return roles.includes('COOK');
+  return roles.includes('COOK') || hasRoleInMemberships('COOK');
 });
 
 const isCashier = computed(() => {
   const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
-  return roles.includes('CASHIER');
+  return roles.includes('CASHIER') || hasRoleInMemberships('CASHIER');
 });
+
+const canSeeKitchen = computed(() => isCook.value || isAdminOrOwner.value);
+const canSeeCashier = computed(() => isCashier.value || isAdminOrOwner.value);
+const canSeeOrders = computed(() => isCashier.value || isAdminOrOwner.value);
 
 // На будущее: инициалы, если захотим показать поверх иконки
 const userInitials = computed(() => {
@@ -321,6 +356,62 @@ function openQr() {
   // Закрываем мобильное меню, если открыто (иначе overlay может перекрывать клики)
   if (isMenuOpen.value) isMenuOpen.value = false;
   showQr.value = true;
+}
+
+// Переключает membership под нужную роль (если требуется) и выполняет переход
+async function ensureRoleAndGo(requiredRole, path, anyOf = null) {
+  const target = Array.isArray(anyOf) && anyOf.length ? anyOf : [requiredRole];
+  const hasAny = (rs) => {
+    const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+    return rs.some(r => roles.includes(r));
+  };
+  try {
+    if (!hasAny(target)) {
+      const list = Array.isArray(authStore.memberships) ? authStore.memberships : [];
+      const norm = (r) => String(r || '').toUpperCase().replace(/^ROLE_/, '');
+      const m = list.find(x => {
+        const r = norm(x.role || x.membershipRole || x.brandRole || x.locationRole);
+        return target.some(tr => r === norm(tr));
+      });
+      if (m) {
+        await authStore.selectMembership(m);
+        // дождёмся обновления ролей (до 1.5с)
+        const ok = await new Promise((resolve) => {
+          if (hasAny(target)) return resolve(true);
+          const start = Date.now();
+          const unsub = authStore.$subscribe(() => {
+            if (hasAny(target)) {
+              try {
+                unsub();
+              } catch (_) {
+              }
+              resolve(true);
+            } else if (Date.now() - start > 1500) {
+              try {
+                unsub();
+              } catch (_) {
+              }
+              resolve(false);
+            }
+          });
+          // подстраховка на случай, если $subscribe не сработает
+          setTimeout(() => {
+            try {
+              unsub();
+            } catch (_) {
+            }
+            resolve(hasAny(target));
+          }, 1600);
+        });
+        // даже если не дождались — пробуем навигацию, гвард может пропустить при обновлённых ролях
+      }
+    }
+    await router.push(path);
+  } catch (_) {
+    await router.push(path);
+  } finally {
+    isMenuOpen.value = false;
+  }
 }
 
 function handleScroll() {

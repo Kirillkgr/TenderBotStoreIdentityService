@@ -3,9 +3,15 @@
     <header class="page-header">
       <h1>Управление персоналом</h1>
       <div class="actions">
-        <button class="btn" @click="openCreateUser">Создать пользователя</button>
-        <button class="btn" @click="openCreateDepartment">Создать отдел</button>
-        <button class="btn btn-secondary" @click="exportCsv">Экспорт CSV</button>
+        <button v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" class="btn" @click="openCreateUser">Создать
+          пользователя
+        </button>
+        <button v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" class="btn" @click="openCreateDepartment">Создать
+          отдел
+        </button>
+        <button v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Нет прав на экспорт' }"
+                class="btn btn-secondary" @click="exportCsv">Экспорт CSV
+        </button>
       </div>
     </header>
 
@@ -44,8 +50,11 @@
             <td>{{ departmentName(u.departmentId) }}</td>
             <td>{{ formatDate(u.createdAt) }}</td>
             <td>
-              <button class="link" @click="editUser(u)">Редактировать</button>
-              <button class="link danger" @click="removeUser(u)">Удалить</button>
+              <button v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" class="link" @click="editUser(u)">Редактировать
+              </button>
+              <button v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" class="link danger" @click="removeUser(u)">
+                Удалить
+              </button>
             </td>
           </tr>
           <tr v-if="!loading && users.length === 0">

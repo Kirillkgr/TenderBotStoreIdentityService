@@ -9,6 +9,7 @@ import App from './App.vue';
 import router from './router';
 import {useAuthStore} from './store/auth';
 import {getBrandHint} from './utils/brandHint';
+import canDirective from './directives/can';
 
 import './style.css';
 import './theme.css';
@@ -51,6 +52,7 @@ const pinia = createPinia();
 
 app.use(pinia);
 app.use(router);
+app.directive('can', canDirective);
 
 app.use(Toast, {
     // Опции уведомлений: компактно и слева внизу

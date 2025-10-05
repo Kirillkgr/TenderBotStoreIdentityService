@@ -88,7 +88,7 @@ const routes = [
     {
         path: '/admin/orders',
         name: 'AdminOrders',
-        meta: {title: 'Заказы', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        meta: {title: 'Заказы', requiresAuth: true, roles: ['ADMIN', 'OWNER', 'CASHIER']},
         component: AdminOrdersView,
     },
     {

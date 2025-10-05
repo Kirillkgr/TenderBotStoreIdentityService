@@ -305,6 +305,19 @@ export const useAuthStore = defineStore('auth', {
             const newAccessToken = resp?.data?.accessToken;
             if (newAccessToken) {
                 this.setAccessToken(newAccessToken);
+                // Некоторые бэкенды не добавляют роль membership в JWT 'roles'.
+                // Подстрахуемся: если в клеймах пусто, но у membership есть роль — добавим её в store.roles.
+                try {
+                    const norm = (r) => String(r || '').toUpperCase().replace(/^ROLE_/, '');
+                    const inferred = norm(m.role || m.membershipRole || m.brandRole || m.locationRole);
+                    if (inferred) {
+                        const current = Array.isArray(this.roles) ? this.roles.slice() : [];
+                        if (!current.some(r => norm(r) === inferred)) {
+                            this.roles = [...current, inferred];
+                        }
+                    }
+                } catch (_) {
+                }
             }
             // Сохраняем выбранный контекст в store (для отрисовки и заголовков).
             // ВАЖНО: перезаписываем на явно выбранные значения, чтобы заголовки сразу обновились
@@ -312,10 +325,6 @@ export const useAuthStore = defineStore('auth', {
             this.masterId = m.masterId || null;
             this.brandId = m.brandId || null;
             this.locationId = m.locationId || null;
-            try {
-                localStorage.setItem('selected_membership_id', String(this.membershipId));
-            } catch (_) {
-            }
         },
 
         // Очистка контекста на клиенте (без server-side действий)
