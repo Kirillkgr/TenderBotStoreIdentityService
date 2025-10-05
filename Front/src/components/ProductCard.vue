@@ -19,6 +19,9 @@
       <h3 class="product-name" :title="product.name">
         {{ product.name }}
       </h3>
+      <p v-if="product.description" :title="product.description" class="product-desc">
+        {{ product.description }}
+      </p>
       <div v-if="product.createdAt" :title="formatFull(product.createdAt)" class="meta-time">
         {{ timeAgoStr(product.createdAt) }}
       </div>
@@ -233,6 +236,19 @@ function formatFull(val) {
   overflow: hidden;
   text-overflow: ellipsis;
   min-height: 2.8em;
+}
+
+.product-desc {
+  margin: -6px 0 10px 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 2.4em;
 }
 
 .price-row {

@@ -8,6 +8,8 @@ import CartView from '../views/CartView.vue';
 import ProductDetailView from '../views/ProductDetailView.vue';
 import CheckoutView from '../views/CheckoutView.vue';
 import AdminView from '../views/AdminView.vue';
+import KitchenView from '../views/KitchenView.vue';
+import CashierView from '../views/CashierView.vue';
 import AdminOrdersView from '../views/AdminOrdersView.vue';
 import AdminClientsView from '../views/AdminClientsView.vue';
 import TagsView from '../views/TagsView.vue';
@@ -104,8 +106,20 @@ const routes = [
     {
         path: '/brands/:brandId/tags',
         name: 'BrandTags',
-        meta: { title: 'Управление тегами', requiresAuth: true },
+        meta: {title: 'Управление тегами', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
         component: TagsView,
+    },
+    {
+        path: '/kitchen',
+        name: 'Kitchen',
+        meta: {title: 'Кухня', requiresAuth: true, roles: ['COOK']},
+        component: KitchenView,
+    },
+    {
+        path: '/cashier',
+        name: 'Cashier',
+        meta: {title: 'Касса', requiresAuth: true, roles: ['CASHIER']},
+        component: CashierView,
     },
 ];
 
