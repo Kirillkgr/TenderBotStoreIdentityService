@@ -55,14 +55,18 @@
           <select v-model="statusDraft[o.id]" class="input" style="min-width:160px;">
             <option v-for="st in statusesFor(o.status)" :key="st" :value="st">{{ st }}</option>
           </select>
-          <button :disabled="statusDraft[o.id]===o.status || savingStatusId===o.id" class="btn btn-sm"
+          <button
+              v-can="{ any: ['ADMIN','OWNER','CASHIER'], mode: 'disable', tooltip: 'Нет прав изменять статус' }"
+              :disabled="statusDraft[o.id]===o.status || savingStatusId===o.id"
+              class="btn btn-sm"
                   @click="applyStatus(o)">
             Сохранить
           </button>
         </td>
         <td>{{ formatLocalDateTime(o.createdAt) }}</td>
         <td>
-          <button class="btn btn-sm btn-chat" type="button" @click.stop="openMessage(o)">
+          <button v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Нет прав отправлять сообщения' }"
+                  class="btn btn-sm btn-chat" type="button" @click.stop="openMessage(o)">
             Сообщение
             <span v-if="nStore.hasUnreadByOrder(o.id)" class="btn-unread-dot" title="Есть новые сообщения"></span>
           </button>
@@ -73,7 +77,8 @@
             <span class="rating-text">{{ Number(o.rating).toFixed(1) }}/5</span>
           </div>
           <div v-else class="rating-wrap muted">Нет оценки</div>
-          <button class="btn btn-sm" style="margin-top:6px;" type="button"
+          <button v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Нет прав просматривать отзывы' }"
+                  class="btn btn-sm" style="margin-top:6px;" type="button"
                   @click="openReviewText(o)">Отзыв
           </button>
         </td>
