@@ -253,10 +253,8 @@ const isHeaderVisible = ref(true);
 let lastScrollPosition = 0;
 
 const isAdminOrOwner = computed(() => {
-  if (!authStore.user || !authStore.user.roles) {
-    return false;
-  }
-  return authStore.user.roles.includes('ADMIN') || authStore.user.roles.includes('OWNER');
+  const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+  return roles.includes('ADMIN') || roles.includes('OWNER');
 });
 
 // На будущее: инициалы, если захотим показать поверх иконки

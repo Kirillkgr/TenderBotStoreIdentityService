@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.model.order;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.User;
@@ -37,6 +38,7 @@ public class Order {
     // Мастер (владелец) — для быстрых фильтров и изоляции
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "master_id")
+    @JsonIgnore
     private MasterAccount master;
 
     @Column(name = "total", precision = 15, scale = 2)

@@ -2,6 +2,7 @@ import {defineStore} from 'pinia';
 import * as authService from '../services/authService';
 import router from '../router';
 import {useCartStore} from './cart';
+import {decodeJwt, deriveCurrentRole} from '../utils/jwt';
 
 const USER_STORAGE_KEY = 'user_data';
 
@@ -10,6 +11,10 @@ export const useAuthStore = defineStore('auth', {
         // Токены и данные пользователя хранятся только в памяти, не в localStorage
         user: null,
         accessToken: null,
+        // Данные из JWT
+        roles: [],
+        currentRole: 'USER',
+        exp: null,
         // Флаг, чтобы показать, что мы пытаемся восстановить сессию после перезагрузки
         isRestoringSession: false,
         // Флаг, чтобы не запускать refresh во время выхода
@@ -27,11 +32,41 @@ export const useAuthStore = defineStore('auth', {
     getters: {
         isAuthenticated: (state) => !!state.accessToken,
         currentUser: (state) => state.user,
+        isAdminOrOwner: (state) => Array.isArray(state.roles) && (state.roles.includes('ADMIN') || state.roles.includes('OWNER')),
+        currentRoleName: (state) => state.currentRole,
     },
 
     actions: {
         setAccessToken(accessToken) {
             this.accessToken = accessToken;
+            // Парсим клеймы и обновляем контекст
+            try {
+                const claims = decodeJwt(accessToken);
+                const roles = Array.isArray(claims?.roles) ? claims.roles : [];
+                this.roles = roles;
+                this.currentRole = deriveCurrentRole(claims);
+                this.exp = claims?.exp || null;
+                // Идентификаторы контекста, если пришли
+                this.membershipId = claims?.membershipId ?? this.membershipId;
+                this.masterId = claims?.masterId ?? this.masterId;
+                this.brandId = claims?.brandId ?? this.brandId;
+                this.locationId = claims?.locationId ?? this.locationId;
+                // Пользовательские данные, если нужны в UI
+                if (claims?.userId && this.user) {
+                    // не перетираем профиль, но можем синхронизировать id/username при желании
+                    this.user.id = this.user.id || claims.userId;
+                    this.user.username = this.user.username || claims.username;
+                }
+                // Синхронизируем текущий бренд для интерцептора (если пришёл в токене)
+                try {
+                    if (this.brandId) {
+                        localStorage.setItem('current_brand_id', String(this.brandId));
+                    }
+                } catch (_) {
+                }
+            } catch (_) {
+                // токен может быть пуст/бит — просто оставляем как есть
+            }
         },
 
 
@@ -144,6 +179,9 @@ export const useAuthStore = defineStore('auth', {
 
             this.setUser(null);
             this.setAccessToken(null);
+            this.roles = [];
+            this.currentRole = 'USER';
+            this.exp = null;
             this.unreadCount = 0;
             this.clearMembership();
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
@@ -156,6 +194,9 @@ export const useAuthStore = defineStore('auth', {
         async clearSession() {
             this.setUser(null);
             this.setAccessToken(null);
+            this.roles = [];
+            this.currentRole = 'USER';
+            this.exp = null;
             this.unreadCount = 0;
             this.clearMembership();
             try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
@@ -265,7 +306,8 @@ export const useAuthStore = defineStore('auth', {
             if (newAccessToken) {
                 this.setAccessToken(newAccessToken);
             }
-            // Сохраняем выбранный контекст в store (для отрисовки и заголовков)
+            // Сохраняем выбранный контекст в store (для отрисовки и заголовков).
+            // ВАЖНО: перезаписываем на явно выбранные значения, чтобы заголовки сразу обновились
             this.membershipId = payload.membershipId || null;
             this.masterId = m.masterId || null;
             this.brandId = m.brandId || null;
@@ -285,6 +327,7 @@ export const useAuthStore = defineStore('auth', {
             this.memberships = [];
             try {
                 localStorage.removeItem('selected_membership_id');
+                localStorage.removeItem('current_brand_id');
             } catch (_) {
             }
         }

@@ -138,13 +138,11 @@ router.beforeEach(async (to, from, next) => {
         return next('/login');
     }
 
-    // Проверка на наличие требуемых ролей
+    // Проверка на наличие требуемых ролей (используем роли из JWT в store)
     if (to.meta.roles) {
-        const userRoles = authStore.user?.roles || [];
-        const hasRequiredRole = to.meta.roles.some(role => userRoles.includes(role));
-
+        const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+        const hasRequiredRole = to.meta.roles.some(role => roles.includes(role));
         if (!hasRequiredRole) {
-            // Если у пользователя нет нужной роли, перенаправляем на главную
             return next({ name: 'Home' });
         }
     }

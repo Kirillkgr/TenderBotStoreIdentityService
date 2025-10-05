@@ -76,7 +76,7 @@ class NotificationsClient {
                     try {
                         const nStore = useNotificationsStore();
                         const authStore = useAuthStore();
-                        const roles = (authStore?.user?.roles) || [];
+                        const roles = Array.isArray(authStore?.roles) ? authStore.roles : [];
                         const isStaff = roles.includes('ADMIN') || roles.includes('OWNER');
                         for (const e of events) {
                             if (e && e.type === 'COURIER_MESSAGE' && e.orderId) {

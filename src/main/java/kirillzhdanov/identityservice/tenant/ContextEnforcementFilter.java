@@ -55,6 +55,8 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
     private boolean isPublic(HttpServletRequest request) {
         String uri = request.getRequestURI();
         if (HttpMethod.OPTIONS.matches(request.getMethod())) return true;
+        // Allow first-time brand creation without tenant context
+        if (HttpMethod.POST.matches(request.getMethod()) && "/auth/v1/brands".equals(uri)) return true;
         for (String p : PUBLIC_PREFIXES) {
             if (uri.startsWith(p)) return true;
         }
