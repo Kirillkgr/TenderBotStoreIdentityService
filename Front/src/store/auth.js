@@ -307,11 +307,11 @@ export const useAuthStore = defineStore('auth', {
                 this.setAccessToken(newAccessToken);
             }
             // Сохраняем выбранный контекст в store (для отрисовки и заголовков).
-            // Значения уже проставлены из токена, но на случай отсутствия полей в токене — фолбэк
-            this.membershipId = this.membershipId ?? (payload.membershipId || null);
-            this.masterId = this.masterId ?? (m.masterId || null);
-            this.brandId = this.brandId ?? (m.brandId || null);
-            this.locationId = this.locationId ?? (m.locationId || null);
+            // ВАЖНО: перезаписываем на явно выбранные значения, чтобы заголовки сразу обновились
+            this.membershipId = payload.membershipId || null;
+            this.masterId = m.masterId || null;
+            this.brandId = m.brandId || null;
+            this.locationId = m.locationId || null;
             try {
                 localStorage.setItem('selected_membership_id', String(this.membershipId));
             } catch (_) {
