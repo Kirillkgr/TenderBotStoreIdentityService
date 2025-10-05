@@ -58,6 +58,10 @@
               {{ opt.label }}
             </option>
           </select>
+          <!-- Ссылки на специализированные экраны по ролям -->
+          <router-link v-if="isCook" to="/kitchen">Кухня</router-link>
+          <router-link v-if="isCashier" to="/cashier">Касса</router-link>
+
           <span v-if="isAdminOrOwner" class="nav-link-wrap">
             <router-link to="/admin">Админ</router-link>
             <span v-if="nStore.hasQueued" class="nav-dot" title="Новый заказ"></span>
@@ -255,6 +259,16 @@ let lastScrollPosition = 0;
 const isAdminOrOwner = computed(() => {
   const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
   return roles.includes('ADMIN') || roles.includes('OWNER');
+});
+
+const isCook = computed(() => {
+  const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+  return roles.includes('COOK');
+});
+
+const isCashier = computed(() => {
+  const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+  return roles.includes('CASHIER');
 });
 
 // На будущее: инициалы, если захотим показать поверх иконки

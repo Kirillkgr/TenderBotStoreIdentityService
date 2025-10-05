@@ -5,6 +5,7 @@ import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
+import kirillzhdanov.identityservice.model.master.RoleMembership;
 import kirillzhdanov.identityservice.model.master.UserMembership;
 import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.model.product.Product;
@@ -28,7 +29,7 @@ import java.util.*;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "app.seed.demoData", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.seed.demoData", havingValue = "true", matchIfMissing = false)
 public class DatabaseInitializer {
 
     private final RoleService roleService;
@@ -86,28 +87,57 @@ public class DatabaseInitializer {
         // Добавить тестовые товары и точки самовывоза для каждого бренда (идемпотентно)
         for (Brand b : brands) {
             // Товары по бренду (если их нет — создадим базовый набор)
+            // Формат: {name, description, price, promoPrice(optional or empty)} — цены в рублях, реалистичные
             List<String[]> items = List.of(
-                    new String[]{"Кофе Американо", "Классический американо 250мл", "2.50"},
-                    new String[]{"Капучино", "Капучино 300мл", "3.20"},
-                    new String[]{"Латте", "Латте 300мл", "3.40"},
-                    new String[]{"Чизкейк", "Нью-Йорк, порция 120г", "4.10"},
-                    new String[]{"Круассан", "Сливочный, 70г", "1.80"}
+                    new String[]{"Кофе Американо", "Объем 250 мл. Классический черный кофе средней крепости, готовится методом пролива эспрессо через горячую воду. Вкус чистый и сбалансированный, подходит для повседневного употребления; отлично сочетается с десертами и выпечкой.", "180.00", ""},
+                    new String[]{"Капучино", "Объем 300 мл. Эспрессо с подогретым молоком 3.2% и плотной молочной пеной. Классическое соотношение 1:1:1 (эспрессо/молоко/пена). Ноты карамели и ореха, умеренная сладость. По просьбе гостя готовим на безлактозном или растительном молоке (овсяное/миндальное).", "250.00", "229.00"},
+                    new String[]{"Латте", "Объем 300 мл. Деликатный кофейный напиток с большим количеством молока и тонким слоем пены. Мягкий вкус без горечи, идеален для тех, кто предпочитает более сливочные и нежные напитки. Возможно добавить сироп (ваниль, карамель, фундук).", "280.00", ""},
+                    new String[]{"Эспрессо", "Объем 60 мл (двойной шот). Концентрированный напиток с плотным телом и насыщенным ароматом. Идеален для быстрого бодрящего эффекта. Подается в разогретой чашке, лучше всего раскрывается без сахара.", "150.00", ""},
+                    new String[]{"Чизкейк Нью-Йорк", "Порция 120 г. Классический запеченный чизкейк на хрустящей песочной основе. Нежная текстура, умеренная сладость, подается охлажденным. Отлично сочетается с черным кофе или латте.", "350.00", ""},
+                    new String[]{"Круассан сливочный", "Вес 70 г. Слоеная выпечка на сливочном масле с легкой хрустящей корочкой и мягким слоем внутри. Идеален к утреннему кофе; можно подогреть по запросу.", "120.00", ""}
             );
             int created = 0;
             for (String[] it : items) {
                 String name = it[0];
-                boolean exists = productRepository.findByBrandAndGroupTagIsNull(b)
-                        .stream()
-                        .anyMatch(pr -> name.equalsIgnoreCase(pr.getName()));
-                if (!exists) {
+                List<Product> rootProducts = productRepository.findByBrandAndGroupTagIsNull(b);
+                Optional<Product> existingOpt = rootProducts.stream()
+                        .filter(pr -> name.equalsIgnoreCase(pr.getName()))
+                        .findFirst();
+                if (existingOpt.isEmpty()) {
                     Product p = new Product();
                     p.setName(name);
                     p.setDescription(it[1]);
                     p.setPrice(new BigDecimal(it[2]));
+                    if (it.length > 3 && it[3] != null && !it[3].isBlank()) {
+                        p.setPromoPrice(new BigDecimal(it[3]));
+                    }
                     p.setBrand(b);
                     p.setVisible(true);
                     productRepository.save(p);
                     created++;
+                } else {
+                    // Update existing product if data differs (description/price/promo)
+                    Product p = existingOpt.get();
+                    boolean changed = false;
+                    String newDesc = it[1];
+                    BigDecimal newPrice = new BigDecimal(it[2]);
+                    BigDecimal newPromo = (it.length > 3 && it[3] != null && !it[3].isBlank()) ? new BigDecimal(it[3]) : null;
+                    if (!Objects.equals(p.getDescription(), newDesc)) {
+                        p.setDescription(newDesc);
+                        changed = true;
+                    }
+                    if (p.getPrice() == null || p.getPrice().compareTo(newPrice) != 0) {
+                        p.setPrice(newPrice);
+                        changed = true;
+                    }
+                    if (!Objects.equals(p.getPromoPrice(), newPromo)) {
+                        p.setPromoPrice(newPromo);
+                        changed = true;
+                    }
+                    if (changed) {
+                        productRepository.save(p);
+                        log.info("Updated seeded product '{}' for brand {}", p.getName(), b.getName());
+                    }
                 }
             }
             if (created > 0) {
@@ -214,6 +244,18 @@ public class DatabaseInitializer {
                     um.setBrand(brand);
                 } catch (Exception ignored) {
                 }
+                // Назначим роль membership по кругу для разнообразия
+                RoleMembership memRole;
+                int mod = (idx + i) % 5;
+                if (mod == 0) memRole = RoleMembership.OWNER;
+                else if (mod == 1) memRole = RoleMembership.ADMIN;
+                else if (mod == 2) memRole = RoleMembership.CASHIER;
+                else if (mod == 3) memRole = RoleMembership.COOK;
+                else memRole = RoleMembership.CLIENT;
+                try {
+                    um.setRole(memRole);
+                } catch (Exception ignored) {
+                }
                 // Выберем первую активную точку бренда, если есть
                 try {
                     List<PickupPoint> act = pickupPointRepository.findByBrand_IdAndActiveTrue(brand.getId());
@@ -233,10 +275,93 @@ public class DatabaseInitializer {
                 log.info("Seeded {} memberships for user {}", createdMems, username);
             }
         }
+
+        // Явные демо-пользователи с фиксированными ролями для ручной проверки
+        createOrUpdateDemoUser("demo_owner", Set.of(Role.RoleName.OWNER), brands);
+        createOrUpdateDemoUser("demo_admin", Set.of(Role.RoleName.ADMIN), brands);
+        createOrUpdateDemoUser("demo_user", Set.of(Role.RoleName.USER), brands);
+        // demo accounts with specific membership roles for manual guard checks
+        createOrUpdateDemoMembershipUser("demo_cook", RoleMembership.COOK, brands);
+        createOrUpdateDemoMembershipUser("demo_cashier", RoleMembership.CASHIER, brands);
+        createOrUpdateDemoMembershipUser("demo_client", RoleMembership.CLIENT, brands);
     }
 
     private void createRoleIfNotExists(Role.RoleName roleName) {
 
         roleService.createRoleIfNotExists(roleName);
+    }
+
+    private void createOrUpdateDemoUser(String username, Set<Role.RoleName> roleNames, List<Brand> brands) {
+        boolean exists = userRepository.existsByUsername(username);
+        Map<Role.RoleName, Role> roleMap = new HashMap<>();
+        for (Role.RoleName rn : Role.RoleName.values()) {
+            roleService.findByName(rn).ifPresent(r -> roleMap.put(rn, r));
+        }
+        Set<Role> roles = new HashSet<>();
+        for (Role.RoleName rn : roleNames) {
+            Role r = roleMap.get(rn);
+            if (r != null) roles.add(r);
+        }
+        if (!exists) {
+            User u = userRepository.saveNewUser(User.builder()
+                    .username(username)
+                    .password(username)
+                    .build());
+            u.setRoles(roles);
+            // Привязываем хотя бы один бренд для наглядности
+            if (!brands.isEmpty()) {
+                u.setBrands(Set.of(brands.getFirst()));
+            }
+            userRepository.save(u);
+            log.info("Created demo user {} with roles {}", username, roles.stream().map(r -> r.getName().name()).toList());
+        }
+    }
+
+    private void createOrUpdateDemoMembershipUser(String username, RoleMembership memRole, List<Brand> brands) {
+        boolean exists = userRepository.existsByUsername(username);
+        User u;
+        if (!exists) {
+            u = userRepository.saveNewUser(User.builder()
+                    .username(username)
+                    .password(username)
+                    .build());
+            userRepository.save(u);
+        } else {
+            u = userRepository.findByUsername(username);
+        }
+        // ensure at least one membership with the requested role
+        if (brands.isEmpty()) return;
+        Brand brand = brands.getFirst();
+        MasterAccount master = masterAccountRepository.findByName("M1").orElseGet(() ->
+                masterAccountRepository.save(MasterAccount.builder().name("M1").status("ACTIVE").build())
+        );
+        boolean hasRole = userMembershipRepository.findByUserId(u.getId())
+                .stream().anyMatch(m -> {
+                    try {
+                        return m.getRole() == memRole;
+                    } catch (Exception e) {
+                        return false;
+                    }
+                });
+        if (!hasRole) {
+            UserMembership um = new UserMembership();
+            um.setUser(u);
+            um.setMaster(master);
+            try {
+                um.setBrand(brand);
+            } catch (Exception ignored) {
+            }
+            try {
+                List<PickupPoint> act = pickupPointRepository.findByBrand_IdAndActiveTrue(brand.getId());
+                if (!act.isEmpty()) um.setPickupPoint(act.getFirst());
+            } catch (Exception ignored) {
+            }
+            try {
+                um.setRole(memRole);
+            } catch (Exception ignored) {
+            }
+            userMembershipRepository.save(um);
+            log.info("Created demo membership for {} with role {}", username, memRole);
+        }
     }
 }
