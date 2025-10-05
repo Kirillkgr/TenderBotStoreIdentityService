@@ -56,7 +56,8 @@ public class BrandController {
      */
     @PostMapping
     public ResponseEntity<BrandDto> createBrand(@RequestBody BrandDto brandDto) {
-        rbacGuard.requireOwnerOrAdmin();
+        // Любой аутентифицированный пользователь может создать свой бренд (вариант Б)
+        rbacGuard.requireAuthenticated();
         return new ResponseEntity<>(brandService.createBrand(brandDto), HttpStatus.CREATED);
     }
 

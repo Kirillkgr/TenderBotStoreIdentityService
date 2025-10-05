@@ -107,8 +107,8 @@ public class BrandAdminControllerTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CLIENT не может создавать бренды (403)")
-    void client_cannot_create_brand() throws Exception {
+    @DisplayName("CLIENT может создавать бренды (201)")
+    void client_can_create_brand() throws Exception {
         var client = fx.prepareRoleMembership(login, username, RoleMembership.CLIENT);
 
         BrandDto dto = BrandDto.builder().name("B2-Client-Deny").organizationName("Org-C").build();
@@ -117,6 +117,6 @@ public class BrandAdminControllerTest extends IntegrationTestBase {
                         .header("X-Master-Id", client.masterId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 }

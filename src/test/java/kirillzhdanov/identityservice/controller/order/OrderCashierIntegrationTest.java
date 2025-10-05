@@ -1,6 +1,5 @@
 package kirillzhdanov.identityservice.controller.order;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import kirillzhdanov.identityservice.config.IntegrationTestBase;
 import kirillzhdanov.identityservice.testutil.MembershipFixtures;
@@ -22,8 +21,6 @@ public class OrderCashierIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private MockMvc mockMvc;
-    @Autowired
-    private ObjectMapper objectMapper;
     @Autowired
     private MembershipFixtures fixtures;
 
@@ -49,19 +46,18 @@ public class OrderCashierIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("CASHIER: запрет на админ-операции каталога — создание бренда и продукта -> 403")
-    void cashierCannotCreateBrandOrProduct() throws Exception {
-        // Попытка создать бренд -> 403
+    @DisplayName("CASHIER: создание бренда разрешено (201), создание продукта без прав остаётся 403")
+    void cashierBrandCreationAllowed_productCreationForbidden() throws Exception {
+        // Создание бренда теперь разрешено для аутентифицированного пользователя -> 201
         String brandJson = "{\"name\":\"X\",\"organizationName\":\"ORG\"}";
         mockMvc.perform(post("/auth/v1/brands")
                         .cookie(login)
                         .header("Authorization", "Bearer " + login.getValue())
-                        .header("X-Master-Id", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(brandJson))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
 
-        // Попытка создать продукт -> 403 (без привязки к бренду)
+        // Попытка создать продукт -> 403 (нет membership OWNER/ADMIN в контексте бренда)
         String productJson = "{\"name\":\"P\",\"price\":10,\"brandId\":1}";
         mockMvc.perform(post("/auth/v1/products")
                         .cookie(login)

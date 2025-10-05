@@ -454,10 +454,10 @@ const productStore = useProductStore();
 const toast = useToast();
 const authStore = useAuthStore();
 
-// RBAC: ADMIN/OWNER (including ROLE_* aliases)
+// RBAC: ADMIN/OWNER (используем роли из JWT, распарсенные в authStore)
 const canSeeAdminLinks = computed(() => {
-  const roles = authStore.user?.roles || [];
-  return roles.includes('ADMIN') || roles.includes('OWNER') || roles.includes('ROLE_ADMIN') || roles.includes('ROLE_OWNER');
+  const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+  return roles.includes('ADMIN') || roles.includes('OWNER');
 });
 
 // Helper function for Russian pluralization

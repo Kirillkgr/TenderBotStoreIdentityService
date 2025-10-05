@@ -87,8 +87,8 @@ public class ErrorCodesStandardizationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("403: недостаточно прав на админ-операцию (RBAC)")
-    void shouldReturn403WhenNoAdminRights() throws Exception {
+    @DisplayName("201: аутентифицированный пользователь может создать бренд")
+    void authenticatedUserCanCreateBrand() throws Exception {
         Cookie login = registerAndLogin("codes-user1");
         Long userId = userRepo.findByUsername("codes-user1").orElseThrow().getId();
         MasterAccount master = masterRepo.save(MasterAccount.builder().name("M403").status("ACTIVE").build());
@@ -101,13 +101,13 @@ public class ErrorCodesStandardizationTest extends IntegrationTestBase {
         Long memId = membershipRepo.save(um).getId();
         Cookie clientCtx = switchContext(login, memId);
 
-        // Пытаемся создать бренд -> 403
+        // Пытаемся создать бренд -> 201 (вариант Б)
         BrandDto dto = BrandDto.builder().name("RBAC-Brand").organizationName("RBAC-Org").build();
         mockMvc.perform(post("/auth/v1/brands")
                         .cookie(clientCtx)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 
     @Test

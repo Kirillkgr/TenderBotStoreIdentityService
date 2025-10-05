@@ -11,6 +11,7 @@ import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.order.OrderRepository;
 import kirillzhdanov.identityservice.repository.order.OrderReviewRepository;
 import kirillzhdanov.identityservice.service.admin.OrderAdminService;
+import kirillzhdanov.identityservice.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -117,11 +118,11 @@ public class OrderAdminServiceImpl implements OrderAdminService {
             spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), to));
         }
 
-        // Ограничение для ADMIN по masterId пользователя возможно после появления поля masterId у Brand
-        // Long adminMasterId = resolveAdminMasterId();
-        // if (adminMasterId != null) {
-        //     spec = spec.and((root, q, cb2) -> cb2.equal(root.get("brand").get("masterId"), adminMasterId));
-        // }
+        // Ограничение выборки по текущему masterId из контекста
+        Long currentMasterId = TenantContext.getMasterId();
+        if (currentMasterId != null) {
+            spec = spec.and((root, q, cb2) -> cb2.equal(root.get("brand").get("master").get("id"), currentMasterId));
+        }
 
         Page<Order> page = orderRepository.findAll(spec, pageable);
         List<OrderDto> dtos = new ArrayList<>();

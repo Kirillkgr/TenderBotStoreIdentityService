@@ -1,4 +1,6 @@
 import apiClient from './api';
+import * as authService from './authService';
+import {useAuthStore} from '../store/auth';
 
 // Получение всех брендов
 export const getBrands = () => {
@@ -17,9 +19,25 @@ export const getTagGroupsByBrandId = (brandId) => {
     });
 };
 
-// Создание нового бренда
-export const createBrand = (brandName) => {
-    return apiClient.post('/auth/v1/brands', { name: brandName });
+// Создание нового бренда с авто-переключением контекста на созданный бренд
+export const createBrand = async (brandName) => {
+    const resp = await apiClient.post('/auth/v1/brands', {name: brandName});
+    try {
+        const brandId = resp?.data?.id;
+        if (brandId) {
+            const auth = useAuthStore();
+            // Обновим memberships и найдём тот, что соответствует новому бренду
+            const res = await authService.getMemberships();
+            const list = Array.isArray(res?.data) ? res.data : [];
+            auth.memberships = list;
+            const m = list.find(x => String(x.brandId || x.brand?.id) === String(brandId));
+            if (m) {
+                await auth.selectMembership(m);
+            }
+        }
+    } catch (_) {
+    }
+    return resp;
 };
 
 // Создание нового продукта
