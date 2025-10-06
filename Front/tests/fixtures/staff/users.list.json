@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "login": "user1",
+      "lastName": "Иванов",
+      "firstName": "Иван",
+      "roles": [
+        "USER"
+      ],
+      "departmentId": 10,
+      "createdAt": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "page": 1,
+  "size": 10,
+  "total": 1
+}
