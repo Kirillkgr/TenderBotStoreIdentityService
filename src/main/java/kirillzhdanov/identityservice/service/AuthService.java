@@ -8,9 +8,11 @@ import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
+import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.StorageFileRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
+import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +52,7 @@ public class AuthService {
 
     private final StorageFileRepository storageFileRepository;
     private final S3StorageService s3StorageService;
+    private final MasterAccountRepository masterAccountRepository;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -109,6 +112,16 @@ public class AuthService {
 
         // Сохраняем пользователя
         User savedUser = userRepository.save(user);
+
+        // Гарантируем наличие MasterAccount для пользователя (по умолчанию имя = username)
+        try {
+            masterAccountRepository.findByName(savedUser.getUsername())
+                    .orElseGet(() -> masterAccountRepository.save(MasterAccount.builder()
+                            .name(savedUser.getUsername())
+                            .status("ACTIVE")
+                            .build()));
+        } catch (Exception ignored) {
+        }
 
         // Создаем CustomUserDetails для включения дополнительной информации в токен
         CustomUserDetails customUserDetails = new CustomUserDetails(savedUser);

@@ -35,9 +35,13 @@ public class BrandService {
     private final UserMembershipRepository userMembershipRepository;
     private final PickupPointRepository pickupPointRepository;
     private final UserBrandMembershipRepository userBrandMembershipRepository;
+    private final MasterAccountService masterAccountService;
 
     public List<BrandDto> getAllBrands() {
-        Long masterId = TenantContext.getMasterIdOrThrow();
+        Long masterId = TenantContext.getMasterId();
+        if (masterId == null) {
+            masterId = masterAccountService.resolveOrCreateMasterIdForCurrentUser();
+        }
         return brandRepository.findByMaster_Id(masterId)
                 .stream()
                 .map(this::convertToDto)
@@ -57,8 +61,37 @@ public class BrandService {
 
     @Transactional(readOnly = true)
     public List<BrandDto> getMyBrands() {
-        Long masterId = TenantContext.getMasterIdOrThrow();
-        return brandRepository.findByMaster_Id(masterId)
+        // Возвращаем только бренды, в которых у пользователя есть членство (ADMIN или OWNER),
+        // и только внутри текущего master-контекста (если он задан).
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResourceNotFoundException("Not authenticated");
+        }
+        String username = auth.getName();
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        Long masterId = TenantContext.getMasterId();
+        if (masterId == null) {
+            // Без контекста бренды не возвращаем (новый пользователь увидит пусто, но сможет создать бренд)
+            return List.of();
+        }
+
+        List<UserMembership> memberships = userMembershipRepository.findByUserId(currentUser.getId());
+        List<Long> brandIds = memberships.stream()
+                .filter(m -> m.getBrand() != null)
+                .filter(m -> m.getMaster() != null && masterId.equals(m.getMaster().getId()))
+                .filter(m -> "ACTIVE".equalsIgnoreCase(m.getStatus()))
+                .filter(m -> m.getRole() == RoleMembership.ADMIN || m.getRole() == RoleMembership.OWNER)
+                .map(m -> m.getBrand().getId())
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (brandIds.isEmpty()) {
+            return List.of();
+        }
+
+        return brandRepository.findByIdIn(brandIds)
                 .stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());

@@ -15,4 +15,6 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
 	java.util.Optional<Brand> findByIdAndMaster_Id(Long id, Long masterId);
 
 	boolean existsByNameAndMaster_Id(String name, Long masterId);
+
+	java.util.List<Brand> findByIdIn(java.util.Collection<Long> ids);
 }
