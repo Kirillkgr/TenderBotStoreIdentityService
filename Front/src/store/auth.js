@@ -255,6 +255,10 @@ export const useAuthStore = defineStore('auth', {
                                 await this.selectMembership(m);
                             }
                         }
+                        // Если сохранённого нет, но единственный membership — выберем автоматически
+                        if (!this.membershipId && this.memberships.length === 1) {
+                            await this.selectMembership(this.memberships[0]);
+                        }
                     } catch (_) {
                     }
                 } catch (_) {}
@@ -325,6 +329,27 @@ export const useAuthStore = defineStore('auth', {
             this.masterId = m.masterId || null;
             this.brandId = m.brandId || null;
             this.locationId = m.locationId || null;
+            // Persist selection for reloads and API headers
+            try {
+                localStorage.setItem('selected_membership_id', String(this.membershipId));
+            } catch (_) {
+            }
+            try {
+                if (this.brandId) {
+                    localStorage.setItem('current_brand_id', String(this.brandId));
+                } else {
+                    localStorage.removeItem('current_brand_id');
+                }
+            } catch (_) {
+            }
+            try {
+                if (this.masterId) {
+                    localStorage.setItem('current_master_id', String(this.masterId));
+                } else {
+                    localStorage.removeItem('current_master_id');
+                }
+            } catch (_) {
+            }
         },
 
         // Очистка контекста на клиенте (без server-side действий)
