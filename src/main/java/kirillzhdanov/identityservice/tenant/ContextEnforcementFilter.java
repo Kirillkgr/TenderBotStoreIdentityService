@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
@@ -18,6 +20,8 @@ import java.util.Set;
  * Skips public endpoints and the context switch endpoint.
  */
 public class ContextEnforcementFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(ContextEnforcementFilter.class);
 
     private static final Set<String> PUBLIC_PREFIXES = Set.of(
             // Auth endpoints, которые не требуют tenant-контекста
@@ -78,6 +82,8 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
         if (authenticated) {
             // Require context for authenticated, protected requests; if not set -> 403
             if (TenantContext.getMasterId() == null) {
+                String user = (auth != null ? auth.getName() : "<anonymous>");
+                log.warn("ContextEnforcement: missing X-Master-Id for {} {} (user={}) -> 403", request.getMethod(), request.getRequestURI(), user);
                 response.sendError(HttpServletResponse.SC_FORBIDDEN);
                 return;
             }

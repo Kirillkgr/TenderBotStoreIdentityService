@@ -72,7 +72,6 @@
 
     <div class="actions-container">
       <button
-          v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
           class="admin-action-btn"
           @click="showCreateBrandModal = true"
           :disabled="loading"
