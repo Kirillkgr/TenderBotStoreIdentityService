@@ -95,7 +95,7 @@ let lastRefreshTs = 0;
 
 // Перехватчик для добавления токена авторизации в каждый запрос
 apiClient.interceptors.request.use(
-  (config) => {
+    async (config) => {
     if (DEBUG_HTTP) {
       try {
         console.log(`Отправка запроса: ${config.method.toUpperCase()} ${config.url}`, {
@@ -151,8 +151,17 @@ apiClient.interceptors.request.use(
     } catch (_) {
     }
 
-    if (!isPublicAuthEndpoint && !hasBasicHeader && token) {
-      config.headers.Authorization = `Bearer ${token}`;
+        // Если запрос защищённый, а токена пока нет, но идёт восстановление — коротко подождём
+        if (!isPublicAuthEndpoint && !hasBasicHeader && !token && authStore?.isRestoringSession) {
+            try {
+                if (DEBUG_HTTP) console.log('[HTTP] waiting restoreSession before request', url);
+                await new Promise(r => setTimeout(r, 300));
+            } catch (_) {
+            }
+        }
+        const effToken = authStore?.accessToken || token;
+        if (!isPublicAuthEndpoint && !hasBasicHeader && effToken) {
+            config.headers.Authorization = `Bearer ${effToken}`;
       if (DEBUG_HTTP) console.log('Добавлен токен авторизации в заголовок');
     } else if (!token && !hasBasicHeader && !isPublicAuthEndpoint) {
       if (DEBUG_HTTP) console.warn('Токен авторизации отсутствует (используем HttpOnly cookie, если они установлены)');
@@ -161,7 +170,15 @@ apiClient.interceptors.request.use(
       // Прокидываем идентификаторы контекста (membership/master) во все профили
       try {
           const membershipId = authStore?.membershipId || null;
-          const masterId = authStore?.masterId || null;
+          let masterId = authStore?.masterId || null;
+          // Фолбэк после перезагрузки: прочитаем сохранённый masterId
+          if (!masterId) {
+              try {
+                  const savedMaster = localStorage.getItem('current_master_id');
+                  if (savedMaster) masterId = savedMaster;
+              } catch (_) {
+              }
+          }
           if (membershipId) {
               config.headers['X-Membership-Id'] = String(membershipId);
           }
