@@ -76,11 +76,11 @@ public class TenantEnforcementIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Protected endpoint with auth but no context -> 403")
-    void protected_Auth_NoContext_Forbidden() throws Exception {
+    @DisplayName("Protected brands endpoint with auth but no context -> 200 (master auto-derived)")
+    void protected_Auth_NoContext_AllowsBrands() throws Exception {
         Cookie authCookie = registerAndLogin("enf-user");
         mockMvc.perform(get("/auth/v1/brands").cookie(authCookie))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test

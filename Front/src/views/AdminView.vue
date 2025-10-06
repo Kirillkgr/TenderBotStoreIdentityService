@@ -468,6 +468,14 @@ const canSeeAdminLinks = computed(() => {
   return roles.includes('ADMIN') || roles.includes('OWNER');
 });
 
+// OWNER без членств: разрешаем и подсказываем создать бренд
+const isFirstOwnerWithoutMembership = computed(() => {
+  const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+  const isOwner = roles.includes('OWNER');
+  const hasMemberships = Array.isArray(authStore.memberships) && authStore.memberships.length > 0;
+  return isOwner && !hasMemberships;
+});
+
 // Helper function for Russian pluralization
 const formatWord = (count, words) => {
   const cases = [2, 0, 1, 1, 1, 2];
@@ -600,6 +608,19 @@ onMounted(() => {
       }
     }, { root: null, rootMargin: '200px 0px 200px 0px', threshold: 0.1 });
     if (productsSentry.value) observer.observe(productsSentry.value);
+  }
+});
+
+// Авто-открытие модалки создания бренда для нового владельца без членств (один раз)
+onMounted(() => {
+  try {
+    const guardKey = 'auto_open_create_brand_once';
+    const already = localStorage.getItem(guardKey) === '1';
+    if (!already && isFirstOwnerWithoutMembership.value) {
+      showCreateBrandModal.value = true;
+      localStorage.setItem(guardKey, '1');
+    }
+  } catch (_) {
   }
 });
 
