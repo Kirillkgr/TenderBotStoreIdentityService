@@ -158,15 +158,14 @@ apiClient.interceptors.request.use(
       if (DEBUG_HTTP) console.warn('Токен авторизации отсутствует (используем HttpOnly cookie, если они установлены)');
     }
 
-      // Прокидываем идентификатор выбранного membership (для dev и диагностики)
+      // Прокидываем идентификаторы контекста (membership/master) во все профили
       try {
           const membershipId = authStore?.membershipId || null;
           const masterId = authStore?.masterId || null;
           if (membershipId) {
               config.headers['X-Membership-Id'] = String(membershipId);
           }
-          // В dev-режиме дублируем masterId для совместимости со старым беком
-          if (import.meta.env.DEV && masterId) {
+          if (masterId) {
               config.headers['X-Master-Id'] = String(masterId);
           }
       } catch (_) {

@@ -112,7 +112,7 @@ public class LongPollService {
      * Long poll for events after 'since' (exclusive). If none, wait up to timeoutMs.
      */
     public CompletableFuture<LongPollEnvelope> poll(Long userId, long since, long timeoutMs, int maxBatch) {
-        log.info("[LP] poll enter userId={} since={} timeoutMs={} maxBatch={}", userId, since, timeoutMs, maxBatch);
+//        log.info("[LP] poll enter userId={} since={} timeoutMs={} maxBatch={}", userId, since, timeoutMs, maxBatch);
         Objects.requireNonNull(userId, "userId");
         if (timeoutMs <= 0) timeoutMs = 60000; // default 60s
         if (maxBatch <= 0 || maxBatch > 200) maxBatch = 50;
@@ -150,7 +150,7 @@ public class LongPollService {
             }
             // Otherwise, park waiter and set a timeout fallback
             uq.waiters.add(promise);
-            log.info("[LP] poll parked userId={} since={} waitersNow={}", userId, since, uq.waiters.size());
+//            log.info("[LP] poll parked userId={} since={} waitersNow={}", userId, since, uq.waiters.size());
         }
         // timeout: complete with empty envelope keeping same 'since' (через планировщик)
         long finalTimeoutMs = timeoutMs;
@@ -160,7 +160,7 @@ public class LongPollService {
                 synchronized (uq2) {
                     if (promise.isDone()) return;
                     uq2.waiters.remove(promise);
-                    log.info("[LP] poll timeout userId={} since={} waitersAfterRm={} bufferSize={}", userId, since, uq2.waiters.size(), uq2.buffer.size());
+//                    log.info("[LP] poll timeout userId={} since={} waitersAfterRm={} bufferSize={}", userId, since, uq2.waiters.size(), uq2.buffer.size());
                     promise.complete(LongPollEnvelope.builder()
                             .events(List.of())
                             .nextSince(since)
