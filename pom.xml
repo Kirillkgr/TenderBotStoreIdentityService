@@ -267,14 +267,41 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
                 <configuration>
                     <!-- Do not wait 30s after System.exit(0); kill fork sooner to speed up test shutdown -->
                     <forkedProcessExitTimeoutInSeconds>5</forkedProcessExitTimeoutInSeconds>
                     <!-- Upper bound for test execution in fork to avoid infinite hangs -->
                     <forkedProcessTimeoutInSeconds>600</forkedProcessTimeoutInSeconds>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
                 </configuration>
             </plugin>
         </plugins>
     </build>
 
+    <!-- Reusable test profiles -->
+    <profiles>
+        <profile>
+            <id>smoke-acl</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.2.5</version>
+                        <configuration>
+                            <properties>
+                                <configurationParameters>
+                                    junit.jupiter.execution.parallel.enabled = false
+                                    junit.jupiter.tags.include = smoke-acl
+                                </configurationParameters>
+                            </properties>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

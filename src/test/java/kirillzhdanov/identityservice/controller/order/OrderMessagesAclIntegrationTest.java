@@ -18,6 +18,7 @@ import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRep
 import kirillzhdanov.identityservice.testutil.MembershipFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @DisplayName("ACL: сообщения по заказу — staff vs client")
 @Transactional
+@Tag("smoke-acl")
 class OrderMessagesAclIntegrationTest extends IntegrationTestBase {
 
     @Autowired
