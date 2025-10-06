@@ -1,0 +1,18 @@
+{
+  "data": {
+    "content": [
+      {
+        "id": 201,
+        "status": "PREPARING",
+        "total": 500.00,
+        "items": [],
+        "createdAt": "2025-02-02T10:00:00Z",
+        "brandId": 77,
+        "brandName": "omega"
+      }
+    ],
+    "totalPages": 1,
+    "number": 0,
+    "size": 10
+  }
+}

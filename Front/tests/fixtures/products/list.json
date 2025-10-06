@@ -1,0 +1,16 @@
+[
+  {
+    "id": 501,
+    "name": "Cola",
+    "price": 120,
+    "promoPrice": null,
+    "visible": true
+  },
+  {
+    "id": 502,
+    "name": "Burger",
+    "price": 350,
+    "promoPrice": 299,
+    "visible": true
+  }
+]
