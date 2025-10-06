@@ -19,8 +19,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.util.Arrays;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -98,14 +96,10 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // Add dev-only header-based tenant context filter
-        if (Arrays.asList(environment.getActiveProfiles()).contains("dev")) {
-            http.addFilterAfter(tenantContextFilter(), UsernamePasswordAuthenticationFilter.class);
-            http.addFilterAfter(contextEnforcementFilter(), tenantContextFilter().getClass());
-        } else {
-            // Without dev filter, enforce right after JWT auth
-            http.addFilterAfter(contextEnforcementFilter(), UsernamePasswordAuthenticationFilter.class);
-        }
+        // Register header-based tenant context filter for all profiles so clients can pass X-Master-Id
+        http.addFilterAfter(tenantContextFilter(), UsernamePasswordAuthenticationFilter.class);
+        // Enforce presence of tenant context for authenticated, protected endpoints
+        http.addFilterAfter(contextEnforcementFilter(), tenantContextFilter().getClass());
 
         http
                 .oauth2Login(o -> o
