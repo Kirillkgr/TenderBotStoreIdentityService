@@ -159,6 +159,7 @@ public class ProductService {
                 .brandId(product.getBrand().getId())
                 .groupTagId(product.getGroupTag() != null ? product.getGroupTag().getId() : null)
                 .visible(product.isVisible())
+                .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();
     }

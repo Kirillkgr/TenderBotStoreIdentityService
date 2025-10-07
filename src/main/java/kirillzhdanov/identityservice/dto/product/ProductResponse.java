@@ -21,5 +21,6 @@ public class ProductResponse {
     private Long brandId;
     private Long groupTagId; // null означает корень
     private boolean visible;
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -368,10 +368,15 @@
               </div>
             </div>
 
-            <!-- Дата обновления как было -->
-            <div class="pc-updated" v-if="p.updatedAt" :title="new Date(p.updatedAt).toLocaleString()">
-              <span class="date">{{ formatDateShortRU(p.updatedAt) }}</span>
-              <span class="ago">{{ timeAgoShort(p.updatedAt) }}</span>
+            <!-- Даты: слева — создание, по центру — сколько прошло с последнего изменения, справа — последняя правка -->
+            <div
+                v-if="p.updatedAt || p.createdAt"
+                :title="`Создан: ${p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'} | Изменён: ${p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '—'}`"
+                class="pc-updated"
+            >
+              <span class="date-created">{{ p.createdAt ? formatDateShortRU(p.createdAt) : '—' }}</span>
+              <span class="ago">{{ p.updatedAt ? timeAgoShort(p.updatedAt) : '—' }}</span>
+              <span class="date-updated">{{ p.updatedAt ? formatDateShortRU(p.updatedAt) : '—' }}</span>
             </div>
 
             <!-- Описание использует всю ширину под превью -->
@@ -603,6 +608,10 @@ function timeAgoShort(dateLike) {
     const min = Math.floor(sec / 60);
     const hr = Math.floor(min / 60);
     const day = Math.floor(hr / 24);
+    if (day >= 365) {
+      const years = Math.floor(day / 365);
+      return `${years} г`;
+    }
     if (day > 0) return `${day} дн`;
     if (hr > 0) return `${hr} ч`;
     if (min > 0) return `${min} мин`;
