@@ -168,11 +168,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Плавающая кнопка назад в админку -->
+    <button aria-label="Назад в админку" class="fab-back" title="Назад в админку" @click="goBackToAdmin">
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <g id="Layer_50" data-name="Layer 50">
+          <path
+              d="M30,29a1,1,0,0,1-.81-.41l-2.12-2.92A18.66,18.66,0,0,0,15,18.25V22a1,1,0,0,1-1.6.8l-12-9a1,1,0,0,1,0-1.6l12-9A1,1,0,0,1,15,4V8.24A19,19,0,0,1,31,27v1a1,1,0,0,1-.69.95A1.12,1.12,0,0,1,30,29ZM14,16.11h.1A20.68,20.68,0,0,1,28.69,24.5l.16.21a17,17,0,0,0-15-14.6,1,1,0,0,1-.89-1V6L3.67,13,13,20V17.11a1,1,0,0,1,.33-.74A1,1,0,0,1,14,16.11Z"/>
+        </g>
+      </svg>
+    </button>
   </div>
 </template>
 
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue';
+import {useRouter} from 'vue-router';
 import {useProductStore} from '@/store/product';
 import {getBrands} from '@/services/brandService';
 import {useToast} from 'vue-toastification';
@@ -180,6 +191,7 @@ import tagService from '@/services/tagService';
 
 const toast = useToast();
 const productStore = useProductStore();
+const router = useRouter();
 
 const brands = ref([]);
 const brandId = ref(0);
@@ -478,6 +490,16 @@ watch([typeFilter, page, pageSize], async () => {
   }
 });
 
+// Floating back button handler
+function goBackToAdmin() {
+  try {
+    router.push({name: 'Admin'});
+  } catch (_) {
+    router.push('/admin');
+  }
+}
+
+// Обновить данные в зависимости от текущего режима
 function refreshAll() {
   page.value = 1;
   if (typeFilter.value === 'all') {
@@ -488,6 +510,7 @@ function refreshAll() {
     return loadTagPage();
   }
 }
+
 </script>
 
 <style scoped>
@@ -496,7 +519,7 @@ function refreshAll() {
   margin: 0 auto;
   padding: 0 12px;
 }
-.toolbar .form-select { min-width: 240px; }
+
 .table td, .table th { vertical-align: middle; }
 
 /* Archive table UX */
@@ -584,10 +607,6 @@ function refreshAll() {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.theme-btn {
-  white-space: nowrap;
 }
 
 /* Скрываем подписи у контролов в панели фильтров, используем плейсхолдеры */
@@ -684,5 +703,55 @@ function refreshAll() {
   text-overflow: ellipsis;
   display: inline-block;
   max-width: 260px;
+}
+</style>
+
+<style scoped>
+/* Floating Back Button styling */
+.fab-back {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: #2563eb; /* blue */
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  z-index: 1002;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.fab-back:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.36);
+  background: #1d4ed8;
+}
+
+.fab-back:active {
+  transform: translateY(0);
+}
+
+.fab-back svg {
+  width: 24px;
+  height: 24px;
+}
+
+.fab-back svg path {
+  fill: currentColor;
+}
+
+@media (max-width: 480px) {
+  .fab-back {
+    right: 16px;
+    bottom: 16px;
+    width: 52px;
+    height: 52px;
+  }
 }
 </style>
