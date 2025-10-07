@@ -305,15 +305,20 @@
           </button>
         </div>
         <div v-if="productsLoading && (products?.length ?? 0) === 0" class="product-grid-admin">
-          <div v-for="n in 6" :key="n" class="product-card-admin skeleton">
-            <div class="pc-header">
-              <span class="pc-title">&nbsp;</span>
+          <div v-for="n in 6" :key="n" class="product-card-admin pc-skel">
+            <div class="pc-grid">
+              <div class="pc-thumb skel skel-thumb"></div>
+              <div class="pc-id skel skel-line" style="width: 60px; height: 12px;"></div>
+              <div class="pc-name skel skel-line" style="width: 80%; height: 16px;"></div>
+              <div class="pc-price">
+                <div class="skel skel-line" style="width: 70px; height: 12px;"></div>
+                <div class="skel skel-line" style="width: 100px; height: 16px; margin-top: 6px;"></div>
+              </div>
             </div>
-            <div class="pc-price">
-              <span class="old">&nbsp;</span>
-              <span class="new">&nbsp;</span>
+            <div class="pc-desc">
+              <div class="skel skel-line" style="width: 100%; height: 12px;"></div>
+              <div class="skel skel-line" style="width: 85%; height: 12px; margin-top: 6px;"></div>
             </div>
-            <div class="pc-desc">&nbsp;</div>
           </div>
         </div>
         <div v-else-if="products.length === 0" class="text-muted">Товаров нет</div>
@@ -322,49 +327,56 @@
             v-for="p in visibleProducts"
             :key="p.id"
             class="product-card-admin"
+            role="button"
             tabindex="0"
             @click.stop.prevent="openPreview(p)"
             @keydown.enter.prevent="openPreview(p)"
             @keydown.e.stop.prevent="openEdit(p)"
           >
             <span class="pc-status-dot" :class="p.visible ? 'on' : 'off'" title="Статус видимости"></span>
-            <div class="pc-header">
-              <span class="pc-title" :title="p.name">{{ p.name }}</span>
-              <div class="d-flex align-items-center gap-2">
-                <button class="pc-copy-btn" @click.stop="copyId(p)" :title="`Скопировать ID: ${p.id}`" aria-label="Скопировать ID">
-                  ID
-                </button>
-                <button class="btn btn-sm btn-outline-primary pc-cart-btn" @click.stop="addToCartStub(p)" title="Добавить в корзину">
-                  <i class="bi bi-cart-plus"></i>
-                </button>
-              </div>
-            </div>
+
             <!-- Плавающая кнопка редактирования в правом верхнем углу карточки товара -->
             <button v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" aria-label="Редактировать товар"
                     class="pc-edit-fab"
                     title="Редактировать товар" @click.stop="openEdit(p)">
               <img src="@/assets/pencil.svg" alt="Редактировать" style="width: 16px; height: 16px;" />
             </button>
-            <div class="pc-price">
-              <template v-if="p.promoPrice && p.promoPrice < p.price">
-                <span class="old"><span class="value">{{ formatPrice(p.price) }}</span><span class="cur"> ₽</span></span>
+
+            <!-- Компактная сетка карточки: превью слева, ID сверху, затем название и цена -->
+            <div class="pc-grid">
+              <div aria-hidden="true" class="pc-thumb">
+                <img v-if="p.imageUrl" :alt="p.name" :src="p.imageUrl" decoding="async" loading="lazy"/>
+                <img v-else :src="ProductionSvg" alt="Нет изображения" class="pc-ph" decoding="async" loading="lazy"/>
+              </div>
+              <div class="pc-id">#{{ p.id }}
+                <button :title="`Скопировать ID: ${p.id}`" aria-label="Скопировать ID" class="pc-id-copy"
+                        @click.stop="copyId(p)">
+                  <svg aria-hidden="true" fill="currentColor" height="14" viewBox="0 0 24 24" width="14">
+                    <path
+                        d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 15H8V7h11v13z"/>
+                  </svg>
+                </button>
+              </div>
+              <div :title="p.name" class="pc-name">{{ p.name }}</div>
+              <div v-if="getDiscount(p) !== null" class="pc-disc">-{{ getDiscount(p) }}%</div>
+              <div class="pc-price">
+                <span class="orig"><span class="value">{{ formatPrice(p.price) }}</span><span
+                    class="cur"> ₽</span></span>
+              </div>
+              <div v-if="p.promoPrice && p.promoPrice < p.price" class="pc-price-promo">
                 <span class="new promo"><span class="value">{{ formatPrice(p.promoPrice) }}</span><span class="cur"> ₽</span></span>
-              </template>
-              <template v-else>
-                <span class="new"><span class="value">{{ formatPrice(p.price) }}</span><span class="cur"> ₽</span></span>
-              </template>
+              </div>
             </div>
+
+            <!-- Дата обновления как было -->
             <div class="pc-updated" v-if="p.updatedAt" :title="new Date(p.updatedAt).toLocaleString()">
               <span class="date">{{ formatDateShortRU(p.updatedAt) }}</span>
               <span class="ago">{{ timeAgoShort(p.updatedAt) }}</span>
             </div>
-            <div class="pc-desc">
-              <span>
-                {{ isExpanded(p.id) ? (p.description || '—') : truncate(p.description || '—', 127) }}
-              </span>
-              <button v-if="(p.description || '').length > 127" class="btn-link-more" @click.stop="toggleExpanded(p.id)">
-                {{ isExpanded(p.id) ? 'Скрыть' : '...' }}
-              </button>
+
+            <!-- Описание использует всю ширину под превью -->
+            <div class="pc-desc pc-desc-full">
+              <span>{{ p.description || '—' }}</span>
             </div>
           </div>
         </div>
@@ -454,6 +466,7 @@ import EditGroupModal from '../components/modals/EditGroupModal.vue';
 import CreateProductModal from '../components/modals/CreateProductModal.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import EditProductModal from '../components/modals/EditProductModal.vue';
+import ProductionSvg from '@/assets/production.svg';
 
 // Refs
 const brands = ref([]);
@@ -779,6 +792,16 @@ function formatPrice(val) {
     // Фолбэк
     return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
+}
+
+// Процент скидки для чипа, округление до целого. Возвращает null, если нет валидной акции
+function getDiscount(p) {
+  const price = Number(p?.price);
+  const promo = Number(p?.promoPrice);
+  if (!price || !promo || !(promo < price)) return null;
+  const perc = Math.round((1 - promo / price) * 100);
+  if (!Number.isFinite(perc) || perc <= 0) return null;
+  return perc;
 }
 
 // Выбор тега одной строкой списка
@@ -1684,13 +1707,6 @@ function goArchive() {
   margin-bottom: 8px;
 }
 
-.product-card-admin .pc-title {
-  color: #111827;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1.2;
-}
-
 .product-card-admin .pc-price {
   margin-top: 4px;
   display: flex;
@@ -1796,14 +1812,180 @@ function goArchive() {
   color: var(--pc-text);
   border: 1px solid var(--pc-border);
   border-radius: 10px;
-  padding: 12px 12px 28px 12px; /* место внизу под метку обновления */
+  padding: 10px 12px 26px 12px; /* симметрия отступов */
   box-shadow: var(--pc-shadow);
   position: relative; /* для плавающей кнопки редактирования */
-  min-height: 190px; /* стабильная сетка при разной длине контента */
+  min-height: 210px; /* единый минимальный размер вместо жёсткого квадрата */
+  overflow: hidden; /* лишнее не вылезает за границы */
+  text-align: left; /* базово весь текст слева */
 }
 .product-card-admin:hover {
   box-shadow: var(--pc-shadow-hover);
   border-color: color-mix(in srgb, var(--primary) 35%, var(--pc-border));
+}
+
+.product-card-admin .pc-grid {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-rows: auto auto auto auto;
+  grid-template-areas:
+    'thumb id'
+    'thumb name'
+    'disc price'
+    '.     priceold';
+  row-gap: 2px; /* компактнее вертикальные интервалы, в т.ч. между ценами */
+  column-gap: 12px;
+  align-items: start;
+  padding-right: 40px; /* место под edit-fab */
+  justify-items: start; /* все элементы правой колонки выровнены ровно */
+}
+
+.product-card-admin .pc-thumb {
+  grid-area: thumb;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.product-card-admin .pc-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-card-admin .pc-ph {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+  display: block;
+}
+
+.product-card-admin .pc-badge-over {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.product-card-admin .pc-id {
+  grid-area: id;
+  color: var(--pc-muted);
+  font-size: 12.5px;
+  align-self: center;
+  margin-top: 0;
+}
+
+.product-card-admin .pc-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.product-card-admin .pc-id .pc-id-copy {
+  all: unset;
+  cursor: pointer;
+  color: var(--pc-muted);
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.product-card-admin .pc-id .pc-id-copy:hover {
+  background: var(--input-bg, rgba(0, 0, 0, .06));
+  color: var(--pc-text);
+}
+
+.product-card-admin .pc-name {
+  grid-area: name;
+  color: var(--pc-text-strong);
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: left;
+  align-self: start;
+}
+
+.product-card-admin .pc-disc {
+  grid-area: disc;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger, #ef4444) 18%, transparent);
+  color: var(--danger, #ef4444);
+  font-size: 11px;
+  font-weight: 800;
+  height: 20px;
+}
+
+.product-card-admin .pc-price {
+  grid-area: price;
+  margin-top: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  text-align: left;
+}
+
+.product-card-admin .pc-price-promo {
+  grid-area: priceold;
+  margin-top: 0;
+  display: flex;
+  align-items: baseline;
+  line-height: 1.05;
+}
+
+.product-card-admin .pc-price .orig {
+  color: var(--pc-muted);
+  font-weight: 600;
+  font-size: 16px;
+  white-space: nowrap;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.product-card-admin .pc-price-promo .new {
+  color: var(--pc-text-strong);
+  font-weight: 900;
+  font-size: 18px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1.1;
+}
+
+.product-card-admin .pc-price .cur {
+  color: var(--pc-muted);
+  margin-left: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.product-card-admin .pc-disc { /* already defined above for grid area */
+}
+
+.product-card-admin .pc-thumb-ph {
+  width: 100%;
+  height: 100%;
+  background: #e5e7eb;
+  border-radius: 12px;
 }
 .product-card-admin .pc-header {
   display: flex;
@@ -1831,41 +2013,55 @@ function goArchive() {
   text-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
 .product-card-admin .pc-price {
-  margin-top: 6px;
+  margin-top: 1px;
   display: flex;
-  flex-direction: column;      /* вертикально: старая → новая → чип */
-  align-items: center;          /* по центру */
-  text-align: center;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   gap: 4px;
   font-size: 15px;
-  min-height: 56px;            /* фиксированная высота зоны цены */
+  min-height: 26px;
 }
+
 .product-card-admin .pc-price .old { color: var(--pc-muted); text-decoration: line-through; font-weight: 600; order: 1; }
 .product-card-admin .pc-price .new { color: var(--pc-text-strong); font-weight: var(--pc-price-weight); font-size: var(--pc-price-size); order: 2; }
-.product-card-admin .pc-price .new.promo { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+
+.product-card-admin .pc-price .new.promo {
+  text-decoration: none;
+}
 .product-card-admin .pc-price .cur { color: var(--pc-muted); margin-left: 4px; font-weight: 600; }
 /* Чип промо удалён по требованию — визуальная логика читается по старой/новой цене */
 .product-card-admin .pc-desc {
-  margin-top: 8px;
+  margin-top: 8px; /* немного воздуха после цены для симметрии */
+  /* описание во всю ширину под сеткой превью */
+  margin-left: 0;
   color: var(--pc-text);
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 12.5px;
+  line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 3; /* компактно, но визуально заполняет карточку */
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 54px; /* 3 строки × 1.4 × 13px ≈ 54.6px */
+  min-height: 40px; /* короче, чтобы не наезжать на блок дат */
+}
+
+/* Вариант A: на больших экранах карточки квадратные, на малых — авто-высота */
+@media (min-width: 768px) {
+  .product-card-admin {
+    aspect-ratio: 1 / 1;
+  }
 }
 .product-card-admin .pc-updated {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: 6px;
+  bottom: 8px;
   font-size: 11px;
   color: var(--pc-muted);
   display: flex;
   align-items: center;
   justify-content: space-between; /* дата слева, прошло времени справа */
+  min-height: 16px;
 }
 .product-card-admin .btn-link-more { background: transparent; border: 0; color: #4a6cf7; font-weight: 700; cursor: pointer; padding: 0; }
 
@@ -1873,8 +2069,8 @@ function goArchive() {
   position: absolute;
   top: 8px;
   left: 8px;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--pc-bg); /* адаптивная обводка под тему */
   z-index: 1; /* индикатор под текстом шапки */
@@ -1899,10 +2095,20 @@ function goArchive() {
   border-radius: 8px;
   cursor: pointer;
   z-index: 2;
+  opacity: .0;
+  transform: translateY(-2px);
+  transition: opacity .18s ease, transform .18s ease;
 }
 .pc-edit-fab:hover { background-color: var(--primary-dark, var(--primary-600, #3a5bd9)); }
 .pc-edit-fab:focus-visible { outline: 2px solid var(--primary, #4a6cf7); outline-offset: 2px; }
 .pc-edit-fab img { width: 16px; height: 16px; display: block; }
+
+/* показываем FAB на hover/focus карточки */
+.product-card-admin:hover .pc-edit-fab,
+.product-card-admin:focus-within .pc-edit-fab {
+  opacity: 1;
+  transform: none;
+}
 
 
 .admin-action-btn:hover:not(:disabled) {
