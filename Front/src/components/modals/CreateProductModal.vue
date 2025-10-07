@@ -4,7 +4,7 @@
       <h3>Создать новый товар</h3>
     </template>
     <template #content>
-      <Form @submit="onSubmit" :validation-schema="schema" class="form-body">
+      <Form :initial-values="initialValues" :validation-schema="schema" class="form-body" @submit="onSubmit">
         <!-- Name -->
         <div class="form-group">
           <label for="productName">Название *</label>
@@ -70,7 +70,7 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import {ErrorMessage, Field, Form} from 'vee-validate';
 import * as yup from 'yup';
 import Modal from '@/components/Modal.vue';
@@ -91,15 +91,47 @@ const tagGroups = ref([]); // плоский список с отступами
 const tagGroupsLoading = ref(false);
 const selectedBrandId = ref(null);
 
-const schema = yup.object({
-  name: yup.string().required('Название обязательно'),
-  description: yup.string(),
-  price: yup.number().typeError('Цена должна быть числом').required('Цена обязательна').positive('Цена должна быть положительной'),
-  promotionalPrice: yup.number().typeError('Цена должна быть числом').positive('Цена должна быть положительной').nullable(),
-  brandId: yup.mixed().required('Необходимо выбрать бренд'),
-  tagGroupId: yup.number().nullable(),
-  isVisible: yup.boolean(),
+// Начальные значения формы. 
+// - brandId берём из props.selectedBrand
+// - tagGroupId: если передан parentId (>0) — выбираем его, иначе 0 ("— Без группы —")
+// - isVisible по умолчанию true
+const initialValues = ref({
+  name: '',
+  description: '',
+  price: '',
+  promotionalPrice: '',
+  brandId: props.selectedBrand ?? '',
+  tagGroupId: props.parentId ? Number(props.parentId) : 0,
+  isVisible: true,
 });
+
+const schema = yup
+    .object({
+      name: yup.string().required('Название обязательно'),
+      description: yup.string(),
+      // Разрешаем не заполнять price, если заполнена promotionalPrice (и наоборот)
+      price: yup
+          .number()
+          .typeError('Цена должна быть числом')
+          .transform((value, originalValue) => originalValue === '' || originalValue === undefined ? null : value)
+          .nullable()
+          .min(0, 'Цена должна быть положительной'),
+      promotionalPrice: yup
+          .number()
+          .typeError('Цена должна быть числом')
+          .transform((value, originalValue) => originalValue === '' || originalValue === undefined ? null : value)
+          .nullable()
+          .min(0, 'Цена должна быть положительной'),
+      brandId: yup.mixed().required('Необходимо выбрать бренд'),
+      tagGroupId: yup.number().nullable(),
+      isVisible: yup.boolean(),
+    })
+    .test('price-or-promo', 'Укажите цену или акционную цену', (values) => {
+      if (!values) return false;
+      const hasPrice = values.price !== undefined && values.price !== null && values.price !== '';
+      const hasPromo = values.promotionalPrice !== undefined && values.promotionalPrice !== null && values.promotionalPrice !== '';
+      return hasPrice || hasPromo;
+    });
 
 const loadAvailableGroups = async (brandId) => {
   if (!brandId) { tagGroups.value = []; return; }
@@ -131,17 +163,40 @@ onMounted(async () => {
     selectedBrandId.value = Number(props.selectedBrand);
     await loadAvailableGroups(selectedBrandId.value);
   }
+  // Установим дефолтную группу по parentId (если он задан)
+  initialValues.value.tagGroupId = props.parentId ? Number(props.parentId) : 0;
+});
+
+// Следим за изменениями выбранного бренда или текущей группы в админке,
+// чтобы при повторном открытии модалки значения были корректными
+watch(() => props.selectedBrand, async (nv) => {
+  if (nv) {
+    selectedBrandId.value = Number(nv);
+    initialValues.value.brandId = Number(nv);
+    await loadAvailableGroups(selectedBrandId.value);
+  }
+});
+
+watch(() => props.parentId, (nv) => {
+  initialValues.value.tagGroupId = nv ? Number(nv) : 0;
 });
 
 async function onSubmit(values, { resetForm }) {
   try {
+    // Если пользователь не заполнил цену, но указал акционную цену — считаем её базовой ценой
+    const hasPrice = values.price !== undefined && values.price !== null && values.price !== '';
+    const hasPromo = values.promotionalPrice !== undefined && values.promotionalPrice !== null && values.promotionalPrice !== '';
+    const basePrice = hasPrice ? Number(values.price) : (hasPromo ? Number(values.promotionalPrice) : 0);
+
     const payload = {
       name: values.name,
       description: values.description || '',
-      price: Number(values.price),
-      promoPrice: values.promotionalPrice ? Number(values.promotionalPrice) : Number(values.price),
+      price: basePrice,
+      // Акционная цена по умолчанию такая же, как и цена, если поле не заполнено
+      promoPrice: !hasPromo ? basePrice : Number(values.promotionalPrice),
       brandId: Number(values.brandId),
       groupTagId: values.tagGroupId ? Number(values.tagGroupId) : 0,
+      // Флаг видимости: по умолчанию true
       visible: values.isVisible === undefined ? true : Boolean(values.isVisible),
     };
     const created = await productStore.create(payload);

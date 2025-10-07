@@ -28,6 +28,7 @@
       v-if="showCreateProductModal"
       :brands="brands"
       :selectedBrand="selectedBrand"
+      :parentId="selectedTag ? selectedTag.id : currentParentId"
       @close="showCreateProductModal = false"
       @saved="handleProductCreated"
   />
