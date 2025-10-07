@@ -6,6 +6,7 @@ import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.UserProvider;
 import kirillzhdanov.identityservice.repository.UserProviderRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
+import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import kirillzhdanov.identityservice.service.RoleService;
 import kirillzhdanov.identityservice.service.TokenService;
@@ -27,6 +28,7 @@ public class GoogleOAuth2ServiceTest {
     private UserRepository userRepository;
     private TokenService tokenService;
     private UserProviderRepository userProviderRepository;
+    private MasterAccountRepository masterAccountRepository;
 
     private GoogleOAuth2Service service;
 
@@ -37,7 +39,10 @@ public class GoogleOAuth2ServiceTest {
         JwtUtils jwtUtils = mock(JwtUtils.class);
         tokenService = mock(TokenService.class);
         userProviderRepository = mock(UserProviderRepository.class);
-        service = new GoogleOAuth2Service(userRepository, roleService, jwtUtils, tokenService, userProviderRepository);
+        masterAccountRepository = mock(MasterAccountRepository.class);
+        // By default, pretend master already exists to avoid save path in unit tests
+        when(masterAccountRepository.findByName(anyString())).thenReturn(java.util.Optional.of(new kirillzhdanov.identityservice.model.master.MasterAccount()));
+        service = new GoogleOAuth2Service(userRepository, roleService, jwtUtils, tokenService, userProviderRepository, masterAccountRepository);
 
         Role userRole = new Role();
         userRole.setName(Role.RoleName.USER);
