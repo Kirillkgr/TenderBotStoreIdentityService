@@ -4,8 +4,10 @@ import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.UserProvider;
+import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.repository.UserProviderRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
+import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import kirillzhdanov.identityservice.service.RoleService;
@@ -29,17 +31,20 @@ public class GoogleOAuth2Service {
     private final JwtUtils jwtUtils;
     private final TokenService tokenService;
     private final UserProviderRepository userProviderRepository;
+    private final MasterAccountRepository masterAccountRepository;
 
     public GoogleOAuth2Service(UserRepository userRepository,
                                RoleService roleService,
                                JwtUtils jwtUtils,
                                TokenService tokenService,
-                               UserProviderRepository userProviderRepository) {
+                               UserProviderRepository userProviderRepository,
+                               MasterAccountRepository masterAccountRepository) {
         this.userRepository = userRepository;
         this.roleService = roleService;
         this.jwtUtils = jwtUtils;
         this.tokenService = tokenService;
         this.userProviderRepository = userProviderRepository;
+        this.masterAccountRepository = masterAccountRepository;
     }
 
     /**
@@ -64,6 +69,17 @@ public class GoogleOAuth2Service {
         Boolean emailVerified = oidcUser.getEmailVerified();
 
         User user = findOrCreateAndLinkUser(email, sub, firstName, lastName, picture, emailVerified);
+
+        // Ensure MasterAccount exists for this user (same behavior as classic registration)
+        try {
+            String username = user.getUsername();
+            masterAccountRepository.findByName(username)
+                    .orElseGet(() -> masterAccountRepository.save(MasterAccount.builder()
+                            .name(username)
+                            .status("ACTIVE")
+                            .build()));
+        } catch (Exception ignored) {
+        }
 
         // Revoke existing access tokens optionally, keep refresh strategy if needed
         // tokenService.revokeAllUserTokens(user);
