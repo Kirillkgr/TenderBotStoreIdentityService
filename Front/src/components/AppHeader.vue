@@ -39,9 +39,7 @@
           <button class="nav-link btn-primary" type="button" @click.stop="openMiniCart">
             Корзина ({{ cartStore.items.length }})
           </button>
-          <router-link v-if="isAdminOrOwner" v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/archive">
-            Корзина (архив)
-          </router-link>
+
           <button v-if="authStore.isAuthenticated" class="nav-link btn-primary" type="button"
                   @click.stop="openContextModal">
             Контекст
