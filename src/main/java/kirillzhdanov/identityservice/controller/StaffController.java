@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.staff.*;
 import kirillzhdanov.identityservice.model.User;
@@ -21,6 +22,7 @@ public class StaffController {
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
     @GetMapping("/users")
+    @Operation(summary = "Список пользователей (персонал)", description = "Требования: глобальная роль ROLE_ADMIN или ROLE_OWNER (PreAuthorize). Данные ограничены контекстом master, если не передан masterId.")
     public ResponseEntity<PagedResponse<UserListItemDto>> listUsers(
             @RequestParam(required = false) Long masterId,
             @RequestParam(required = false) String query,
@@ -38,12 +40,14 @@ public class StaffController {
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
     @PostMapping("/users")
+    @Operation(summary = "Создать пользователя (персонал)", description = "Требования: глобальная роль ROLE_ADMIN или ROLE_OWNER (PreAuthorize).")
     public ResponseEntity<UserListItemDto> createUser(@Valid @RequestBody CreateUserRequest req) {
         return ResponseEntity.ok(staffService.createUser(req));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
     @PutMapping("/users/{id}")
+    @Operation(summary = "Обновить пользователя (персонал)", description = "Требования: глобальная роль ROLE_ADMIN или ROLE_OWNER (PreAuthorize).")
     public ResponseEntity<UserListItemDto> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateStaffUserRequest req,
                                                       Authentication auth) {
         Long masterId = (auth != null && auth.isAuthenticated())
@@ -54,6 +58,7 @@ public class StaffController {
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
     @DeleteMapping("/users/{id}")
+    @Operation(summary = "Удалить пользователя (персонал)", description = "Требования: глобальная роль ROLE_ADMIN или ROLE_OWNER (PreAuthorize).")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id, Authentication auth) {
         Long masterId = (auth != null && auth.isAuthenticated())
                 ? userRepository.findByUsername(auth.getName()).map(User::getId).orElse(null)
@@ -64,12 +69,14 @@ public class StaffController {
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
     @PostMapping("/departments")
+    @Operation(summary = "Создать отдел", description = "Требования: глобальная роль ROLE_ADMIN или ROLE_OWNER (PreAuthorize).")
     public ResponseEntity<DepartmentDto> createDepartment(@Valid @RequestBody DepartmentCreateRequest req) {
         return ResponseEntity.ok(staffService.createDepartment(req));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
     @GetMapping("/departments")
+    @Operation(summary = "Список отделов", description = "Требования: глобальная роль ROLE_ADMIN или ROLE_OWNER (PreAuthorize).")
     public ResponseEntity<java.util.List<DepartmentDto>> listDepartments() {
         return ResponseEntity.ok(staffService.listDepartments());
     }

@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.group.*;
 import kirillzhdanov.identityservice.security.RbacGuard;
@@ -24,6 +25,7 @@ public class GroupTagController {
     private final RbacGuard rbacGuard;
 
     @PostMapping
+    @Operation(summary = "Создать группу тегов", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<GroupTagResponse> createGroupTag(
             @Valid @RequestBody CreateGroupTagRequest request) {
         rbacGuard.requireOwnerOrAdmin();
@@ -32,6 +34,7 @@ public class GroupTagController {
     }
 
     @GetMapping("/by-brand/{brandId}")
+    @Operation(summary = "Группы тегов по бренду/родителю", description = "Требования: аутентификация. Возвращает только доступные в текущем контексте.")
     public ResponseEntity<List<GroupTagResponse>> getGroupTagsByBrandAndParent(
             @PathVariable Long brandId,
             @RequestParam(required = false) Long parentId) {
@@ -41,17 +44,20 @@ public class GroupTagController {
     }
 
     @GetMapping("/tree/{brandId}")
+    @Operation(summary = "Дерево групп тегов", description = "Требования: аутентификация. Данные в пределах контекста.")
     public ResponseEntity<List<GroupTagResponse>> getGroupTagsTree(@PathVariable Long brandId) {
         List<GroupTagResponse> response = groupTagService.getGroupTagsTree(brandId);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/tree/{brandId}/full")
+    @Operation(summary = "Полное дерево групп тегов", description = "Требования: аутентификация. Данные в пределах контекста.")
     public ResponseEntity<List<GroupTagTreeResponse>> tree(@PathVariable Long brandId) {
         return ResponseEntity.ok(groupTagService.tree(brandId));
     }
 
     @GetMapping("/by-brand/{brandId}/paged")
+    @Operation(summary = "Группы тегов (пагинация)", description = "Требования: аутентификация. Данные в пределах контекста.")
     public ResponseEntity<Page<GroupTagResponse>> getGroupTagsPaged(
             @PathVariable Long brandId,
             @RequestParam(required = false) Long parentId,
@@ -67,6 +73,7 @@ public class GroupTagController {
     }
 
     @PutMapping("/{groupTagId}")
+    @Operation(summary = "Переименовать группу", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<GroupTagResponse> rename(
             @PathVariable Long groupTagId,
             @RequestParam String name
@@ -77,6 +84,7 @@ public class GroupTagController {
 
     // Единый апдейт: смена бренда, перенос, переименование — одним запросом
     @PutMapping("/{groupTagId}/full")
+    @Operation(summary = "Полный апдейт группы", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<GroupTagResponse> updateFull(
             @PathVariable Long groupTagId,
             @Valid @RequestBody UpdateGroupTagRequest request
@@ -86,6 +94,7 @@ public class GroupTagController {
     }
 
     @PatchMapping("/{groupTagId}/move")
+    @Operation(summary = "Переместить группу", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<GroupTagResponse> move(
             @PathVariable Long groupTagId,
             @RequestParam(required = false) Long parentId
@@ -95,6 +104,7 @@ public class GroupTagController {
     }
 
     @PatchMapping("/{groupTagId}/brand")
+    @Operation(summary = "Сменить бренд у группы", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<GroupTagResponse> changeBrand(
             @PathVariable Long groupTagId,
             @RequestParam Long brandId
@@ -104,11 +114,13 @@ public class GroupTagController {
     }
 
     @GetMapping("/breadcrumbs/{groupTagId}")
+    @Operation(summary = "Хлебные крошки", description = "Требования: аутентификация. Данные в пределах контекста.")
     public ResponseEntity<List<GroupTagResponse>> breadcrumbs(@PathVariable Long groupTagId) {
         return ResponseEntity.ok(groupTagService.breadcrumbs(groupTagId));
     }
 
     @DeleteMapping("/{groupTagId}")
+    @Operation(summary = "Удалить группу (в архив)", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<Void> deleteWithArchive(@PathVariable Long groupTagId) {
         rbacGuard.requireOwnerOrAdmin();
         groupTagService.deleteWithArchive(groupTagId);
@@ -116,6 +128,7 @@ public class GroupTagController {
     }
 
     @DeleteMapping("/archive/purge")
+    @Operation(summary = "Очистить архив групп", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<Long> purgeArchive(@RequestParam(defaultValue = "90") int olderThanDays) {
         rbacGuard.requireOwnerOrAdmin();
         long deleted = groupTagService.purgeArchive(olderThanDays);
@@ -123,11 +136,13 @@ public class GroupTagController {
     }
 
     @GetMapping("/archive")
+    @Operation(summary = "Архив групп бренда", description = "Требования: аутентификация. Данные в пределах контекста.")
     public ResponseEntity<java.util.List<GroupTagArchiveResponse>> listArchiveByBrand(@RequestParam Long brandId) {
         return ResponseEntity.ok(groupTagService.listArchiveByBrand(brandId));
     }
 
     @GetMapping("/archive/paged")
+    @Operation(summary = "Архив групп бренда (пагинация)", description = "Требования: аутентификация. Данные в пределах контекста.")
     public ResponseEntity<Page<GroupTagArchiveResponse>> listArchiveByBrandPaged(
             @RequestParam Long brandId,
             @RequestParam(defaultValue = "0") int page,
@@ -141,6 +156,7 @@ public class GroupTagController {
     }
 
     @PostMapping("/archive/{archiveId}/restore")
+    @Operation(summary = "Восстановить группу из архива", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<GroupTagResponse> restoreFromArchive(
             @PathVariable Long archiveId,
             @RequestParam(required = false) Long targetParentId
@@ -150,6 +166,7 @@ public class GroupTagController {
     }
 
     @DeleteMapping("/archive/{archiveId}")
+    @Operation(summary = "Удалить запись архива группы", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<Void> deleteGroupArchive(@PathVariable Long archiveId) {
         rbacGuard.requireOwnerOrAdmin();
         groupTagService.deleteGroupArchive(archiveId);

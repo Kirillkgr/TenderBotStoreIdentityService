@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -43,6 +44,7 @@ public class CartController {
 
     @GetMapping
     @Transactional(readOnly = true)
+    @Operation(summary = "Текущая корзина", description = "Публично (гость/пользователь). Возвращает корзину по userId или по cart_token (cookie).")
     public ResponseEntity<?> getCart(HttpServletRequest request, HttpServletResponse response) {
         try {
             Optional<User> userOpt = getCurrentUser();
@@ -70,12 +72,13 @@ public class CartController {
 
     @PostMapping("/add")
     @Transactional
+    @Operation(summary = "Добавить в корзину", description = "Публично (гость/пользователь). Создаёт/использует cart_token для гостя. Возвращает обновлённую корзину или 409 при конфликте бренда.")
     public ResponseEntity<?> addToCart(@RequestBody Map<String, Object> payload,
                                        HttpServletRequest request,
                                        HttpServletResponse response) {
         try {
             Long productId = payload.get("productId") == null ? null : Long.valueOf(String.valueOf(payload.get("productId")));
-            Integer quantity = payload.get("quantity") == null ? 1 : Integer.parseInt(String.valueOf(payload.get("quantity")));
+            int quantity = payload.get("quantity") == null ? 1 : Integer.parseInt(String.valueOf(payload.get("quantity")));
             if (productId == null || quantity <= 0) {
                 return ResponseEntity.badRequest().body(Map.of("message", "productId и quantity обязательны"));
             }
@@ -160,6 +163,7 @@ public class CartController {
 
     @DeleteMapping("/remove/{id}")
     @Transactional
+    @Operation(summary = "Удалить позицию из корзины", description = "Публично (гость/пользователь). Разрешено владельцу userId или владельцу cart_token.")
     public ResponseEntity<?> removeFromCart(@PathVariable("id") Long cartItemId,
                                             HttpServletRequest request,
                                             HttpServletResponse response) {
@@ -186,6 +190,7 @@ public class CartController {
 
     @PatchMapping("/item/{id}")
     @Transactional
+    @Operation(summary = "Изменить количество позиции", description = "Публично (гость/пользователь). Разрешено владельцу userId или владельцу cart_token. qty<=0 удаляет позицию.")
     public ResponseEntity<?> updateQuantity(@PathVariable("id") Long cartItemId,
                                             @RequestBody Map<String, Object> payload,
                                             HttpServletRequest request,
@@ -224,6 +229,7 @@ public class CartController {
     }
 
     @DeleteMapping("/clear")
+    @Operation(summary = "Очистить корзину", description = "Публично (гость/пользователь). Очищает корзину пользователя или гостевую по cart_token.")
     public ResponseEntity<?> clearCart(HttpServletRequest request, HttpServletResponse response) {
         Optional<User> userOpt = getCurrentUser();
         String cartToken = getOrCreateCartToken(request, response);

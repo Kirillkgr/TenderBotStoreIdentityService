@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.dto.ProductImageRef;
 import kirillzhdanov.identityservice.dto.TagImageRef;
 import kirillzhdanov.identityservice.service.ImageProcessingService;
@@ -26,6 +27,8 @@ public class MediaController {
     private final MediaService mediaService;
 
     @PostMapping("/upload")
+    @Operation(summary = "Загрузка изображения товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN для управления медиа каталога.")
     public ResponseEntity<?> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam("productId") String productId,
@@ -70,6 +73,8 @@ public class MediaController {
     // New endpoints for overwrite/delete/regenerate and tag groups
 
     @PostMapping("/product/overwrite")
+    @Operation(summary = "Перезагрузка изображения товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<?> overwriteProduct(
             @RequestParam("file") MultipartFile file,
             @RequestParam("productId") String productId,
@@ -88,12 +93,16 @@ public class MediaController {
     }
 
     @DeleteMapping("/product/derived")
+    @Operation(summary = "Удаление производных изображений товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Void> deleteProductDerived(@RequestParam String productId, @RequestParam String imageId) {
         mediaService.deleteDerivedProduct(productId, imageId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/product/regenerate")
+    @Operation(summary = "Регенерация производных изображений товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<?> regenerateProduct(@RequestParam String productId,
                                                @RequestParam String imageId,
                                                @RequestParam(value = "publicForHomepage", defaultValue = "false") boolean publicForHomepage) throws IOException {
@@ -108,6 +117,8 @@ public class MediaController {
     }
 
     @DeleteMapping("/product/hard")
+    @Operation(summary = "Полное удаление изображения товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Void> hardDeleteProduct(@RequestParam String productId, @RequestParam String imageId) {
         mediaService.hardDeleteProduct(productId, imageId);
         return ResponseEntity.ok().build();
@@ -115,6 +126,8 @@ public class MediaController {
 
     // Tag group variants
     @PostMapping("/tag/upload")
+    @Operation(summary = "Загрузка изображения группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<?> uploadTag(
             @RequestParam("file") MultipartFile file,
             @RequestParam("tagGroupId") String tagGroupId,
@@ -131,6 +144,8 @@ public class MediaController {
     }
 
     @PostMapping("/tag/overwrite")
+    @Operation(summary = "Перезагрузка изображения группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<?> overwriteTag(
             @RequestParam("file") MultipartFile file,
             @RequestParam("tagGroupId") String tagGroupId,
@@ -148,12 +163,16 @@ public class MediaController {
     }
 
     @DeleteMapping("/tag/derived")
+    @Operation(summary = "Удаление производных изображений группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Void> deleteTagDerived(@RequestParam String tagGroupId, @RequestParam String imageId) {
         mediaService.deleteDerivedTagGroup(tagGroupId, imageId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/tag/regenerate")
+    @Operation(summary = "Регенерация производных изображений группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<?> regenerateTag(@RequestParam String tagGroupId,
                                            @RequestParam String imageId,
                                            @RequestParam(value = "publicForHomepage", defaultValue = "false") boolean publicForHomepage) throws IOException {
@@ -168,6 +187,8 @@ public class MediaController {
     }
 
     @DeleteMapping("/tag/hard")
+    @Operation(summary = "Полное удаление изображения группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Void> hardDeleteTag(@RequestParam String tagGroupId, @RequestParam String imageId) {
         mediaService.hardDeleteTagGroup(tagGroupId, imageId);
         return ResponseEntity.ok().build();
@@ -176,6 +197,8 @@ public class MediaController {
     // ==================== BATCH endpoints ====================
 
     @PostMapping("/product/derived-batch")
+    @Operation(summary = "Batch: удалить производные изображения товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Map<String, Object>> deleteProductDerivedBatch(@RequestBody List<ProductImageRef> refs) {
         int count = 0;
         for (ProductImageRef ref : refs) {
@@ -186,6 +209,8 @@ public class MediaController {
     }
 
     @PostMapping("/product/regenerate-batch")
+    @Operation(summary = "Batch: регенерация производных изображений товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Map<String, Object>> regenerateProductBatch(@RequestBody List<ProductImageRef> refs,
                                                                       @RequestParam(value = "publicForHomepage", defaultValue = "false") boolean publicForHomepage) throws java.io.IOException {
         List<Map<String, Object>> results = new ArrayList<>();
@@ -203,6 +228,8 @@ public class MediaController {
     }
 
     @PostMapping("/product/hard-batch")
+    @Operation(summary = "Batch: полное удаление изображений товара",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Map<String, Object>> hardDeleteProductBatch(@RequestBody List<ProductImageRef> refs) {
         int count = 0;
         for (ProductImageRef ref : refs) {
@@ -213,6 +240,8 @@ public class MediaController {
     }
 
     @PostMapping("/tag/derived-batch")
+    @Operation(summary = "Batch: удалить производные изображения группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Map<String, Object>> deleteTagDerivedBatch(@RequestBody List<TagImageRef> refs) {
         int count = 0;
         for (TagImageRef ref : refs) {
@@ -223,6 +252,8 @@ public class MediaController {
     }
 
     @PostMapping("/tag/regenerate-batch")
+    @Operation(summary = "Batch: регенерация производных изображений группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Map<String, Object>> regenerateTagBatch(@RequestBody List<TagImageRef> refs,
                                                                   @RequestParam(value = "publicForHomepage", defaultValue = "false") boolean publicForHomepage) throws java.io.IOException {
         List<Map<String, Object>> results = new ArrayList<>();
@@ -240,6 +271,8 @@ public class MediaController {
     }
 
     @PostMapping("/tag/hard-batch")
+    @Operation(summary = "Batch: полное удаление изображений группы тегов",
+            description = "Требуется аутентификация. Рекомендуется роль OWNER/ADMIN.")
     public ResponseEntity<Map<String, Object>> hardDeleteTagBatch(@RequestBody List<TagImageRef> refs) {
         int count = 0;
         for (TagImageRef ref : refs) {

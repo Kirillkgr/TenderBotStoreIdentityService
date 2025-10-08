@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.dto.JwtUserDetailsResponse;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import kirillzhdanov.identityservice.service.TokenService;
@@ -40,6 +41,7 @@ public class TokenValidationController {
 	 * {@code 403 Forbidden} - токен невалиден (некорректный заголовок, неверная подпись, отозванный токен).
 	 */
 	@PostMapping
+	@Operation(summary = "Валидация JWT", description = "Публично. Принимает Authorization: Bearer <token>. Возвращает 200 если токен валиден, 403 иначе.")
 	public ResponseEntity<Void> validateToken(@RequestHeader("Authorization") String authHeader) {
 
 		log.warn("Включить когда потребуется реальная валидация токена\n " + authHeader);
@@ -84,6 +86,7 @@ public class TokenValidationController {
 	 * {@code 403 Forbidden} - токен невалиден (некорректный заголовок, неверная подпись, отозванный токен) или пользователь не найден.
 	 */
 	@PostMapping("/details")
+	@Operation(summary = "Валидация JWT + данные пользователя", description = "Публично. Принимает Authorization: Bearer <token>. Возвращает 200 и информацию о пользователе, 403 при ошибке.")
 	public ResponseEntity<JwtUserDetailsResponse> validateTokenAndGetUserDetails(@RequestHeader("Authorization") String authHeader) {
 
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {

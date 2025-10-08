@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller.order;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.order.CourierMessageRequest;
 import kirillzhdanov.identityservice.dto.order.OrderDto;
@@ -48,6 +49,7 @@ public class OrderController {
 
     @GetMapping("/my")
     @Transactional(readOnly = true)
+    @Operation(summary = "Мои заказы", description = "Требуется аутентификация. Возвращает заказы текущего пользователя.")
     public ResponseEntity<?> myOrders(Authentication authentication) {
         if (!isAuthenticated(authentication)) return ResponseEntity.status(401).build();
         User user = resolveUser(authentication);
@@ -96,6 +98,7 @@ public class OrderController {
     }
 
     @GetMapping("/orders")
+    @Operation(summary = "Доступные заказы (по membership)", description = "Требуется аутентификация. Возвращает заказы по брендам, где у пользователя есть membership.")
     public ResponseEntity<Page<OrderDto>> getAccessibleOrders(Pageable pageable,
                                                               Authentication authentication,
                                                               @RequestParam(required = false) String search,
@@ -113,6 +116,7 @@ public class OrderController {
     }
 
     @GetMapping("/brand/{brandId}/orders")
+    @Operation(summary = "Заказы бренда", description = "Требуется аутентификация. Доступ только при наличии membership у бренда; иначе 403.")
     public ResponseEntity<Page<OrderDto>> getBrandOrders(@PathVariable Long brandId,
                                                          Pageable pageable,
                                                          Authentication authentication) {
@@ -127,6 +131,7 @@ public class OrderController {
     }
 
     @PatchMapping("/orders/{id}/status")
+    @Operation(summary = "Смена статуса заказа", description = "Требуется аутентификация и membership у бренда заказа. Рекомендовано ограничить ролями (CASHIER/COOK/ADMIN/OWNER).")
     public ResponseEntity<Void> updateStatus(@PathVariable Long id,
                                              @Valid @RequestBody UpdateOrderStatusRequest req,
                                              Authentication authentication) {
@@ -155,6 +160,7 @@ public class OrderController {
     }
 
     @PostMapping("/orders/{id}/message")
+    @Operation(summary = "Сообщение курьера/персонала клиенту", description = "Требуется аутентификация и membership у бренда заказа.")
     public ResponseEntity<Void> sendCourierMessage(@PathVariable Long id,
                                                    @Valid @RequestBody CourierMessageRequest req,
                                                    Authentication authentication) {
@@ -185,6 +191,7 @@ public class OrderController {
 
     // Клиент пишет администратору/персоналу бренда по заказу
     @PostMapping("/orders/{id}/client-message")
+    @Operation(summary = "Сообщение клиента персоналу", description = "Требуется аутентификация. Разрешено только клиенту данного заказа.")
     public ResponseEntity<Void> sendClientMessage(@PathVariable Long id,
                                                   @Valid @RequestBody CourierMessageRequest req, // reuse dto with 'text'
                                                   Authentication authentication) {
@@ -232,6 +239,7 @@ public class OrderController {
     }
 
     @PostMapping("/orders/{id}/review")
+    @Operation(summary = "Отправить отзыв по заказу", description = "Требуется аутентификация. Разрешено клиенту заказа после статуса COMPLETED. Повторная отправка запрещена.")
     public ResponseEntity<Void> submitReview(@PathVariable Long id,
                                              @Valid @RequestBody ReviewRequest req,
                                              Authentication authentication) {
@@ -266,6 +274,7 @@ public class OrderController {
     }
 
     @GetMapping("/orders/{id}/messages")
+    @Operation(summary = "Сообщения заказа", description = "Требуется аутентификация. Доступ клиенту заказа и сотрудникам бренда (membership).")
     public ResponseEntity<?> getOrderMessages(@PathVariable Long id,
                                               Authentication authentication) {
         if (!isAuthenticated(authentication)) return ResponseEntity.status(401).build();

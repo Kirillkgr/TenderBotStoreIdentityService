@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.dto.ContextSwitchRequest;
 import kirillzhdanov.identityservice.dto.ContextSwitchResponse;
 import kirillzhdanov.identityservice.exception.BadRequestException;
@@ -33,6 +34,7 @@ public class ContextController {
     private final TokenService tokenService;
 
     @PostMapping("/switch")
+    @Operation(summary = "Переключение контекста (membership)", description = "Требования: аутентификация. Меняет активный контекст и выдаёт новый accessToken. Ошибки: 400 при несоответствии membership/brand/location, 401 без аутентификации.")
     public ResponseEntity<ContextSwitchResponse> switchContext(@RequestBody ContextSwitchRequest request) {
         if (request.getMembershipId() == null) {
             throw new BadRequestException("membershipId is required");
