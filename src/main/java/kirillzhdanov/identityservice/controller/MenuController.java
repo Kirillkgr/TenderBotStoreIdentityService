@@ -41,7 +41,7 @@ public class MenuController {
     @GetMapping("/brands/{brandId}")
     @Operation(summary = "Публичная карточка бренда", description = "Публично. Минимальные поля.")
     public ResponseEntity<PublicBrandResponse> getBrand(@PathVariable Long brandId) {
-        BrandDto b = brandService.getBrandById(brandId);
+        BrandDto b = brandService.getBrandByIdPublic(brandId);
         return ResponseEntity.ok(new PublicBrandResponse(b.getId(), b.getName()));
     }
 

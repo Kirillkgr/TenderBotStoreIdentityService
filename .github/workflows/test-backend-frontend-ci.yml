@@ -81,3 +81,13 @@ jobs:
 
       - name: Build & test with Maven
         run: ./mvnw -B clean install
+
+      - name: Upload JUnit reports (Surefire/Failsafe)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports-backend
+          path: |
+            target/surefire-reports/**
+            target/failsafe-reports/**
+          if-no-files-found: warn

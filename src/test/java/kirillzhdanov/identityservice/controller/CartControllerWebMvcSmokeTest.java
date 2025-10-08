@@ -16,8 +16,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,9 +29,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(
         controllers = CartController.class,
-        excludeAutoConfiguration = {OAuth2ClientAutoConfiguration.class},
-        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = BrandContextInterceptor.class)
+        excludeAutoConfiguration = {OAuth2ClientAutoConfiguration.class}
 )
+@Import(CartControllerWebMvcSmokeTest.TestConfig.class)
 @AutoConfigureMockMvc(addFilters = false)
 class CartControllerWebMvcSmokeTest {
 
@@ -41,6 +41,51 @@ class CartControllerWebMvcSmokeTest {
     CartItemRepository cartItemRepository;
     @Autowired
     ProductRepository productRepository;
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        CartItemRepository cartItemRepository() {
+            return org.mockito.Mockito.mock(CartItemRepository.class);
+        }
+
+        @Bean
+        @Primary
+        ProductRepository productRepository() {
+            return org.mockito.Mockito.mock(ProductRepository.class);
+        }
+
+        @Bean
+        @Primary
+        UserRepository userRepository() {
+            return org.mockito.Mockito.mock(UserRepository.class);
+        }
+
+        @Bean
+        @Primary
+        BrandRepository brandRepository() {
+            return org.mockito.Mockito.mock(BrandRepository.class);
+        }
+
+        @Bean
+        @Primary
+        BrandContextInterceptor brandContextInterceptor() {
+            return org.mockito.Mockito.mock(BrandContextInterceptor.class);
+        }
+
+        @Bean
+        @Primary
+        JwtTokenExtractor jwtTokenExtractor() {
+            return org.mockito.Mockito.mock(JwtTokenExtractor.class);
+        }
+
+        @Bean
+        @Primary
+        JwtAuthenticator jwtAuthenticator() {
+            return org.mockito.Mockito.mock(JwtAuthenticator.class);
+        }
+    }
 
     @Test
     @DisplayName("GET /cart гостем: 200, пустая корзина и cookie cart_token")
@@ -87,48 +132,5 @@ class CartControllerWebMvcSmokeTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"quantity\": 2}"))
                 .andExpect(status().isOk());
-    }
-
-    @TestConfiguration
-    static class MocksConfig {
-        @Bean
-        CartItemRepository cartItemRepository() {
-            return Mockito.mock(CartItemRepository.class);
-        }
-
-        @Bean
-        ProductRepository productRepository() {
-            return Mockito.mock(ProductRepository.class);
-        }
-
-        @Bean
-        UserRepository userRepository() {
-            return Mockito.mock(UserRepository.class);
-        }
-
-        @Bean
-        BrandRepository brandRepository() {
-            return Mockito.mock(BrandRepository.class);
-        }
-
-        @Bean
-        JwtTokenExtractor jwtTokenExtractor() {
-            return Mockito.mock(JwtTokenExtractor.class);
-        }
-
-        @Bean
-        JwtAuthenticator jwtAuthenticator() {
-            return Mockito.mock(JwtAuthenticator.class);
-        }
-
-        @Bean
-        BrandContextInterceptor brandContextInterceptor() {
-            return Mockito.mock(BrandContextInterceptor.class);
-        }
-
-        @Bean
-        CartController cartController(CartItemRepository cartRepo, ProductRepository productRepo, UserRepository userRepo, BrandRepository brandRepo) {
-            return new CartController(cartRepo, productRepo, userRepo, brandRepo);
-        }
     }
 }
