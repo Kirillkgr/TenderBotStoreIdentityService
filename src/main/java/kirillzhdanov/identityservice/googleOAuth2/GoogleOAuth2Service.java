@@ -109,10 +109,8 @@ public class GoogleOAuth2Service {
         User user;
         if (byEmail.isPresent()) {
             user = byEmail.get();
-            // Обновим недостающие поля аккуратно
-            if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && pictureUrl != null && !pictureUrl.isBlank()) {
-                user.setAvatarUrl(pictureUrl);
-            }
+            // Не перезаписываем аватарку из Google, если пользователь уже существует.
+            // Дополняем только недостающие ФИО и флаг подтверждения почты.
             if ((user.getFirstName() == null || user.getFirstName().isBlank()) && firstName != null && !firstName.isBlank()) {
                 user.setFirstName(firstName);
             }
@@ -134,7 +132,7 @@ public class GoogleOAuth2Service {
                     .firstName(firstName)
                     .lastName(lastName)
                     .email(email)
-                    .avatarUrl(pictureUrl)
+                    .avatarUrl(pictureUrl) // только при первичном создании пользователя
                     .emailVerified(emailVerified != null ? emailVerified : false)
                     .roles(new HashSet<>())
                     .brands(new HashSet<>())

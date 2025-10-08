@@ -28,7 +28,6 @@ public class GoogleOAuth2ServiceTest {
     private UserRepository userRepository;
     private TokenService tokenService;
     private UserProviderRepository userProviderRepository;
-    private MasterAccountRepository masterAccountRepository;
 
     private GoogleOAuth2Service service;
 
@@ -39,7 +38,7 @@ public class GoogleOAuth2ServiceTest {
         JwtUtils jwtUtils = mock(JwtUtils.class);
         tokenService = mock(TokenService.class);
         userProviderRepository = mock(UserProviderRepository.class);
-        masterAccountRepository = mock(MasterAccountRepository.class);
+        MasterAccountRepository masterAccountRepository = mock(MasterAccountRepository.class);
         // By default, pretend master already exists to avoid save path in unit tests
         when(masterAccountRepository.findByName(anyString())).thenReturn(java.util.Optional.of(new kirillzhdanov.identityservice.model.master.MasterAccount()));
         service = new GoogleOAuth2Service(userRepository, roleService, jwtUtils, tokenService, userProviderRepository, masterAccountRepository);
@@ -128,8 +127,34 @@ public class GoogleOAuth2ServiceTest {
     }
 
     @Test
-    @DisplayName("Существующий email — только линковка провайдера и обновление аватара, без дублирования")
-    void linkExistingByEmailAndUpdateAvatarIfEmpty() {
+    @DisplayName("Повторный вход через Google (mapping существует) — не перезаписывать аватар")
+    void existingProviderMapping_doesNotOverwriteAvatar() {
+        OidcUser oidcUser = mock(OidcUser.class);
+        when(oidcUser.getEmail()).thenReturn("linked@example.com");
+        when(oidcUser.getSubject()).thenReturn("google-sub-linked");
+        when(oidcUser.getPicture()).thenReturn("https://example.com/new-google-avatar.jpg");
+
+        // Уже существует связь провайдер+providerUserId, у пользователя свой аватар
+        User user = User.builder().id(42L).username("linkedUser").avatarUrl("https://cdn.local/custom.jpg").roles(new java.util.HashSet<>()).build();
+        UserProvider up = new UserProvider();
+        up.setUser(user);
+        when(userProviderRepository.findByProviderAndProviderUserId(eq(UserProvider.Provider.GOOGLE), anyString()))
+                .thenReturn(java.util.Optional.of(up));
+
+        GoogleOAuth2Service.Tokens tokens = service.handleLoginOrRegister(oidcUser);
+        assertThat(tokens.accessToken()).isEqualTo("access.jwt");
+        assertThat(tokens.refreshToken()).isEqualTo("refresh.jwt");
+
+        // Пользователь не сохраняется и аватар не перезаписывается
+        verify(userRepository, never()).save(any(User.class));
+        // Токены сохранены
+        verify(tokenService).saveToken(eq("access.jwt"), eq(Token.TokenType.ACCESS), any(User.class));
+        verify(tokenService).saveToken(eq("refresh.jwt"), eq(Token.TokenType.REFRESH), any(User.class));
+    }
+
+    @Test
+    @DisplayName("Существующий email — линковка провайдера без перезаписи аватарки")
+    void linkExistingByEmail_doesNotOverwriteAvatar() {
         OidcUser oidcUser = mock(OidcUser.class);
         when(oidcUser.getEmail()).thenReturn("user@example.com");
         when(oidcUser.getSubject()).thenReturn("google-sub-2");
@@ -146,8 +171,8 @@ public class GoogleOAuth2ServiceTest {
         GoogleOAuth2Service.Tokens tokens = service.handleLoginOrRegister(oidcUser);
         assertThat(tokens.accessToken()).isEqualTo("access.jwt");
 
-        // Аватар должен обновиться
-        verify(userRepository).save(argThat(u -> "https://example.com/new-avatar.jpg".equals(u.getAvatarUrl())));
+        // Аватар НЕ должен перезаписываться ссылкой от провайдера
+        verify(userRepository).save(argThat(u -> "".equals(u.getAvatarUrl())));
         // Линковка провайдера
         verify(userProviderRepository).save(any(UserProvider.class));
     }
