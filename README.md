@@ -1,14 +1,24 @@
-# Identity Service for TenderBotStore
+# TenderBotStore — Multi‑tenant E‑commerce Platform (SaaS)
 
-## Кратко
+## Обзор
 
-Микросервис аутентификации/авторизации и многотенантного контекста (master/brand/location) для экосистемы
-TenderBotStore.
-Даёт REST‑API для регистрации/логина/refresh, переключения контекста, публичного меню и базовых health‑проверок.
+TenderBotStore — это многоарендная платформа e‑commerce (каталог/корзина/чекаут) с разграничением доступа по контексту
+Master/Brand/Location и ролям Membership (RBAC). Репозиторий содержит backend (Java/Spring Boot), frontend (Vue 3),
+инфраструктуру (Liquibase, Docker), и документацию (MkDocs).
+
+Ключевые возможности (по дорожной карте):
+
+- Многотенантность (BL‑1): контекст в JWT, изоляция данных по `masterId/brandId/locationId`.
+- RBAC на Membership (BL‑2): роли `OWNER/ADMIN/CASHIER/COOK/CLIENT` и проверки доступа по активному membership.
+- Магазин (BL‑8): публичный каталог, корзина, чекаут.
+- Инвентарь/себестоимость/модификаторы — по следующим этапам.
 
 ### Документация
 
-- Полная документация: [docs/index.md](docs/index.md)
+- Wiki: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki
+- Навигатор (исходники): [docs/index.md](docs/index.md)
+- RBAC (BL‑2): [docs/services/rbac.md](docs/services/rbac.md)
+- Многотенантность/контекст: [docs/architecture/multitenancy.md](docs/architecture/multitenancy.md)
 
 ## Технологический стек
 
