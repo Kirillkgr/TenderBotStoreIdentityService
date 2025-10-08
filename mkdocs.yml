@@ -38,6 +38,7 @@ nav:
   - Сервисы (стабильные API):
       - Auth: services/auth.md
       - Context: services/context.md
+      - RBAC: services/rbac.md
       - Public Menu: services/menu.md
       - Health: services/health.md
       - Ошибки и коды: services/errors.md
