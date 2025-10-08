@@ -1,14 +1,15 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import kirillzhdanov.identityservice.dto.*;
-import kirillzhdanov.identityservice.service.AuthService;
-import kirillzhdanov.identityservice.service.MembershipService;
-import kirillzhdanov.identityservice.service.CookieService;
-import kirillzhdanov.identityservice.service.CartService;
 import kirillzhdanov.identityservice.repository.UserRepository;
+import kirillzhdanov.identityservice.service.AuthService;
+import kirillzhdanov.identityservice.service.CartService;
+import kirillzhdanov.identityservice.service.CookieService;
+import kirillzhdanov.identityservice.service.MembershipService;
 import kirillzhdanov.identityservice.util.Base64Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class AuthController {
 
     /* Registration endpoint */
     @PostMapping("/checkUsername")
+    @Operation(summary = "Проверка занятости имени пользователя (POST)", description = "Публично. 200 — свободно, 409 — занято.")
     public ResponseEntity<UserResponse> checkUsername(@Valid @NotEmpty @NotBlank @RequestParam String username) {
         boolean response;
         response = authService.checkUniqUsername(username);
@@ -47,6 +49,7 @@ public class AuthController {
 
     /* Convenience GET endpoint to support clients using GET for availability check */
     @GetMapping("/checkUsername")
+    @Operation(summary = "Проверка занятости имени пользователя (GET)", description = "Публично. 200 — свободно, 409 — занято.")
     public ResponseEntity<UserResponse> checkUsernameGet(@Valid @NotEmpty @NotBlank @RequestParam String username) {
         boolean response = authService.checkUniqUsername(username);
         return ResponseEntity.status(response ? 409 : 200).build();
@@ -54,6 +57,7 @@ public class AuthController {
 
     /* Registration endpoint */
     @PostMapping("/register")
+    @Operation(summary = "Регистрация", description = "Публично. Возвращает профиль пользователя; refresh токен устанавливается HttpOnly cookie.")
     public ResponseEntity<UserResponse> registerUser(@Valid @RequestBody UserRegistrationRequest request) {
 
         UserResponse response = authService.registerUser(request);
@@ -69,6 +73,7 @@ public class AuthController {
 
     /* Login endpoint */
     @PostMapping("/login")
+    @Operation(summary = "Логин", description = "Публично. Basic в Authorization header. Возвращает профиль и ставит refresh cookie. Сервис может создать membership в текущем бренде.")
     public ResponseEntity<UserResponse> login(
             @NotEmpty @NotBlank @RequestHeader("Authorization") String authHeader,
             @CookieValue(name = "cart_token", required = false) String guestCartToken) {
@@ -108,6 +113,7 @@ public class AuthController {
 
     /* Refresh token endpoint */
     @PostMapping("/refresh")
+    @Operation(summary = "Обновление access токена", description = "Требуется refreshToken в HttpOnly cookie. Возвращает новый access и ставит новый refresh cookie.")
     public ResponseEntity<TokenRefreshResponse> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
 
         if (refreshToken == null || refreshToken.isEmpty()) {
@@ -133,6 +139,7 @@ public class AuthController {
     }
 
     @GetMapping("/whoami")
+    @Operation(summary = "Текущий пользователь", description = "Требуется аутентификация. 401 — если не аутентифицирован.")
     public ResponseEntity<UserResponse> whoami(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -144,6 +151,7 @@ public class AuthController {
 
     /* Revoke token endpoint */
     @PostMapping("/revoke")
+    @Operation(summary = "Отозвать токен", description = "Требуется аутентификация. Отзывает указанный токен.")
     public ResponseEntity<Void> revokeToken(@RequestParam String token) {
         // Проверка аутентификации пользователя
         Authentication authentication = SecurityContextHolder.getContext()
@@ -160,6 +168,7 @@ public class AuthController {
 
     /* Revoke all tokens endpoint */
     @PostMapping("/revoke-all")
+    @Operation(summary = "Отозвать все токены пользователя", description = "Требуется глобальная роль ROLE_ADMIN. Возвращает 403 без прав.")
     public ResponseEntity<Void> revokeAllUserTokens(@RequestParam String username) {
         // Проверка роли ADMIN
         Authentication authentication = SecurityContextHolder.getContext()
@@ -180,6 +189,7 @@ public class AuthController {
     }
 
     @DeleteMapping("/logout")
+    @Operation(summary = "Выход", description = "Требуется аутентификация. Отзывает access/refresh (из cookie). Возвращает set-cookie с очисткой.")
     public ResponseEntity<Void> logout(@RequestBody String token,
                                        @CookieValue(name = "refreshToken", required = false) String refreshCookie) {
 
@@ -206,6 +216,7 @@ public class AuthController {
     }
 
     @DeleteMapping("/logout/all/{username}")
+    @Operation(summary = "Выход везде (по пользователю)", description = "Админская операция: отзывает все токены пользователя.")
     public ResponseEntity<Void> logoutAll(@PathVariable String username) {
         authService.revokeAllUserTokens(username);
         return ResponseEntity.ok().build();

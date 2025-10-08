@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.UserProvider;
 import kirillzhdanov.identityservice.repository.UserRepository;
@@ -25,6 +26,7 @@ public class AccountLinkController {
     }
 
     @DeleteMapping("/google")
+    @Operation(summary = "Отвязать Google-аккаунт", description = "Требуется аутентификация. Удаляет привязку провайдера GOOGLE у текущего пользователя.")
     public ResponseEntity<Void> unlinkGoogle() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof CustomUserDetails cud)) {

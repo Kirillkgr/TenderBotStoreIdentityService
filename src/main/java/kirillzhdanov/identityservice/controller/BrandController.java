@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.dto.BrandDto;
 import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.BrandService;
@@ -29,6 +30,7 @@ public class BrandController {
      * @return {@code ResponseEntity} со списком брендов и HTTP статусом {@code 200 OK}
      */
     @GetMapping
+    @Operation(summary = "Мои бренды", description = "Требования: аутентификация. Возвращает бренды в пределах текущего master контекста.")
     public ResponseEntity<List<BrandDto>> getAllBrands() {
 
         return ResponseEntity.ok(brandService.getMyBrands());
@@ -43,6 +45,7 @@ public class BrandController {
      * {@code 404 Not Found} - бренд с указанным ID не найден.
      */
     @GetMapping("/{id}")
+    @Operation(summary = "Бренд по ID", description = "Требования: аутентификация. Доступ только к своим брендам (чужие → 404).")
     public ResponseEntity<BrandDto> getBrandById(@PathVariable Long id) {
 
         return ResponseEntity.ok(brandService.getBrandById(id));
@@ -55,6 +58,7 @@ public class BrandController {
      * @return {@code ResponseEntity} с созданным брендом и HTTP статусом {@code 201 Created}
      */
     @PostMapping
+    @Operation(summary = "Создать бренд", description = "Требования: AUTH (любой аутентифицированный пользователь). Роль: CLIENT+ (будет владельцем созданного бренда).")
     public ResponseEntity<BrandDto> createBrand(@RequestBody BrandDto brandDto) {
         // Любой аутентифицированный пользователь может создать свой бренд (вариант Б)
         rbacGuard.requireAuthenticated();
@@ -70,6 +74,7 @@ public class BrandController {
      * {@code 404 Not Found} - бренд с указанным ID не найден.
      */
     @PutMapping("/{id}")
+    @Operation(summary = "Обновить бренд", description = "Требования: роль OWNER или ADMIN активного membership. Чужой бренд → 404; недостаточно прав → 403.")
     public ResponseEntity<BrandDto> updateBrand(@PathVariable Long id, @RequestBody BrandDto brandDto) {
         rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(brandService.updateBrand(id, brandDto));
@@ -83,6 +88,7 @@ public class BrandController {
      * {@code 404 Not Found} - бренд с указанным ID не найден.
      */
     @DeleteMapping("/{id}")
+    @Operation(summary = "Удалить бренд", description = "Требования: роль OWNER или ADMIN активного membership. Чужой бренд → 404; недостаточно прав → 403.")
     public ResponseEntity<Void> deleteBrand(@PathVariable Long id) {
         rbacGuard.requireOwnerOrAdmin();
         brandService.deleteBrand(id);
@@ -99,6 +105,7 @@ public class BrandController {
      * {@code 404 Not Found} - пользователь или бренд не найдены.
      */
     @PostMapping("/{brandId}/users/{userId}")
+    @Operation(summary = "Назначить пользователя бренду", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<Void> assignUserToBrand(@PathVariable Long userId, @PathVariable Long brandId) {
         rbacGuard.requireOwnerOrAdmin();
         brandService.assignUserToBrand(userId, brandId);
@@ -116,6 +123,7 @@ public class BrandController {
      * {@code 400 Bad Request} - пользователь не назначен на бренд.
      */
     @DeleteMapping("/{brandId}/users/{userId}")
+    @Operation(summary = "Удалить пользователя из бренда", description = "Требования: роль OWNER или ADMIN активного membership.")
     public ResponseEntity<Void> removeUserFromBrand(@PathVariable Long userId, @PathVariable Long brandId) {
         rbacGuard.requireOwnerOrAdmin();
         brandService.removeUserFromBrand(userId, brandId);

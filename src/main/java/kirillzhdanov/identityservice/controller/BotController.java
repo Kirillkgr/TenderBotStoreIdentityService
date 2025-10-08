@@ -23,13 +23,13 @@ public class BotController {
 
 	/**
 	 * Регистрация нового Telegram-бота.
-	 *
 	 * @param request данные для регистрации бота
 	 * @return {@code 200 OK} – бот успешно зарегистрирован;
 	 * {@code 400 Bad Request} – некорректные данные;
 	 * {@code 409 Conflict} – бот с таким токеном уже существует.
 	 */
 	@PostMapping("/register")
+	@io.swagger.v3.oas.annotations.Operation(summary = "Регистрация Telegram-бота", description = "Требуется аутентификация и соответствующие права администратора платформы (если политика включена).")
 	public ResponseEntity<MessageResponse> registerBot(@Valid @RequestBody BotRegistrationRequest request) {
 
 		MessageResponse response = botService.registerBot(request);
@@ -45,6 +45,7 @@ public class BotController {
 	 * {@code 404 Not Found} – бот не найден.
 	 */
 	@PostMapping("/start")
+	@io.swagger.v3.oas.annotations.Operation(summary = "Запуск Telegram-бота", description = "Требуется аутентификация и соответствующие права администратора платформы (если политика включена).")
 	public ResponseEntity<MessageResponse> startBot(@Valid @RequestBody BotRegistrationRequest request) {
 
 		MessageResponse response = botService.startBot(request);

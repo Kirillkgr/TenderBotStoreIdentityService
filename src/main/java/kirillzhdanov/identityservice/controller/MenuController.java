@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.dto.BrandDto;
 import kirillzhdanov.identityservice.dto.group.GroupTagResponse;
 import kirillzhdanov.identityservice.dto.menu.PublicBrandResponse;
@@ -27,6 +28,7 @@ public class MenuController {
 
     // 1) Публичный список брендов (минимум данных)
     @GetMapping("/brands")
+    @Operation(summary = "Публичные бренды", description = "Публично. Возвращает список брендов (минимальная информация).")
     public ResponseEntity<List<PublicBrandResponse>> getBrands() {
         List<BrandDto> brands = brandService.getAllBrandsPublic();
         List<PublicBrandResponse> response = brands.stream()
@@ -37,6 +39,7 @@ public class MenuController {
 
     // 2) Публичная карточка бренда (минимум данных)
     @GetMapping("/brands/{brandId}")
+    @Operation(summary = "Публичная карточка бренда", description = "Публично. Минимальные поля.")
     public ResponseEntity<PublicBrandResponse> getBrand(@PathVariable Long brandId) {
         BrandDto b = brandService.getBrandById(brandId);
         return ResponseEntity.ok(new PublicBrandResponse(b.getId(), b.getName()));
@@ -44,6 +47,7 @@ public class MenuController {
 
     // 3) Публичные теги бренда по родителю (parentId=0 -> корневые)
     @GetMapping("/brands/{brandId}/tags")
+    @Operation(summary = "Публичные теги бренда", description = "Публично. Скрывает пустые группы.")
     public ResponseEntity<List<PublicGroupTagResponse>> getBrandTags(
             @PathVariable Long brandId,
             @RequestParam(required = false, defaultValue = "0") Long parentId
@@ -59,6 +63,7 @@ public class MenuController {
 
     // 4) Публичные товары бренда по группе (groupTagId=0 -> корневые). Всегда только видимые.
     @GetMapping("/brands/{brandId}/products")
+    @Operation(summary = "Публичные товары бренда", description = "Публично. Всегда только видимые товары.")
     public ResponseEntity<List<PublicProductResponse>> getBrandProducts(
             @PathVariable Long brandId,
             @RequestParam(required = false, defaultValue = "0") Long groupTagId
@@ -72,6 +77,7 @@ public class MenuController {
 
     // ALIAS: совместимость с путём вида /menu/v1/products/by-brand/{brandId}
     @GetMapping("/products/by-brand/{brandId}")
+    @Operation(summary = "Alias: публичные товары бренда", description = "Публично. Алиас на /brands/{brandId}/products.")
     public ResponseEntity<List<PublicProductResponse>> getBrandProductsAlias(
             @PathVariable Long brandId,
             @RequestParam(required = false, defaultValue = "0") Long groupTagId
@@ -81,6 +87,7 @@ public class MenuController {
 
     // ALIAS: совместимость с путём вида /menu/v1/tags/by-brand/{brandId}
     @GetMapping("/tags/by-brand/{brandId}")
+    @Operation(summary = "Alias: публичные теги бренда", description = "Публично. Алиас на /brands/{brandId}/tags.")
     public ResponseEntity<List<PublicGroupTagResponse>> getBrandTagsAlias(
             @PathVariable Long brandId,
             @RequestParam(required = false, defaultValue = "0") Long parentId
@@ -90,6 +97,7 @@ public class MenuController {
 
     // ALIAS: совместимость с путём вида /menu/v1/group-tags/by-brand/{brandId}
     @GetMapping("/group-tags/by-brand/{brandId}")
+    @Operation(summary = "Alias: публичные группы тегов бренда", description = "Публично. Алиас на /brands/{brandId}/tags.")
     public ResponseEntity<List<PublicGroupTagResponse>> getBrandGroupTagsAlias(
             @PathVariable Long brandId,
             @RequestParam(required = false, defaultValue = "0") Long parentId

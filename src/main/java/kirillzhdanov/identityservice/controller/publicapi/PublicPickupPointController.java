@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller.publicapi;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import kirillzhdanov.identityservice.util.BrandContextHolder;
@@ -19,6 +20,7 @@ public class PublicPickupPointController {
     private final PickupPointRepository pickupPointRepository;
 
     @GetMapping
+    @Operation(summary = "Публичные пункты самовывоза текущего бренда", description = "Публично. Определяет brandId из BrandContextHolder и возвращает активные точки.")
     public ResponseEntity<List<PickupPoint>> listActiveForCurrentBrand() {
         Long brandId = BrandContextHolder.get();
         if (brandId == null) {

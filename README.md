@@ -20,6 +20,21 @@ Master/Brand/Location и ролям Membership (RBAC). Репозиторий с
 - RBAC (BL‑2): [docs/services/rbac.md](docs/services/rbac.md)
 - Многотенантность/контекст: [docs/architecture/multitenancy.md](docs/architecture/multitenancy.md)
 
+#### Документация в Wiki (онлайн)
+
+- Главная Wiki: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Home
+- Все внутренние ссылки в Wiki ведут на отрендеренные страницы (без расширения .md).
+
+### Документация API (Swagger/OpenAPI)
+
+- После запуска приложения откройте Swagger UI:
+    - http://localhost:8081/swagger-ui.html (или http://localhost:8081/swagger-ui)
+- Если UI недоступен — проверьте зависимость SpringDoc в `pom.xml`:
+    - `org.springdoc:springdoc-openapi-starter-webmvc-ui` (для Spring MVC)
+- Аннотации `@Operation` добавлены в контроллеры каталога, контекста, аутентификации, корзины, медиа, заказов и пр.,
+  включая пометки по ролям (RBAC).
+- Актуальную структуру и ссылки также смотрите в Wiki (см. выше).
+
 ## Технологический стек
 
 - **Java 21**: Основной язык программирования.

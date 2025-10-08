@@ -31,18 +31,41 @@ jobs:
           find wiki -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           # Copy markdown sources
           cp -r docs/* wiki/
-          # Set homepage
-          if [ -f docs/index.md ]; then
-            cp docs/index.md wiki/Home.md
+          # Normalize links: convert ")(.md)" links to wiki-style without extension across copied files
+          # This replaces occurrences of ](path.md) with ](path)
+          if command -v sed >/dev/null 2>&1; then
+            find wiki -type f -name "*.md" -print0 | xargs -0 sed -i "s/](\([^)#?]*\)\.md)/](\1)/g"
           fi
-          # Ensure sidebar exists
+          # Generate wiki-friendly Home.md (links without .md extensions)
+          printf '%s\n' \
+            '# TenderBotStore — Документация' \
+            '' \
+            'Добро пожаловать! Здесь описаны основы платформы и сервисов.' \
+            '' \
+            '## Быстрые ссылки' \
+            '' \
+            '- Архитектура → [ER‑схема](architecture/er-schema)' \
+            '- Архитектура → [Многотенантность и контекст](architecture/multitenancy)' \
+            '- Backend → [Гайд по миграциям (Liquibase)](backend/migrations)' \
+            '- Frontend → [Контекст на фронте](frontend/context)' \
+            '' \
+            '### Сервисы (стабильные)' \
+            '' \
+            '- [Auth](services/auth)' \
+            '- [Context](services/context)' \
+            '- [RBAC](services/rbac)' \
+            '- [Public Menu](services/menu)' \
+            '- [Health](services/health)' \
+            '- [Ошибки и коды](services/errors)' \
+            > wiki/Home.md
+          # Ensure sidebar exists (links without .md extensions)
           if [ ! -f wiki/_Sidebar.md ]; then
             printf '%s\n' \
               '* [Home](Home)' \
-              '* [Архитектура](architecture/er-schema.md)' \
-              '* [Многотенантность и контекст](architecture/multitenancy.md)' \
-              '* [RBAC](services/rbac.md)' \
-              '* [Миграции (Liquibase)](backend/migrations.md)' \
+              '* [Архитектура](architecture/er-schema)' \
+              '* [Многотенантность и контекст](architecture/multitenancy)' \
+              '* [RBAC](services/rbac)' \
+              '* [Миграции (Liquibase)](backend/migrations)' \
               > wiki/_Sidebar.md
           fi
 

@@ -1,5 +1,7 @@
 package kirillzhdanov.identityservice.controller.checkout;
 
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.order.DeliveryMode;
@@ -11,7 +13,6 @@ import kirillzhdanov.identityservice.service.CheckoutService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,6 +33,7 @@ public class CheckoutController {
     private final OrderRepository orderRepository;
 
     @PostMapping
+    @Operation(summary = "Оформление заказа (из корзины)", description = "Требуется аутентификация. Создаёт заказ из текущей корзины пользователя.")
     public ResponseEntity<?> checkout(@RequestBody CheckoutRequest req, HttpServletRequest request) {
         Optional<User> userOpt = getCurrentUserWithDiagnostics(request);
         if (userOpt.isEmpty()) {
@@ -49,9 +51,7 @@ public class CheckoutController {
                     cartToken
             );
             return ResponseEntity.ok(order);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        } catch (IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("message", "Не удалось оформить заказ", "error", e.getClass().getSimpleName()));
@@ -60,6 +60,7 @@ public class CheckoutController {
 
     // Заказы текущего пользователя
     @GetMapping("/my")
+    @Operation(summary = "Мои заказы", description = "Требуется аутентификация. Возвращает список заказов текущего пользователя.")
     public ResponseEntity<?> myOrders(HttpServletRequest request) {
         Optional<User> userOpt = getCurrentUserWithDiagnostics(request);
         if (userOpt.isEmpty()) return ResponseEntity.status(401).build();
@@ -69,6 +70,7 @@ public class CheckoutController {
 
     // Простая смена статуса заказа (для демо). В продуктиве: добавить проверку прав бренда/персонала.
     @PatchMapping("/{orderId}/status")
+    @Operation(summary = "Смена статуса заказа (демо)", description = "Требуется аутентификация. В продуктиве: ограничить по ролям (CASHIER/COOK/ADMIN/OWNER) и бренду.")
     public ResponseEntity<?> changeStatus(@PathVariable Long orderId, @RequestBody Map<String, String> body) {
         String statusStr = body.get("status");
         if (statusStr == null) return ResponseEntity.badRequest().body(Map.of("message", "status обязателен"));
@@ -99,7 +101,7 @@ public class CheckoutController {
                 return Optional.empty();
             }
             Object principal = auth.getPrincipal();
-            String candidate = null;
+            String candidate;
             if (principal instanceof org.springframework.security.core.userdetails.User u) {
                 candidate = u.getUsername();
             } else if (principal instanceof String s) {

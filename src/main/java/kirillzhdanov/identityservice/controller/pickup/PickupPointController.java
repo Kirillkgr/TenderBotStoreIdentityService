@@ -1,5 +1,6 @@
 package kirillzhdanov.identityservice.controller.pickup;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class PickupPointController {
     private final PickupPointRepository pickupPointRepository;
 
     @GetMapping
+    @Operation(summary = "Пункты самовывоза бренда (внутренний)", description = "Требуется аутентификация. Возвращает активные точки самовывоза бренда.")
     public ResponseEntity<List<PickupPoint>> getActivePickupPoints(@PathVariable Long brandId,
                                                                    Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
