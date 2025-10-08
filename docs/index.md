@@ -14,6 +14,7 @@
 
 - Архитектура → [ER‑схема](architecture/er-schema.md)
 - Архитектура → [Многотенантность и контекст](architecture/multitenancy.md)
+- Сервисы → [RBAC (роли и доступ)](services/rbac.md)
 - Backend → [Гайд по миграциям (Liquibase)](backend/migrations.md)
 - Frontend → [Контекст на фронте](frontend/context.md)
 
@@ -21,6 +22,7 @@
 
 - [Auth](services/auth.md)
 - [Context](services/context.md)
+- [RBAC](services/rbac.md)
 - [Public Menu](services/menu.md)
 - [Health](services/health.md)
 - [Ошибки и коды](services/errors.md)
