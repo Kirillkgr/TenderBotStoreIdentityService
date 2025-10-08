@@ -174,6 +174,10 @@ public class CartController {
         if (found.isEmpty()) return ResponseEntity.noContent().build();
 
         CartItem ci = found.get();
+        // Явная проверка гостевой корзины: если пользователь гость и токен не совпадает — запрет
+        if (userOpt.isEmpty() && ci.getUser() == null && !Objects.equals(cartToken, ci.getCartToken())) {
+            return ResponseEntity.status(403).body(Map.of("message", "Недостаточно прав для удаления элемента корзины"));
+        }
         boolean allowed = (userOpt.isPresent() && ci.getUser() != null && Objects.equals(ci.getUser().getId(), userOpt.get().getId()))
                 || (userOpt.isEmpty() && Objects.equals(cartToken, ci.getCartToken()));
         if (!allowed) {
