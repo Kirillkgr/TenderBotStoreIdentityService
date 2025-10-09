@@ -108,7 +108,7 @@
 
 <script setup>
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
-import {formatLocalDateTime} from '@/utils/datetime';
+import {formatLocalDateTime, parseServerDate} from '@/utils/datetime';
 import orderAdminService, {ORDER_STATUSES} from '@/services/orderAdminService';
 import {getNotificationsClient} from '@/services/notifications';
 import ChatModal from '@/components/ChatModal.vue';
@@ -269,7 +269,7 @@ const filtered = computed(() => {
   const to = dateTo.value ? new Date(dateTo.value + 'T23:59:59') : null;
   if (from || to) {
     arr = arr.filter(o => {
-      const d = o.createdAt ? new Date(o.createdAt) : null;
+      const d = o.createdAt ? parseServerDate(o.createdAt) : null;
       if (!d || isNaN(d)) return false;
       if (from && d < from) return false;
       return !(to && d > to);

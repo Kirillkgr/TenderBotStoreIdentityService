@@ -472,7 +472,7 @@ import CreateProductModal from '../components/modals/CreateProductModal.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import EditProductModal from '../components/modals/EditProductModal.vue';
 import ProductionSvg from '@/assets/production.svg';
-import {formatLocalDateTime} from '@/utils/datetime';
+import {formatDateShortRU, formatLocalDateTime, timeAgoShort} from '@/utils/datetime';
 
 // Refs
 const brands = ref([]);
@@ -599,41 +599,7 @@ async function copyId(p) {
   }
 }
 
-// Короткая метка времени: "1 ч" / "15 мин" / "2 дн" / "только что"
-function timeAgoShort(dateLike) {
-  try {
-    const d = new Date(dateLike);
-    const now = new Date();
-    const diffMs = now - d;
-    const sec = Math.floor(diffMs / 1000);
-    const min = Math.floor(sec / 60);
-    const hr = Math.floor(min / 60);
-    const day = Math.floor(hr / 24);
-    if (day >= 365) {
-      const years = Math.floor(day / 365);
-      return `${years} г`;
-    }
-    if (day > 0) return `${day} дн`;
-    if (hr > 0) return `${hr} ч`;
-    if (min > 0) return `${min} мин`;
-    return 'только что';
-  } catch (e) {
-    return '';
-  }
-}
-
-// Формат даты: ДД.ММ.ГГГГ
-function formatDateShortRU(dateLike) {
-  try {
-    const d = new Date(dateLike);
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${dd}.${mm}.${yyyy}`;
-  } catch (e) {
-    return '';
-  }
-}
+// Use shared UTC-aware helpers: timeAgoShort, formatDateShortRU
 
 onMounted(() => {
   const saved = localStorage.getItem(THEME_KEY);

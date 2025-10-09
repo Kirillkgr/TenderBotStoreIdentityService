@@ -188,7 +188,7 @@ import {useProductStore} from '@/store/product';
 import {getBrands} from '@/services/brandService';
 import {useToast} from 'vue-toastification';
 import tagService from '@/services/tagService';
-import {formatLocalDateTime} from '@/utils/datetime';
+import {formatLocalDateTime, parseServerDate} from '@/utils/datetime';
 
 const toast = useToast();
 const productStore = useProductStore();
@@ -250,8 +250,14 @@ const rows = computed(() => {
     createdAt: formatDate(a.createdAt),
     updatedAt: formatDate(a.updatedAt),
     archivedAt: formatDate(a.archivedAt),
-    _sortArchivedAt: a.archivedAt ? new Date(a.archivedAt).getTime() : 0,
-    _sortUpdatedAt: a.updatedAt ? new Date(a.updatedAt).getTime() : 0,
+    _sortArchivedAt: (() => {
+      const d = parseServerDate(a.archivedAt);
+      return d ? d.getTime() : 0;
+    })(),
+    _sortUpdatedAt: (() => {
+      const d = parseServerDate(a.updatedAt);
+      return d ? d.getTime() : 0;
+    })(),
   }));
   const tagRows = (archivedTags.value || []).map(g => ({
     _key: `g-${g.id}`,
@@ -265,7 +271,10 @@ const rows = computed(() => {
     createdAt: '—',
     updatedAt: '—',
     archivedAt: formatDate(g.archivedAt),
-    _sortArchivedAt: g.archivedAt ? new Date(g.archivedAt).getTime() : 0,
+    _sortArchivedAt: (() => {
+      const d = parseServerDate(g.archivedAt);
+      return d ? d.getTime() : 0;
+    })(),
     _sortUpdatedAt: 0,
   }));
   return [...prodRows, ...tagRows]

@@ -5,11 +5,17 @@
 export function parseServerDate(val) {
     if (!val) return null;
     try {
-        const s = typeof val === 'string' ? val : String(val);
+        let s = typeof val === 'string' ? val : String(val);
+        // Normalize fractional seconds to max 3 digits (milliseconds) if present
+        // e.g. 2025-10-09T12:58:52.986029783 -> 2025-10-09T12:58:52.986
+        if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+/.test(s)) {
+            s = s.replace(/(\.\d{3})\d+/, '$1');
+        }
         // Detect ISO like 2025-09-24T09:30:00 optionally with fractional seconds
         const looksIso = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s);
         const hasTZ = /[zZ]|[+-]\d{2}:\d{2}$/.test(s);
-        const date = looksIso && !hasTZ ? new Date(s + 'Z') : new Date(s);
+        const iso = looksIso && !hasTZ ? s + 'Z' : s;
+        const date = new Date(iso);
         if (Number.isNaN(date.getTime())) return null;
         return date;
     } catch {
@@ -74,4 +80,30 @@ export function timeAgo(val, now = new Date()) {
     if (diffD < 7) return `${diffD} дн. назад`;
     // older — show localized date
     return formatLocalDateTime(d);
+}
+
+// Short RU date like DD.MM.YYYY
+export function formatDateShortRU(val) {
+    const d = parseServerDate(val);
+    if (!d) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+}
+
+// Short time-ago label: "1 ч" / "15 мин" / "2 дн" / "только что"
+export function timeAgoShort(val, now = new Date()) {
+    const d = parseServerDate(val);
+    if (!d) return '';
+    const diffMs = now - d;
+    const sec = Math.floor(diffMs / 1000);
+    const min = Math.floor(sec / 60);
+    const hr = Math.floor(min / 60);
+    const day = Math.floor(hr / 24);
+    if (day >= 365) return `${Math.floor(day / 365)} г`;
+    if (day > 0) return `${day} дн`;
+    if (hr > 0) return `${hr} ч`;
+    if (min > 0) return `${min} мин`;
+    return 'только что';
 }
