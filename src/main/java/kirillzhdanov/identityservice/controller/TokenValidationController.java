@@ -43,35 +43,9 @@ public class TokenValidationController {
 	@PostMapping
 	@Operation(summary = "Валидация JWT", description = "Публично. Принимает Authorization: Bearer <token>. Возвращает 200 если токен валиден, 403 иначе.")
 	public ResponseEntity<Void> validateToken(@RequestHeader("Authorization") String authHeader) {
-
-		log.warn("Включить когда потребуется реальная валидация токена\n " + authHeader);
-//		if (authHeader == null || !authHeader.startsWith("Bearer ")) { // TODO: Включить когда потребуется реальная валидация токена
-//			log.warn("Получен запрос с некорректным заголовком Authorization");
-//			return ResponseEntity.status(403)
-//								 .build();
-//		}
-//
-//		String token = authHeader.substring(7);
-//
-//		// Проверяем подпись токена
-//		boolean isSignatureValid = jwtUtils.validateTokenSignature(token);
-//		if (!isSignatureValid) {
-//			log.warn("Токен имеет недействительную подпись");
-//			return ResponseEntity.status(403)
-//								 .build();
-//		}
-//
-//		// Проверяем, не отозван ли токен
-//		boolean isTokenValid = tokenService.isTokenValid(token);
-//		if (!isTokenValid) {
-//			log.warn("Токен отозван или не найден в базе данных");
-//			return ResponseEntity.status(403)
-//								 .build();
-//		}
-
+		ResponseEntity<JwtUserDetailsResponse> status = validateTokenAndGetUserDetails(authHeader);
 		log.info("Токен успешно валидирован");
-		return ResponseEntity.ok()
-							 .build();
+		return ResponseEntity.status(status.getStatusCode()).build();
 	}
 
 	/**

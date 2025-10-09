@@ -12,17 +12,17 @@
 
 ## Быстрые ссылки
 
-- Архитектура → [ER‑схема](architecture/er-schema.md)
-- Архитектура → [Многотенантность и контекст](architecture/multitenancy.md)
-- Сервисы → [RBAC (роли и доступ)](services/rbac.md)
-- Backend → [Гайд по миграциям (Liquibase)](backend/migrations.md)
-- Frontend → [Контекст на фронте](frontend/context.md)
+- Архитектура → [ER‑схема](architecture/er-schema)
+- Архитектура → [Многотенантность и контекст](architecture/multitenancy)
+- Сервисы → [RBAC (роли и доступ)](services/rbac)
+- Backend → [Гайд по миграциям (Liquibase)](backend/migrations)
+- Frontend → [Контекст на фронте](frontend/context)
 
 ### Сервисы (стабильные)
 
-- [Auth](services/auth.md)
-- [Context](services/context.md)
-- [RBAC](services/rbac.md)
-- [Public Menu](services/menu.md)
-- [Health](services/health.md)
-- [Ошибки и коды](services/errors.md)
+- [Auth](services/auth)
+- [Context](services/context)
+- [RBAC](services/rbac)
+- [Public Menu](services/menu)
+- [Health](services/health)
+- [Ошибки и коды](services/errors)
