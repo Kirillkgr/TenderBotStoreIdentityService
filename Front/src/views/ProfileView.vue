@@ -91,6 +91,7 @@ import {getNotificationsClient} from '@/services/notifications';
 import ChatModal from '@/components/ChatModal.vue';
 import ReviewModal from '@/components/ReviewModal.vue';
 import ReviewTextModal from '@/components/ReviewTextModal.vue';
+import {formatLocalDateTime} from '@/utils/datetime';
 
 const authStore = useAuthStore();
 const orderStore = useOrderStore();
@@ -110,7 +111,7 @@ const formattedDateOfBirth = computed(() => {
 
 function formatDate(val) {
   try {
-    return val ? new Date(val).toLocaleString() : '—';
+    return val ? formatLocalDateTime(val) : '—';
   } catch {
     return '—';
   }

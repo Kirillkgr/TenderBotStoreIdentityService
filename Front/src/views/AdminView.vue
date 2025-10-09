@@ -324,14 +324,14 @@
         <div v-else-if="products.length === 0" class="text-muted">Товаров нет</div>
         <div v-else class="product-grid-admin">
           <div
-            v-for="p in visibleProducts"
-            :key="p.id"
-            class="product-card-admin"
-            role="button"
-            tabindex="0"
-            @click.stop.prevent="openPreview(p)"
-            @keydown.enter.prevent="openPreview(p)"
-            @keydown.e.stop.prevent="openEdit(p)"
+              v-for="p in visibleProducts"
+              :key="p.id"
+              class="product-card-admin"
+              role="button"
+              tabindex="0"
+              @click.stop.prevent="openPreview(p)"
+              @keydown.enter.prevent="openPreview(p)"
+              @keydown.e.stop.prevent="openEdit(p)"
           >
             <span class="pc-status-dot" :class="p.visible ? 'on' : 'off'" title="Статус видимости"></span>
 
@@ -371,7 +371,7 @@
             <!-- Даты: слева — создание, по центру — сколько прошло с последнего изменения, справа — последняя правка -->
             <div
                 v-if="p.updatedAt || p.createdAt"
-                :title="`Создан: ${p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'} | Изменён: ${p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '—'}`"
+                :title="`Создан: ${p.createdAt ? formatLocalDateTime(p.createdAt) : '—'} | Изменён: ${p.updatedAt ? formatLocalDateTime(p.updatedAt) : '—'}`"
                 class="pc-updated"
             >
               <span class="date-created">{{ p.createdAt ? formatDateShortRU(p.createdAt) : '—' }}</span>
@@ -472,6 +472,7 @@ import CreateProductModal from '../components/modals/CreateProductModal.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import EditProductModal from '../components/modals/EditProductModal.vue';
 import ProductionSvg from '@/assets/production.svg';
+import {formatLocalDateTime} from '@/utils/datetime';
 
 // Refs
 const brands = ref([]);

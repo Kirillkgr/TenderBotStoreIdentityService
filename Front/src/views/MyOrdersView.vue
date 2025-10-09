@@ -64,6 +64,7 @@
 
 <script setup>
 import {onBeforeUnmount, onMounted, ref} from 'vue';
+import {formatLocalDateTime} from '@/utils/datetime';
 import {useOrderStore} from '@/store/order';
 import {getNotificationsClient} from '@/services/notifications';
 import ChatModal from '@/components/ChatModal.vue';
@@ -91,10 +92,8 @@ function formatPrice(val) {
 
 function formatDate(iso) {
   try {
-    const d = new Date(iso);
-    if (isNaN(d)) return String(iso ?? '');
-    return d.toLocaleString('ru-RU');
-  } catch (_) {
+    return formatLocalDateTime(iso);
+  } catch {
     return String(iso ?? '');
   }
 }

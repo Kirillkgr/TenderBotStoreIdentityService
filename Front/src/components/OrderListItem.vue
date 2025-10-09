@@ -47,6 +47,7 @@
 
 <script setup>
 import {defineProps} from 'vue';
+import {formatLocalDateTime} from '@/utils/datetime';
 import {useNotificationsStore} from '@/store/notifications';
 
 const emit = defineEmits(['open-message', 'open-review', 'open-review-text']);
@@ -103,8 +104,7 @@ function formatPrice(val) {
 
 function formatDate(iso) {
   try {
-    const d = new Date(iso);
-    return isNaN(d) ? '—' : d.toLocaleString('ru-RU');
+    return formatLocalDateTime(iso);
   } catch {
     return '—';
   }

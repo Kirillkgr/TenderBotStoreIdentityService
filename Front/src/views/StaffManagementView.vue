@@ -128,6 +128,7 @@ import {useAuthStore} from '@/store/auth';
 import ModalBase from '@/components/ui/ModalBase.vue';
 import Modal from '@/components/Modal.vue';
 import UserForm from '@/components/staff/UserForm.vue';
+import {formatLocalDateTime} from '@/utils/datetime';
 
 
 const auth = useAuthStore();
@@ -153,7 +154,14 @@ function roleTooltip(code) {
       : 'Базовый доступ пользователя';
 }
 function departmentName(id) { return departments.value.find(d => d.id === id)?.name || '—'; }
-function formatDate(iso) { return iso ? new Date(iso).toLocaleDateString() : '—'; }
+
+function formatDate(iso) {
+  try {
+    return iso ? formatLocalDateTime(iso) : '—';
+  } catch {
+    return '—';
+  }
+}
 
 // Подсветка совпадений в тексте
 function escapeRegExp(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}

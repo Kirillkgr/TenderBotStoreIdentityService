@@ -50,6 +50,7 @@ import {getNotificationsClient} from '@/services/notifications';
 import {useNotificationsStore} from '@/store/notifications';
 import {useAuthStore} from '@/store/auth';
 import Modal from '@/components/Modal.vue';
+import {formatLocalDateTime} from '@/utils/datetime';
 
 const props = defineProps({
   order: {type: Object, required: true},
@@ -94,9 +95,7 @@ function scrollToBottom() {
 
 function formatDate(iso) {
   try {
-    const d = new Date(iso);
-    if (isNaN(d)) return '';
-    return d.toLocaleString('ru-RU');
+    return formatLocalDateTime(iso);
   } catch {
     return '';
   }
