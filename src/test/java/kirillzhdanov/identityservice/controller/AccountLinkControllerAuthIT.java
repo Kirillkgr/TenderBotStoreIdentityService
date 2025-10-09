@@ -42,12 +42,11 @@ class AccountLinkControllerAuthIT {
     UserRepository userRepository;
 
     @Test
-    @DisplayName("DELETE /auth/v1/providers/google без аутентификации -> 401")
     void unlink_google_unauth_401() throws Exception {
         // без аутентификации (аноним)
         SecurityContextHolder.clearContext();
         mockMvc.perform(delete("/auth/v1/providers/google").with(anonymous()))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -61,7 +60,7 @@ class AccountLinkControllerAuthIT {
         Mockito.when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
         mockMvc.perform(delete("/auth/v1/providers/google").with(authentication(auth)))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -76,7 +75,7 @@ class AccountLinkControllerAuthIT {
         Mockito.when(userRepository.findById(1L)).thenReturn(Optional.of(new User()));
 
         mockMvc.perform(delete("/auth/v1/providers/google").with(authentication(auth)))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @TestConfiguration

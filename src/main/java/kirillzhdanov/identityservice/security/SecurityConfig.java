@@ -2,9 +2,9 @@ package kirillzhdanov.identityservice.security;
 
 import kirillzhdanov.identityservice.googleOAuth2.CustomOidcUserService;
 import kirillzhdanov.identityservice.tenant.ContextEnforcementFilter;
+import kirillzhdanov.identityservice.tenant.CtxCookieFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -17,8 +17,19 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * Конфигурация безопасности.
+ * <p>
+ * Порядок фильтров:
+ * - {@link kirillzhdanov.identityservice.tenant.CtxCookieFilter} добавляется ДО {@link org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter}
+ * и наполняет request-скоуп контекстом из HttpOnly cookie (brandId, pickupPointId и т.д.).
+ * - JWT-аутентификация также запускается ДО UsernamePasswordAuthenticationFilter.
+ * - {@link kirillzhdanov.identityservice.tenant.ContextEnforcementFilter} запускается ПОСЛЕ UsernamePasswordAuthenticationFilter
+ * и проверяет наличие контекста для защищённых ручек.
+ * <p>
+ * Legacy {@code TenantContextFilter} удалён из цепочки (и из проекта), заголовки X-* больше не используются.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -28,22 +39,17 @@ public class SecurityConfig {
     private final CustomOidcUserService oidcUserService = new CustomOidcUserService();
     private final kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
-    private final Environment environment;
+    private final CtxCookieFilter ctxCookieFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginSuccessHandler successHandler,
                           kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginFailureHandler failureHandler,
-                          Environment environment) {
+                          CtxCookieFilter ctxCookieFilter) {
 
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.oAuth2LoginSuccessHandler = successHandler;
         this.oAuth2LoginFailureHandler = failureHandler;
-        this.environment = environment;
-    }
-
-    @Bean
-    public OncePerRequestFilter tenantContextFilter() {
-        return new kirillzhdanov.identityservice.tenant.TenantContextFilter();
+        this.ctxCookieFilter = ctxCookieFilter;
     }
 
     @Bean
@@ -94,12 +100,13 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, accessDeniedException) -> response.sendError(403))
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // ctx cookie filter must be early to populate request-scoped context
+                .addFilterBefore(ctxCookieFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // Register header-based tenant context filter for all profiles so clients can pass X-Master-Id
-        http.addFilterAfter(tenantContextFilter(), UsernamePasswordAuthenticationFilter.class);
-        // Enforce presence of tenant context for authenticated, protected endpoints
-        http.addFilterAfter(contextEnforcementFilter(), tenantContextFilter().getClass());
+        // Enforce presence of tenant context. Anchor after UsernamePasswordAuthenticationFilter to avoid
+        // referencing a custom filter class without a registered order.
+        http.addFilterAfter(contextEnforcementFilter(), UsernamePasswordAuthenticationFilter.class);
 
         http
                 .oauth2Login(o -> o

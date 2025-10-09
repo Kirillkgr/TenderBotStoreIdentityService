@@ -12,6 +12,7 @@ import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.userbrand.DeliveryAddressRepository;
 import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRepository;
+import kirillzhdanov.identityservice.testutil.CtxTestCookies;
 import kirillzhdanov.identityservice.testutil.MembershipFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -69,12 +70,11 @@ class ProfileAddressAclIntegrationTest extends IntegrationTestBase {
 
     @Test
     void without_membership_get_empty_and_post_delete_forbidden() throws Exception {
+        Cookie ctx = CtxTestCookies.createCtx(master.getId(), brand.getId(), null, "change-me");
         // GET -> 200 empty
         mvc.perform(get("/profile/v1/addresses")
-                        .cookie(login)
-                        .header("Authorization", "Bearer " + login.getValue())
-                        .header("X-Brand-Id", brand.getId())
-                        .header("X-Master-Id", master.getId()))
+                        .cookie(login, ctx)
+                        .header("Authorization", "Bearer " + login.getValue()))
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
 
@@ -86,20 +86,16 @@ class ProfileAddressAclIntegrationTest extends IntegrationTestBase {
                 "\"postcode\":\"101000\"" +
                 "}";
         mvc.perform(post("/profile/v1/addresses")
-                        .cookie(login)
+                        .cookie(login, ctx)
                         .header("Authorization", "Bearer " + login.getValue())
-                        .header("X-Brand-Id", brand.getId())
-                        .header("X-Master-Id", master.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isForbidden());
 
         // DELETE any -> 403
         mvc.perform(delete("/profile/v1/addresses/{id}", 123L)
-                        .cookie(login)
-                        .header("Authorization", "Bearer " + login.getValue())
-                        .header("X-Brand-Id", brand.getId())
-                        .header("X-Master-Id", master.getId()))
+                        .cookie(login, ctx)
+                        .header("Authorization", "Bearer " + login.getValue()))
                 .andExpect(status().isForbidden());
     }
 
@@ -114,6 +110,7 @@ class ProfileAddressAclIntegrationTest extends IntegrationTestBase {
                     .build());
         }
 
+        Cookie ctx = CtxTestCookies.createCtx(master.getId(), brand.getId(), null, "change-me");
         // create -> 200
         String body = "{" +
                 "\"line1\":\"улица 2\"," +
@@ -122,10 +119,8 @@ class ProfileAddressAclIntegrationTest extends IntegrationTestBase {
                 "\"postcode\":\"101000\"" +
                 "}";
         mvc.perform(post("/profile/v1/addresses")
-                        .cookie(login)
+                        .cookie(login, ctx)
                         .header("Authorization", "Bearer " + login.getValue())
-                        .header("X-Brand-Id", brand.getId())
-                        .header("X-Master-Id", master.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
@@ -133,10 +128,8 @@ class ProfileAddressAclIntegrationTest extends IntegrationTestBase {
 
         // list -> 200, at least 1 item
         mvc.perform(get("/profile/v1/addresses")
-                        .cookie(login)
-                        .header("Authorization", "Bearer " + login.getValue())
-                        .header("X-Brand-Id", brand.getId())
-                        .header("X-Master-Id", master.getId()))
+                        .cookie(login, ctx)
+                        .header("Authorization", "Bearer " + login.getValue()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").exists());
 
@@ -155,10 +148,8 @@ class ProfileAddressAclIntegrationTest extends IntegrationTestBase {
 
         // delete own -> 204
         mvc.perform(delete("/profile/v1/addresses/{id}", addressId)
-                        .cookie(login)
-                        .header("Authorization", "Bearer " + login.getValue())
-                        .header("X-Brand-Id", brand.getId())
-                        .header("X-Master-Id", master.getId()))
+                        .cookie(login, ctx)
+                        .header("Authorization", "Bearer " + login.getValue()))
                 .andExpect(status().isNoContent());
 
         // foreign delete -> 403
@@ -170,10 +161,8 @@ class ProfileAddressAclIntegrationTest extends IntegrationTestBase {
             throw new RuntimeException(e);
         }
         mvc.perform(delete("/profile/v1/addresses/{id}", addressId)
-                        .cookie(strangerLogin)
-                        .header("Authorization", "Bearer " + strangerLogin.getValue())
-                        .header("X-Brand-Id", brand.getId())
-                        .header("X-Master-Id", master.getId()))
+                        .cookie(strangerLogin, ctx)
+                        .header("Authorization", "Bearer " + strangerLogin.getValue()))
                 .andExpect(status().isForbidden());
     }
 }

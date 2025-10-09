@@ -46,20 +46,30 @@ class TokenValidationControllerIT {
     JwtAuthenticator jwtAuthenticator;
 
     @Test
-    @DisplayName("POST /token/v1/validate текущая реализация -> 200 без валидации")
+    @DisplayName("POST /token/v1/validate: без заголовка теперь 400, с заголовком ок")
     void validateToken_current_200() throws Exception {
         mockMvc.perform(post("/token/v1/validate"))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest());
+        Mockito.when(jwtUtils.validateTokenSignature("abc")).thenReturn(true);
+        Mockito.when(tokenService.isTokenValid("abc")).thenReturn(true);
+        Mockito.when(jwtUtils.extractUserId("abc")).thenReturn(1L);
+        Mockito.when(userService.getUserDetailsById(1L))
+                .thenReturn(JwtUserDetailsResponse.builder()
+                        .userId(1L)
+                        .username("u")
+                        .brandIds(java.util.List.of())
+                        .roles(java.util.List.of("ROLE_USER"))
+                        .build());
         mockMvc.perform(post("/token/v1/validate")
                         .header("Authorization", "Bearer abc"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("POST /token/v1/validate/details без Authorization -> 403")
+    @DisplayName("POST /token/v1/validate/details без Authorization -> 400")
     void details_no_header_403() throws Exception {
         mockMvc.perform(post("/token/v1/validate/details"))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -69,7 +79,7 @@ class TokenValidationControllerIT {
                 .thenReturn(false);
         mockMvc.perform(post("/token/v1/validate/details")
                         .header("Authorization", "Bearer abc"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -81,7 +91,7 @@ class TokenValidationControllerIT {
                 .thenReturn(false);
         mockMvc.perform(post("/token/v1/validate/details")
                         .header("Authorization", "Bearer abc"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -95,7 +105,7 @@ class TokenValidationControllerIT {
                 .thenReturn(null);
         mockMvc.perform(post("/token/v1/validate/details")
                         .header("Authorization", "Bearer abc"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -111,7 +121,7 @@ class TokenValidationControllerIT {
                 .thenReturn(null);
         mockMvc.perform(post("/token/v1/validate/details")
                         .header("Authorization", "Bearer abc"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 
     @Test

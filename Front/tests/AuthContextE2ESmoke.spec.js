@@ -55,8 +55,9 @@ describe('E2E smoke: context selection and visibility (fully mocked)', () => {
         // Мок адаптера axios: проверим заголовки и вернём бренды под текущим контекстом
         const prev = apiClient.defaults.adapter;
         apiClient.defaults.adapter = async (config) => {
-            // Проверяем заголовки
-            expect(config.headers['X-Membership-Id']).toBe('11');
+            // cookie-based context: больше нет X-* заголовков
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers.Authorization).toBe('Bearer AT_11');
             // Возвращаем «видимые» бренды под A
             return {
                 status: 200,
@@ -74,7 +75,8 @@ describe('E2E smoke: context selection and visibility (fully mocked)', () => {
 
         // Проверим также group-tags под A
         apiClient.defaults.adapter = async (config) => {
-            expect(config.headers['X-Membership-Id']).toBe('11');
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers.Authorization).toBe('Bearer AT_11');
             expect(config.url).toBe('/auth/v1/group-tags');
             return {
                 status: 200,
@@ -90,7 +92,8 @@ describe('E2E smoke: context selection and visibility (fully mocked)', () => {
 
         // И продукты под A
         apiClient.defaults.adapter = async (config) => {
-            expect(config.headers['X-Membership-Id']).toBe('11');
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers.Authorization).toBe('Bearer AT_11');
             expect(config.url).toBe('/auth/v1/products');
             return {
                 status: 200,
@@ -110,7 +113,8 @@ describe('E2E smoke: context selection and visibility (fully mocked)', () => {
 
         // Обновим адаптер и проверим новые заголовки и данные
         apiClient.defaults.adapter = async (config) => {
-            expect(config.headers['X-Membership-Id']).toBe('22');
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers.Authorization).toBe('Bearer AT_22');
             return {
                 status: 200,
                 statusText: 'OK',
@@ -126,7 +130,8 @@ describe('E2E smoke: context selection and visibility (fully mocked)', () => {
 
         // group-tags под B
         apiClient.defaults.adapter = async (config) => {
-            expect(config.headers['X-Membership-Id']).toBe('22');
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers.Authorization).toBe('Bearer AT_22');
             expect(config.url).toBe('/auth/v1/group-tags');
             return {
                 status: 200,
@@ -142,7 +147,8 @@ describe('E2E smoke: context selection and visibility (fully mocked)', () => {
 
         // products под B
         apiClient.defaults.adapter = async (config) => {
-            expect(config.headers['X-Membership-Id']).toBe('22');
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers.Authorization).toBe('Bearer AT_22');
             expect(config.url).toBe('/auth/v1/products');
             return {
                 status: 200,

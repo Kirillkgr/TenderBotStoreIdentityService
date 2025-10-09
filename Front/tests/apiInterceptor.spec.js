@@ -8,9 +8,10 @@ describe('api interceptor headers', () => {
         setActivePinia(createPinia());
     });
 
-    it('adds Authorization and X-Membership-Id (and X-Master-Id in dev)', async () => {
+    it('adds Authorization header and uses withCredentials (no legacy X-* headers)', async () => {
         const store = useAuthStore();
         store.setAccessToken('AT');
+        // legacy fields no longer used for headers
         store.membershipId = 10;
         store.masterId = 100;
 
@@ -18,10 +19,11 @@ describe('api interceptor headers', () => {
         const prevAdapter = apiClient.defaults.adapter;
         apiClient.defaults.adapter = async (config) => {
             expect(config.headers.Authorization).toBe('Bearer AT');
-            expect(config.headers['X-Membership-Id']).toBe('10');
-            if (import.meta.env.DEV) {
-                expect(config.headers['X-Master-Id']).toBe('100');
-            }
+            // cookie-based context: no legacy X-* headers
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers['X-Master-Id']).toBeUndefined();
+            // cookies are used, ensure axios sends them
+            expect(config.withCredentials).toBe(true);
             return {
                 status: 200,
                 statusText: 'OK',

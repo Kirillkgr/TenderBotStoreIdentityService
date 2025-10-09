@@ -1,6 +1,7 @@
 package kirillzhdanov.identityservice.controller.checkout;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import kirillzhdanov.identityservice.model.User;
@@ -10,6 +11,7 @@ import kirillzhdanov.identityservice.model.order.OrderStatus;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.order.OrderRepository;
 import kirillzhdanov.identityservice.service.CheckoutService;
+import kirillzhdanov.identityservice.tenant.ContextAccess;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Контроллер оформления заказа из корзины.
+ * <p>
+ * Простой алгоритм:
+ * 1) Определяем текущего пользователя.
+ * 2) Читаем режим доставки: самовывоз (PICKUP) или доставка (DELIVERY).
+ * 3) Читаем идентификатор корзины из HttpOnly cookie "cart_token".
+ * 4) Определяем точку самовывоза: либо из тела запроса, либо из cookie‑контекста (ContextAccess).
+ * 5) Создаём заказ и возвращаем его данные.
+ */
 @RestController
 @RequestMapping("/checkout")
 @RequiredArgsConstructor
@@ -32,6 +44,14 @@ public class CheckoutController {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
 
+    /**
+     * Оформляет заказ на основании текущей корзины.
+     * <p>
+     * Пояснения:
+     * - Корзина идентифицируется HttpOnly cookie "cart_token" (браузер отправляет автоматически).
+     * - Для режима PICKUP точка самовывоза обязательна: можно передать в теле запроса или выбрать заранее
+     * через установку контекста (см. /auth/v1/context), тогда берём из cookie‑контекста.
+     */
     @PostMapping
     @Operation(summary = "Оформление заказа (из корзины)", description = "Требуется аутентификация. Создаёт заказ из текущей корзины пользователя.")
     public ResponseEntity<?> checkout(@RequestBody CheckoutRequest req, HttpServletRequest request) {
@@ -41,12 +61,26 @@ public class CheckoutController {
         }
         try {
             DeliveryMode mode = DeliveryMode.valueOf(req.getMode());
-            String cartToken = request != null ? request.getHeader("X-Cart-Token") : null;
+            // Read cart_token from HttpOnly cookies (no headers)
+            String cartToken = null;
+            if (request != null && request.getCookies() != null) {
+                for (Cookie c : request.getCookies()) {
+                    if ("cart_token".equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank()) {
+                        cartToken = c.getValue();
+                        break;
+                    }
+                }
+            }
+            // Determine pickup point: explicit in body or from cookie-based context
+            Long pickupId = req.getPickupPointId() != null ? req.getPickupPointId() : ContextAccess.getPickupPointIdOrNull();
+            if (mode == DeliveryMode.PICKUP && pickupId == null) {
+                return ResponseEntity.badRequest().body(Map.of("code", "PICKUP_POINT_REQUIRED", "message", "Не выбрана точка самовывоза"));
+            }
             Order order = checkoutService.createOrderFromCart(
                     userOpt.get(),
                     mode,
                     req.getAddressId(),
-                    req.getPickupPointId(),
+                    pickupId,
                     req.getComment(),
                     cartToken
             );

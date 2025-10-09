@@ -7,7 +7,7 @@ import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRepository;
 import kirillzhdanov.identityservice.service.MembershipService;
-import kirillzhdanov.identityservice.util.BrandContextHolder;
+import kirillzhdanov.identityservice.tenant.ContextAccess;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +16,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+/**
+ * Сервис работы с членством пользователя в бренде (UserBrandMembership).
+ * <p>
+ * Простая задача: если пользователь впервые попадает в бренд (например, через контекст),
+ * можно автоматически создать для него базовую запись членства, чтобы он видел заказы бренда
+ * и получал уведомления.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,6 +32,11 @@ public class MembershipServiceImpl implements MembershipService {
     private final BrandRepository brandRepository;
     private final UserBrandMembershipRepository membershipRepository;
 
+    /**
+     * Гарантирует, что у пользователя есть запись членства для текущего бренда (из контекста).
+     * Если записи нет — создаёт пустую (без ролей), чтобы пользователь мог взаимодействовать с брендом
+     * (например, видеть свои заказы, получать уведомления).
+     */
     @Override
     public void ensureMembershipForUsernameInCurrentBrand(String username) {
         if (username == null || username.isBlank()) return;
@@ -32,7 +44,7 @@ public class MembershipServiceImpl implements MembershipService {
         if (userOpt.isEmpty()) return;
         User user = userOpt.get();
 
-        Long brandId = BrandContextHolder.get();
+        Long brandId = ContextAccess.getBrandIdOrNull();
         if (brandId == null) {
             var first = brandRepository.findAll(PageRequest.of(0, 1, Sort.by("id").ascending()));
             if (!first.isEmpty()) brandId = first.getContent().get(0).getId();

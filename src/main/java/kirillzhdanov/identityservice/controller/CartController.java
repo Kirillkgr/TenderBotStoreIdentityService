@@ -25,6 +25,15 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.*;
 
+/**
+ * Контроллер корзины.
+ * <p>
+ * Ключевые моменты:
+ * - Для гостя корзина определяется HttpOnly cookie "cart_token" (браузер отправляет автоматически).
+ * - Для авторизованного пользователя корзина хранится по его идентификатору.
+ * - Идентификаторы корзины не возвращаются на фронт (безопасность), вместо этого фронт всегда спрашивает
+ * актуальное состояние через GET.
+ */
 @RestController
 @RequestMapping("/cart")
 @Slf4j
@@ -42,6 +51,10 @@ public class CartController {
         this.brandRepo = brandRepo;
     }
 
+    /**
+     * Возвращает текущее состояние корзины.
+     * Для гостя используется cookie "cart_token" (создаётся автоматически, если ещё нет).
+     */
     @GetMapping
     @Transactional(readOnly = true)
     @Operation(summary = "Текущая корзина", description = "Публично (гость/пользователь). Возвращает корзину по userId или по cart_token (cookie).")
@@ -56,10 +69,6 @@ public class CartController {
                     .orElseGet(() -> cartRepo.findByCartToken(cartToken));
 
             Map<String, Object> body = toCartResponse(items);
-            // Добавим идентификаторы корзины для синхронизации клиента
-            String scopeId = userOpt.map(u -> "user:" + u.getId()).orElse("guest:" + cartToken);
-            body.put("cartToken", userOpt.isPresent() ? null : cartToken);
-            body.put("cartScopeId", scopeId);
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             log.error("/cart GET failed", e);
@@ -70,6 +79,10 @@ public class CartController {
         }
     }
 
+    /**
+     * Добавляет товар в корзину. Если корзина гостевая — создаёт/продлевает cookie "cart_token".
+     * При попытке добавить товар из другого бренда возвращает 409 (конфликт бренда).
+     */
     @PostMapping("/add")
     @Transactional
     @Operation(summary = "Добавить в корзину", description = "Публично (гость/пользователь). Создаёт/использует cart_token для гостя. Возвращает обновлённую корзину или 409 при конфликте бренда.")
@@ -89,25 +102,12 @@ public class CartController {
             }
             Product product = productOpt.get();
 
-            // Определим бренд товара (если в сущности нет - попробуем из контекста/заголовка)
+            // Определим бренд товара (если в сущности нет - попробуем из контекста)
             Brand productBrand = product.getBrand();
             if (productBrand == null) {
-                // Попробуем взять brandId из заголовка (X-Brand-Id) или query и найти бренд в БД
-                String header = request.getHeader("X-Brand-Id");
-                Long bId = null;
-                try {
-                    if (header != null && !header.isBlank()) bId = Long.valueOf(header);
-                } catch (Exception ignored) {
-                }
-                if (bId == null) {
-                    try {
-                        String q = request.getParameter("brand");
-                        if (q != null && !q.isBlank()) bId = Long.valueOf(q);
-                    } catch (Exception ignored) {
-                    }
-                }
-                if (bId != null) {
-                    productBrand = brandRepo.findById(bId).orElse(null);
+                Long ctxBrandId = kirillzhdanov.identityservice.tenant.ContextAccess.getBrandIdOrNull();
+                if (ctxBrandId != null) {
+                    productBrand = brandRepo.findById(ctxBrandId).orElse(null);
                 }
             }
 
@@ -151,9 +151,6 @@ public class CartController {
             List<CartItem> updated = userOpt.map(u -> cartRepo.findByUser_Id(u.getId()))
                     .orElseGet(() -> cartRepo.findByCartToken(cartToken));
             Map<String, Object> resp = toCartResponse(updated);
-            String scopeId = userOpt.map(u -> "user:" + u.getId()).orElse("guest:" + cartToken);
-            resp.put("cartToken", userOpt.isPresent() ? null : cartToken);
-            resp.put("cartScopeId", scopeId);
             return ResponseEntity.ok(resp);
         } catch (Exception e) {
             log.error("/cart/add failed", e);
@@ -161,6 +158,10 @@ public class CartController {
         }
     }
 
+    /**
+     * Удаляет конкретную позицию корзины. Разрешено владельцу userId (для авторизованного)
+     * или владельцу соответствующей guest‑корзины (проверка по cart_token).
+     */
     @DeleteMapping("/remove/{id}")
     @Transactional
     @Operation(summary = "Удалить позицию из корзины", description = "Публично (гость/пользователь). Разрешено владельцу userId или владельцу cart_token.")
@@ -192,6 +193,10 @@ public class CartController {
         return ResponseEntity.ok(toCartResponse(updated));
     }
 
+    /**
+     * Меняет количество позиции. При qty <= 0 позиция удаляется.
+     * Правила доступа те же: владелец userId или владелец guest‑корзины.
+     */
     @PatchMapping("/item/{id}")
     @Transactional
     @Operation(summary = "Изменить количество позиции", description = "Публично (гость/пользователь). Разрешено владельцу userId или владельцу cart_token. qty<=0 удаляет позицию.")
@@ -232,6 +237,9 @@ public class CartController {
         return ResponseEntity.ok(toCartResponse(updated));
     }
 
+    /**
+     * Полностью очищает корзину: пользовательскую (по userId) или гостевую (по cart_token).
+     */
     @DeleteMapping("/clear")
     @Operation(summary = "Очистить корзину", description = "Публично (гость/пользователь). Очищает корзину пользователя или гостевую по cart_token.")
     public ResponseEntity<?> clearCart(HttpServletRequest request, HttpServletResponse response) {
@@ -273,14 +281,17 @@ public class CartController {
         }
         if (token == null) {
             token = UUID.randomUUID().toString();
-            ResponseCookie cookie = ResponseCookie.from("cart_token", token)
-                    .path("/")
-                    .httpOnly(false)
-                    .secure(false)
-                    .maxAge(60L * 60L * 24L * 30L) // 30 дней
-                    .build();
-            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         }
+        // Refresh cookie to extend lifetime (sliding expiration)
+        boolean secure = request.isSecure();
+        ResponseCookie cookie = ResponseCookie.from("cart_token", token)
+                .path("/")
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .maxAge(60L * 60L * 24L * 365L) // 365 дней
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return token;
     }
 

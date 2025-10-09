@@ -94,11 +94,11 @@ describe('Context selector in AppHeader.vue', () => {
         // override axios adapter to capture headers
         const prevAdapter = apiClient.defaults.adapter;
         apiClient.defaults.adapter = async (config) => {
-            expect(config.headers['X-Membership-Id']).toBe('2');
-            if (import.meta.env.DEV) {
-                expect(config.headers['X-Master-Id']).toBe('20');
-            }
+            // cookie-based context: no legacy X-* headers, only Authorization
+            expect(config.headers['X-Membership-Id']).toBeUndefined();
+            expect(config.headers['X-Master-Id']).toBeUndefined();
             expect(config.headers.Authorization).toBe('Bearer AT_ctx_2');
+            expect(config.withCredentials).toBe(true);
             return {status: 200, statusText: 'OK', headers: {}, data: {ok: true}, config};
         };
 
