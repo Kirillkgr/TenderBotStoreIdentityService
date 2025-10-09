@@ -188,6 +188,7 @@ import {useProductStore} from '@/store/product';
 import {getBrands} from '@/services/brandService';
 import {useToast} from 'vue-toastification';
 import tagService from '@/services/tagService';
+import {formatLocalDateTime} from '@/utils/datetime';
 
 const toast = useToast();
 const productStore = useProductStore();
@@ -436,7 +437,11 @@ function formatPrice(val) {
   const n = Number(val); return Number.isNaN(n) ? String(val) : n.toFixed(2);
 }
 function formatDate(val) {
-  try { return new Date(val).toLocaleString(); } catch { return String(val || '—'); }
+  try {
+    return formatLocalDateTime(val);
+  } catch {
+    return String(val || '—');
+  }
 }
 
 function safe(obj, key) {

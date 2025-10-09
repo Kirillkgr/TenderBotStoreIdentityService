@@ -1,5 +1,6 @@
 // Shared date/time utilities
-// Treat server UTC timestamps or ISO without timezone as UTC and render in user's local timezone
+// Server returns UTC timestamps (e.g., "2025-10-09T10:00:00Z" or ISO without TZ)
+// We convert them to browser-local time for display.
 
 export function parseServerDate(val) {
     if (!val) return null;
@@ -16,6 +17,21 @@ export function parseServerDate(val) {
     }
 }
 
+// Returns IANA time zone of browser (e.g., "Europe/Kaliningrad")
+export function getLocalTimeZone() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+        return undefined; // fallback to default locale handling
+    }
+}
+
+// Convert server UTC timestamp (string) to a Date object in local time context
+// Usage: const localDate = toLocalDate('2025-10-09T10:00:00Z');
+export function toLocalDate(val) {
+    return parseServerDate(val);
+}
+
 export function formatLocalDateTime(val, opts) {
     const d = parseServerDate(val);
     if (!d) return '';
@@ -23,6 +39,22 @@ export function formatLocalDateTime(val, opts) {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit',
         ...(opts || {})
+    }).format(d);
+}
+
+// Explicit timeZone formatting example:
+// formatUtcToLocal('2025-10-09T10:00:00Z', 'ru-RU', { timeZone: 'Europe/Kaliningrad' })
+export function formatUtcToLocal(val, locale = undefined, options = {}) {
+    const d = parseServerDate(val);
+    if (!d) return '';
+    const tz = options.timeZone || getLocalTimeZone();
+    return new Intl.DateTimeFormat(locale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: tz, ...options
     }).format(d);
 }
 
