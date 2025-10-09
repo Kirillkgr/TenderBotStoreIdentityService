@@ -1,8 +1,10 @@
 site_name: TenderBotStore Identity Service Docs
 site_description: Документация сервиса идентификации и многотенантности TenderBotStore
-site_url:
+site_url: kirillkgr.ru
 repo_url: https://github.com/Kirillkgr/TenderBotStoreIdentityService
 repo_name: TenderBotStoreIdentityService
+
+strict: true
 
 theme:
   name: material
@@ -39,6 +41,8 @@ nav:
       - Auth: services/auth.md
       - Context: services/context.md
       - RBAC: services/rbac.md
+      - RBAC:
+          Матрица доступа: services/rbac-access.md
       - Public Menu: services/menu.md
       - Health: services/health.md
       - Ошибки и коды: services/errors.md
