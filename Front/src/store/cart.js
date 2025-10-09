@@ -7,8 +7,6 @@ export const useCartStore = defineStore('cart', {
         total: 0,
         loading: false,
         currentBrandId: null,
-        cartScopeId: null,
-        cartToken: null,
     }),
 
     actions: {
@@ -18,26 +16,10 @@ export const useCartStore = defineStore('cart', {
             } catch {
             }
         },
-        _persistIds(scopeId, token) {
-            try {
-                if (scopeId !== undefined) localStorage.setItem('cart_scope_id', scopeId || '');
-                if (token !== undefined) localStorage.setItem('cart_token', token || '');
-            } catch {
-            }
-        },
         _hydrateBrand() {
             try {
                 const v = localStorage.getItem('cart_brand_id');
                 if (v && v !== '') this.currentBrandId = Number(v);
-            } catch {
-            }
-        },
-        _hydrateIds() {
-            try {
-                const scope = localStorage.getItem('cart_scope_id');
-                const token = localStorage.getItem('cart_token');
-                this.cartScopeId = scope && scope !== '' ? scope : null;
-                this.cartToken = token && token !== '' ? token : null;
             } catch {
             }
         },
@@ -60,16 +42,10 @@ export const useCartStore = defineStore('cart', {
                     // fallback: гидратация из localStorage
                     if (this.currentBrandId == null) this._hydrateBrand();
                 }
-                // Идентификаторы корзины для стабильности связывания запросов
-                if (typeof data.cartScopeId === 'string') this.cartScopeId = data.cartScopeId || null;
-                if (typeof data.cartToken === 'string' || data.cartToken === null) this.cartToken = data.cartToken || null;
-                this._persistIds(this.cartScopeId, this.cartToken);
             } catch (error) {
                 console.error('Ошибка при загрузке корзины:', error);
                 this.items = [];
                 this.total = 0;
-                // при ошибке попробуем гидратнуть ids, чтобы хотя бы заголовки уходили стабильно
-                this._hydrateIds();
             } finally {
                 this.loading = false;
             }
@@ -84,18 +60,6 @@ export const useCartStore = defineStore('cart', {
             } catch (error) {
                 const status = error?.response?.status;
                 const code = error?.response?.data?.code;
-                // Если несоответствие идентификаторов корзины — обновим id и попробуем ещё раз один раз
-                if (status === 409 && code === 'CART_ID_MISMATCH') {
-                    try {
-                        await this.fetchCart();
-                        const res2 = await cartService.addToCart(productId, quantity);
-                        await this.fetchCart();
-                        return {retried: true};
-                    } catch (e2) {
-                        console.warn('Повтор после CART_ID_MISMATCH не удался', e2);
-                    }
-                    return {conflict: true, reason: 'CART_ID_MISMATCH'};
-                }
                 if (status === 409 && code === 'CART_BRAND_CONFLICT') {
                     // Конфликт бренда: не очищаем автоматически, возвращаем флаг, чтобы UI принял решение
                     return {conflict: true, previousBrandId: error?.response?.data?.previousBrandId ?? null};

@@ -9,7 +9,6 @@ function isLongpollUrl(url = '') {
 
 import axios from 'axios';
 import {useAuthStore} from '../store/auth';
-import {useCartStore} from '../store/cart';
 
 const DEBUG_HTTP = import.meta.env.VITE_DEBUG_HTTP === 'true';
 
@@ -109,16 +108,7 @@ apiClient.interceptors.request.use(
     const authStore = useAuthStore();
     const token = authStore.accessToken;
 
-    // Прокинем идентификаторы корзины для защиты от несоответствий scope
-    try {
-      const cartStore = useCartStore();
-      // если стор ещё не инициализирован — пробуем из localStorage
-      const scopeId = cartStore?.cartScopeId || localStorage.getItem('cart_scope_id');
-      const cartToken = cartStore?.cartToken || localStorage.getItem('cart_token');
-      if (scopeId) config.headers['X-Cart-Id'] = scopeId;
-      if (cartToken) config.headers['X-Cart-Token'] = cartToken;
-    } catch (_) {
-    }
+        // Удалено: идентификаторы корзины больше не передаются заголовками; используем httpOnly cookie cart_token
 
       // Блокируем запросы к ранее помеченным как проблемные эндпоинтам (на 5 минут)
       try {
@@ -142,14 +132,7 @@ apiClient.interceptors.request.use(
 
     const hasBasicHeader = !!config.headers?.Authorization && /^Basic\s/i.test(config.headers.Authorization);
 
-    // Прокидываем идентификатор бренда (если выбран на фронте)
-    try {
-      const currentBrandId = localStorage.getItem('current_brand_id');
-      if (currentBrandId) {
-        config.headers['X-Brand-Id'] = currentBrandId;
-      }
-    } catch (_) {
-    }
+        // Удалено: контекст больше не передаём через X-* заголовки (используем httpOnly cookie ctx)
 
         // Если запрос защищённый, а токена пока нет, но идёт восстановление — коротко подождём
         if (!isPublicAuthEndpoint && !hasBasicHeader && !token && authStore?.isRestoringSession) {
@@ -167,26 +150,7 @@ apiClient.interceptors.request.use(
       if (DEBUG_HTTP) console.warn('Токен авторизации отсутствует (используем HttpOnly cookie, если они установлены)');
     }
 
-      // Прокидываем идентификаторы контекста (membership/master) во все профили
-      try {
-          const membershipId = authStore?.membershipId || null;
-          let masterId = authStore?.masterId || null;
-          // Фолбэк после перезагрузки: прочитаем сохранённый masterId
-          if (!masterId) {
-              try {
-                  const savedMaster = localStorage.getItem('current_master_id');
-                  if (savedMaster) masterId = savedMaster;
-              } catch (_) {
-              }
-          }
-          if (membershipId) {
-              config.headers['X-Membership-Id'] = String(membershipId);
-          }
-          if (masterId) {
-              config.headers['X-Master-Id'] = String(masterId);
-          }
-      } catch (_) {
-      }
+        // Удалено: X-Membership-Id / X-Master-Id не используются
     return config;
   },
   (error) => {

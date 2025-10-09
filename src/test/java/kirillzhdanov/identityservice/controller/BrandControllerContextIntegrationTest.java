@@ -14,6 +14,7 @@ import kirillzhdanov.identityservice.model.master.UserMembership;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
+import kirillzhdanov.identityservice.testutil.CtxTestCookies;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -112,12 +113,12 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
         um1.setRole(RoleMembership.ADMIN);
         Long mem1 = membershipRepo.save(um1).getId();
         Cookie adminCtx = switchContext(authCookie, mem1);
+        Cookie ctxM1 = CtxTestCookies.createCtx(m1.getId(), null, null, "change-me");
 
         // Act: создаём бренд в M1 (требуется OWNER/ADMIN)
         BrandDto dto = BrandDto.builder().name("Brand-A").organizationName("OrgA").build();
         mockMvc.perform(post("/auth/v1/brands")
-                        .cookie(adminCtx)
-                        .header("X-Master-Id", m1.getId())
+                        .cookie(adminCtx, ctxM1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
@@ -125,17 +126,16 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
 
         // Проверяем, что в M1 видим 1 бренд
         MvcResult listM1 = mockMvc.perform(get("/auth/v1/brands")
-                        .cookie(adminCtx)
-                        .header("X-Master-Id", m1.getId()))
+                        .cookie(adminCtx, ctxM1))
                 .andExpect(status().isOk())
                 .andReturn();
         List<?> m1Brands = objectMapper.readValue(listM1.getResponse().getContentAsString(), List.class);
         assertThat(m1Brands).hasSize(1);
 
         // А в M2 список пуст
+        Cookie ctxM2 = CtxTestCookies.createCtx(m2.getId(), null, null, "change-me");
         MvcResult listM2 = mockMvc.perform(get("/auth/v1/brands")
-                        .cookie(adminCtx)
-                        .header("X-Master-Id", m2.getId()))
+                        .cookie(adminCtx, ctxM2))
                 .andExpect(status().isOk())
                 .andReturn();
         List<?> m2Brands = objectMapper.readValue(listM2.getResponse().getContentAsString(), List.class);
@@ -154,10 +154,10 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
         um1.setRole(RoleMembership.ADMIN);
         Long mem1 = membershipRepo.save(um1).getId();
         Cookie adminCtx = switchContext(authCookie, mem1);
+        Cookie ctxM1 = CtxTestCookies.createCtx(m1.getId(), null, null, "change-me");
         BrandDto dto = BrandDto.builder().name("Brand-X").organizationName("OrgX").build();
         MvcResult createdRes = mockMvc.perform(post("/auth/v1/brands")
-                        .cookie(adminCtx)
-                        .header("X-Master-Id", m1.getId())
+                        .cookie(adminCtx, ctxM1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
@@ -166,9 +166,9 @@ public class BrandControllerContextIntegrationTest extends IntegrationTestBase {
 
         // Act: другой мастер
         MasterAccount m2 = masterRepo.save(MasterAccount.builder().name("M2").status("ACTIVE").build());
+        Cookie ctxM2 = CtxTestCookies.createCtx(m2.getId(), null, null, "change-me");
         mockMvc.perform(get("/auth/v1/brands/" + created.getId())
-                        .cookie(adminCtx)
-                        .header("X-Master-Id", m2.getId()))
+                        .cookie(adminCtx, ctxM2))
                 .andExpect(status().is4xxClientError()); // 404 по нашей бизнес-логике
     }
 }

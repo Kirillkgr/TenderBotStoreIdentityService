@@ -102,7 +102,7 @@ class CartControllerWebMvcSmokeTest {
         mockMvc.perform(post("/cart/add")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -113,7 +113,7 @@ class CartControllerWebMvcSmokeTest {
         mockMvc.perform(post("/cart/add")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -121,7 +121,7 @@ class CartControllerWebMvcSmokeTest {
     void remove_notFound_noContent() throws Exception {
         Mockito.when(cartItemRepository.findById(Mockito.anyLong())).thenReturn(Optional.empty());
         mockMvc.perform(delete("/cart/remove/{id}", 999L))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -131,6 +131,6 @@ class CartControllerWebMvcSmokeTest {
         mockMvc.perform(patch("/cart/item/{id}", 999L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"quantity\": 2}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 }

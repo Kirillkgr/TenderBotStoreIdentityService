@@ -15,6 +15,7 @@ import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
 import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRepository;
+import kirillzhdanov.identityservice.tenant.ContextAccess;
 import kirillzhdanov.identityservice.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Сервис управления брендами.
+ * <p>
+ * Задачи:
+ * - Получение списков брендов: по мастеру, публичный список, мои бренды.
+ * - Создание бренда с квотой и автоматическим созданием точки самовывоза и членства владельца.
+ * - Редактирование/удаление бренда в рамках текущего master‑контекста.
+ * - Привязка/отвязка пользователей к бренду (служебные операции).
+ */
 @Service
 @RequiredArgsConstructor
 public class BrandService {
@@ -37,8 +47,12 @@ public class BrandService {
     private final UserBrandMembershipRepository userBrandMembershipRepository;
     private final MasterAccountService masterAccountService;
 
+    /**
+     * Возвращает бренды для текущего master‑аккаунта. Если master ещё не определён,
+     * создаёт/разрешает его для текущего пользователя.
+     */
     public List<BrandDto> getAllBrands() {
-        Long masterId = TenantContext.getMasterId();
+        Long masterId = ContextAccess.getMasterIdOrNull();
         if (masterId == null) {
             masterId = masterAccountService.resolveOrCreateMasterIdForCurrentUser();
         }
@@ -49,8 +63,7 @@ public class BrandService {
     }
 
     /**
-     * Public-facing list of brands without requiring tenant context.
-     * Intended for /menu/v1/brands on the public homepage.
+     * Публичный список всех брендов (без контекста). Используется на публичных страницах меню.
      */
     public List<BrandDto> getAllBrandsPublic() {
         return brandRepository.findAll()
@@ -59,6 +72,11 @@ public class BrandService {
                 .collect(Collectors.toList());
     }
 
+
+    /**
+     * Возвращает бренды, в которых текущий пользователь имеет активное членство (ADMIN или OWNER)
+     * внутри текущего master‑контекста. Без контекста возвращает пустой список.
+     */
     @Transactional(readOnly = true)
     public List<BrandDto> getMyBrands() {
         // Возвращаем только бренды, в которых у пользователя есть членство (ADMIN или OWNER),
@@ -71,7 +89,7 @@ public class BrandService {
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
-        Long masterId = TenantContext.getMasterId();
+        Long masterId = ContextAccess.getMasterIdOrNull();
         if (masterId == null) {
             // Без контекста бренды не возвращаем (новый пользователь увидит пусто, но сможет создать бренд)
             return List.of();
@@ -97,6 +115,14 @@ public class BrandService {
                 .collect(Collectors.toList());
     }
 
+
+    /**
+     * Создаёт бренд в рамках текущего master. Правила:
+     * - Квота: не более 2 брендов на master.
+     * - Уникальность имени внутри master.
+     * - Автоматически создаётся дефолтная активная точка самовывоза.
+     * - Создаётся членство владельца (OWNER) для текущего пользователя.
+     */
     @Transactional
     public BrandDto createBrand(BrandDto brandDto) {
         // 1) Определяем masterId: из TenantContext, либо по текущему пользователю (создаём MasterAccount при необходимости)
@@ -189,9 +215,13 @@ public class BrandService {
         return convertToDto(savedBrand);
     }
 
+
+    /**
+     * Обновляет данные бренда по id в рамках текущего master‑контекста.
+     */
     @Transactional
     public BrandDto updateBrand(Long id, BrandDto brandDto) {
-        Long masterId = TenantContext.getMasterIdOrThrow();
+        Long masterId = ContextAccess.getMasterIdOrThrow();
         Brand brand = brandRepository.findByIdAndMaster_Id(id, masterId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id in current master: " + id));
 
@@ -200,14 +230,22 @@ public class BrandService {
         return convertToDto(updatedBrand);
     }
 
+
+    /**
+     * Удаляет бренд по id в рамках текущего master‑контекста.
+     */
     @Transactional
     public void deleteBrand(Long id) {
-        Long masterId = TenantContext.getMasterIdOrThrow();
+        Long masterId = ContextAccess.getMasterIdOrThrow();
         Brand brand = brandRepository.findByIdAndMaster_Id(id, masterId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id in current master: " + id));
         brandRepository.delete(brand);
     }
 
+
+    /**
+     * Служебная операция: привязать пользователя к бренду (облегчённая ассоциация).
+     */
     @Transactional
     public void assignUserToBrand(Long userId, Long brandId) {
         User user = userRepository.findById(userId)
@@ -221,6 +259,10 @@ public class BrandService {
         userRepository.save(user);
     }
 
+
+    /**
+     * Служебная операция: отвязать пользователя от бренда.
+     */
     @Transactional
     public void removeUserFromBrand(Long userId, Long brandId) {
         User user = userRepository.findById(userId)
@@ -234,6 +276,9 @@ public class BrandService {
         userRepository.save(user);
     }
 
+    /**
+     * Вспомогательная функция: преобразует сущность Brand в DTO для ответов API.
+     */
     private BrandDto convertToDto(Brand brand) {
         return BrandDto.builder()
                 .id(brand.getId())
@@ -242,15 +287,18 @@ public class BrandService {
                 .build();
     }
 
+    /**
+     * Возвращает бренд по id в рамках текущего master‑контекста.
+     */
     public BrandDto getBrandById(Long id) {
-        Long masterId = TenantContext.getMasterIdOrThrow();
+        Long masterId = ContextAccess.getMasterIdOrThrow();
         Brand brand = brandRepository.findByIdAndMaster_Id(id, masterId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id in current master: " + id));
         return convertToDto(brand);
     }
 
     /**
-     * Public fetch by ID without requiring tenant context; used by public menu endpoints.
+     * Публичное получение бренда по id (без контекста) — для публичных меню.
      */
     public BrandDto getBrandByIdPublic(Long id) {
         Brand brand = brandRepository.findById(id)

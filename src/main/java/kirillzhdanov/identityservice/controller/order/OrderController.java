@@ -30,6 +30,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
+/**
+ * Контроллер управления заказами для клиентов и персонала бренда.
+ * <p>
+ * Здесь можно посмотреть свои заказы, увидеть заказы бренда (при наличии прав),
+ * менять статусы (для персонала) и обмениваться сообщениями по заказу.
+ */
 @RestController
 @RequestMapping("/order/v1")
 @RequiredArgsConstructor
@@ -47,6 +53,9 @@ public class OrderController {
         return s == null ? "" : s;
     }
 
+    /**
+     * Возвращает заказы текущего пользователя (клиента), отсортированные по убыванию.
+     */
     @GetMapping("/my")
     @Transactional(readOnly = true)
     @Operation(summary = "Мои заказы", description = "Требуется аутентификация. Возвращает заказы текущего пользователя.")
@@ -97,6 +106,10 @@ public class OrderController {
         return ResponseEntity.ok(dtos);
     }
 
+    /**
+     * Возвращает страницу заказов по тем брендам, где у пользователя есть членство (персонал/админ).
+     * Используется для рабочих экранов персонала бренда.
+     */
     @GetMapping("/orders")
     @Operation(summary = "Доступные заказы (по membership)", description = "Требуется аутентификация. Возвращает заказы по брендам, где у пользователя есть membership.")
     public ResponseEntity<Page<OrderDto>> getAccessibleOrders(Pageable pageable,
@@ -115,6 +128,9 @@ public class OrderController {
         return ResponseEntity.ok(page);
     }
 
+    /**
+     * Возвращает страницу заказов конкретного бренда, если у пользователя есть права (membership) у этого бренда.
+     */
     @GetMapping("/brand/{brandId}/orders")
     @Operation(summary = "Заказы бренда", description = "Требуется аутентификация. Доступ только при наличии membership у бренда; иначе 403.")
     public ResponseEntity<Page<OrderDto>> getBrandOrders(@PathVariable Long brandId,
@@ -130,6 +146,10 @@ public class OrderController {
         return ResponseEntity.ok(page);
     }
 
+    /**
+     * Смена статуса заказа персоналом бренда (при наличии прав).
+     * Список допустимых переходов валидируется сервером.
+     */
     @PatchMapping("/orders/{id}/status")
     @Operation(summary = "Смена статуса заказа", description = "Требуется аутентификация и membership у бренда заказа. Рекомендовано ограничить ролями (CASHIER/COOK/ADMIN/OWNER).")
     public ResponseEntity<Void> updateStatus(@PathVariable Long id,
@@ -159,6 +179,9 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Персонал отправляет сообщение клиенту по заказу.
+     */
     @PostMapping("/orders/{id}/message")
     @Operation(summary = "Сообщение курьера/персонала клиенту", description = "Требуется аутентификация и membership у бренда заказа.")
     public ResponseEntity<Void> sendCourierMessage(@PathVariable Long id,
@@ -189,7 +212,9 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
-    // Клиент пишет администратору/персоналу бренда по заказу
+    /**
+     * Клиент отправляет сообщение персоналу бренда по своему заказу.
+     */
     @PostMapping("/orders/{id}/client-message")
     @Operation(summary = "Сообщение клиента персоналу", description = "Требуется аутентификация. Разрешено только клиенту данного заказа.")
     public ResponseEntity<Void> sendClientMessage(@PathVariable Long id,
@@ -238,6 +263,9 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Клиент оставляет отзыв по заказу после завершения. Повторная отправка запрещена.
+     */
     @PostMapping("/orders/{id}/review")
     @Operation(summary = "Отправить отзыв по заказу", description = "Требуется аутентификация. Разрешено клиенту заказа после статуса COMPLETED. Повторная отправка запрещена.")
     public ResponseEntity<Void> submitReview(@PathVariable Long id,
@@ -273,6 +301,9 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Сообщения по заказу: видны клиенту заказа и персоналу бренда, которому принадлежит заказ.
+     */
     @GetMapping("/orders/{id}/messages")
     @Operation(summary = "Сообщения заказа", description = "Требуется аутентификация. Доступ клиенту заказа и сотрудникам бренда (membership).")
     public ResponseEntity<?> getOrderMessages(@PathVariable Long id,

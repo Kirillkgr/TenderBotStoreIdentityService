@@ -50,7 +50,7 @@ class LongPollControllerNegativeWebMvcTest {
     }
 
     @Test
-    @DisplayName("GET /notifications/longpoll authenticated but service throws -> 200 (slice)")
+    @DisplayName("GET /notifications/longpoll authenticated but service throws -> 204 (slice)")
     @WithMockUser(username = "user1")
     void longpoll_exception_mapped_204() throws Exception {
         var u = new kirillzhdanov.identityservice.model.User();
@@ -67,16 +67,16 @@ class LongPollControllerNegativeWebMvcTest {
     }
 
     @Test
-    @DisplayName("POST /notifications/longpoll/ack unauthenticated -> 200 (slice)")
+    @DisplayName("POST /notifications/longpoll/ack unauthenticated -> 204 (slice)")
     void ack_unauthenticated_returns204() throws Exception {
         mockMvc.perform(post("/notifications/longpoll/ack")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"lastReceivedId\": 10}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @Test
-    @DisplayName("POST /notifications/longpoll/ack authenticated but service throws -> 200 (slice)")
+    @DisplayName("POST /notifications/longpoll/ack authenticated but service throws -> 204 (slice)")
     @WithMockUser(username = "user1")
     void ack_exception_mapped_204() throws Exception {
         var u = new kirillzhdanov.identityservice.model.User();
@@ -88,7 +88,7 @@ class LongPollControllerNegativeWebMvcTest {
         mockMvc.perform(post("/notifications/longpoll/ack")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"lastReceivedId\": 99}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @TestConfiguration

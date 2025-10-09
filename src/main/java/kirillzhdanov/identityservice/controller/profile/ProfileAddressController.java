@@ -8,7 +8,7 @@ import kirillzhdanov.identityservice.model.userbrand.UserBrandMembership;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.userbrand.DeliveryAddressRepository;
 import kirillzhdanov.identityservice.repository.userbrand.UserBrandMembershipRepository;
-import kirillzhdanov.identityservice.util.BrandContextHolder;
+import kirillzhdanov.identityservice.tenant.ContextAccess;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -21,6 +21,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Контроллер адресов доставки в личном кабинете пользователя.
+ * <p>
+ * Адреса хранятся в привязке к членству пользователя в бренде (UserBrandMembership),
+ * чтобы персонал конкретного бренда мог корректно обрабатывать заказы.
+ */
 @RestController
 @RequestMapping("/profile/v1/addresses")
 @RequiredArgsConstructor
@@ -30,6 +36,10 @@ public class ProfileAddressController {
     private final UserBrandMembershipRepository membershipRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Возвращает список адресов доставки текущего пользователя для выбранного бренда (по контексту).
+     * Если контекст бренда не задан — возвращает пустой список.
+     */
     @GetMapping
     public ResponseEntity<List<AddressDto>> list() {
         Optional<UserBrandMembership> mb = resolveCurrentMembership();
@@ -38,6 +48,9 @@ public class ProfileAddressController {
         return ResponseEntity.ok(list.stream().map(this::toDto).collect(Collectors.toList()));
     }
 
+    /**
+     * Создаёт новый адрес доставки для текущего пользователя в контексте выбранного бренда.
+     */
     @PostMapping
     public ResponseEntity<AddressDto> create(@Valid @RequestBody AddressDto dto) {
         Optional<UserBrandMembership> mb = resolveCurrentMembership();
@@ -57,6 +70,9 @@ public class ProfileAddressController {
         return ResponseEntity.ok(toDto(a));
     }
 
+    /**
+     * Помечает адрес как удалённый (soft delete). Доступно только владельцу адреса в рамках текущего контекста.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> softDelete(@PathVariable Long id) {
         Optional<UserBrandMembership> mb = resolveCurrentMembership();
@@ -85,6 +101,9 @@ public class ProfileAddressController {
                 .build();
     }
 
+    /**
+     * Находит членство пользователя (user↔brand) из текущего контекста, чтобы связать адрес с брендом.
+     */
     private Optional<UserBrandMembership> resolveCurrentMembership() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken)
@@ -92,7 +111,7 @@ public class ProfileAddressController {
         String username = auth.getName();
         Optional<User> u = userRepository.findByUsername(username);
         if (u.isEmpty()) return Optional.empty();
-        Long brandId = BrandContextHolder.get();
+        Long brandId = ContextAccess.getBrandIdOrNull();
         if (brandId == null) return Optional.empty();
         return membershipRepository.findByUser_IdAndBrand_Id(u.get().getId(), brandId);
     }

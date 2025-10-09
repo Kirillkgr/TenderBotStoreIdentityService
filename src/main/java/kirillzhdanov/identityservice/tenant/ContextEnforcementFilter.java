@@ -16,8 +16,11 @@ import java.io.IOException;
 import java.util.Set;
 
 /**
- * Enforces presence of tenant context for protected endpoints.
- * Skips public endpoints and the context switch endpoint.
+ * Фильтр-предохранитель: убеждается, что для защищённых запросов установлен контекст (brand/master/pickup).
+ *
+ * Простыми словами: если пользователь авторизован и обращается к закрытой части API,
+ * у запроса должен быть "рабочий контекст" (каким брендом и точкой он сейчас пользуется).
+ * Публичные пути пропускаются без проверки.
  */
 public class ContextEnforcementFilter extends OncePerRequestFilter {
 
@@ -30,6 +33,7 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
             "/auth/v1/refresh",
             "/auth/v1/checkUsername",
             "/auth/v1/memberships",
+            "/auth/v1/context",
             "/auth/v1/context/switch",
             "/auth/v1/revoke",
             "/auth/v1/revoke-all",
@@ -56,6 +60,11 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
             "/status"
     );
 
+    /**
+     * Определяет, является ли запрос публичным (не требует контекста).
+     * Возвращает true для OPTIONS (CORS), публичных страниц меню/корзины,
+     * документации и ряда auth-ручек.
+     */
     private boolean isPublic(HttpServletRequest request) {
         String uri = request.getRequestURI();
         if (HttpMethod.OPTIONS.matches(request.getMethod())) return true;
@@ -74,18 +83,21 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
+        // Если путь публичный — пропускаем без проверок
         if (isPublic(request)) {
             filterChain.doFilter(request, response);
             return;
         }
-        // Enforce only for authenticated requests
+        // Проверку контекста выполняем только для авторизованных запросов
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean authenticated = auth != null && auth.isAuthenticated();
         if (authenticated) {
-            // Require context for authenticated, protected requests; if not set -> 403
-            if (TenantContext.getMasterId() == null) {
+            // Требуем наличие контекста: либо legacy (на время миграции), либо cookie-контекст
+            boolean hasLegacy = TenantContext.getMasterId() != null;
+            boolean hasCookieCtx = ContextResolver.current() != null && ContextResolver.current().masterId() != null;
+            if (!hasLegacy && !hasCookieCtx) {
                 String user = (auth != null ? auth.getName() : "<anonymous>");
-                log.warn("ContextEnforcement: missing X-Master-Id for {} {} (user={}) -> 403", request.getMethod(), request.getRequestURI(), user);
+                log.warn("ContextEnforcement: missing tenant context for {} {} (user={}) -> 403", request.getMethod(), request.getRequestURI(), user);
                 response.sendError(HttpServletResponse.SC_FORBIDDEN);
                 return;
             }

@@ -41,6 +41,28 @@
         </li>
       </ul>
     </div>
+
+    <div class="mt-4">
+      <h5>Context Cookie (ctx)</h5>
+      <div class="mb-2 d-flex gap-2 align-items-end">
+        <div>
+          <label class="form-label">masterId</label>
+          <input v-model.number="ctxMasterId" class="form-control" placeholder="e.g. 1" type="number"/>
+        </div>
+        <div>
+          <label class="form-label">brandId</label>
+          <input v-model.number="ctxBrandId" class="form-control" placeholder="optional" type="number"/>
+        </div>
+        <div>
+          <label class="form-label">pickupPointId</label>
+          <input v-model.number="ctxPickupId" class="form-control" placeholder="optional" type="number"/>
+        </div>
+      </div>
+      <div class="mb-3">
+        <button class="btn btn-secondary me-2" @click="onSetCtx">POST /auth/v1/context</button>
+        <button class="btn btn-secondary" @click="onClearCtx">DELETE /auth/v1/context</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -59,6 +81,9 @@ const error = ref(null);
 const errorDetails = ref(null);
 const responseData = ref(null);
 const requestHistory = ref([]);
+const ctxMasterId = ref();
+const ctxBrandId = ref();
+const ctxPickupId = ref();
 
 const addToHistory = (method, url, status, errorMsg = null) => {
   requestHistory.value.unshift({
