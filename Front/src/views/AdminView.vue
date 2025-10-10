@@ -108,6 +108,12 @@
         >
           ➜ Клиенты
         </router-link>
+        <router-link
+            :to="{ name: 'Warehouses' }"
+            class="admin-action-btn tertiary"
+        >
+          ➜ Склады
+        </router-link>
       </template>
     </div>
 

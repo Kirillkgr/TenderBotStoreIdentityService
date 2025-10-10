@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.31.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1760103309001-1" author="RillG">
+        <createTable tableName="ingredients">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_ingredients"/>
+            </column>
+            <column name="master_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="package_size" type="DECIMAL(18, 6)"/>
+            <column name="notes" type="VARCHAR(1024)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1760103309001-2" author="RillG">
+        <createTable tableName="stock">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_stock"/>
+            </column>
+            <column name="master_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ingredient_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="warehouse_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qty" type="DECIMAL(18, 6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1760103309001-3" author="RillG">
+        <createTable tableName="suppliers">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_suppliers"/>
+            </column>
+            <column name="master_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="phone" type="VARCHAR(64)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="address" type="VARCHAR(512)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1760103309001-4" author="RillG">
+        <createTable tableName="units">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_units"/>
+            </column>
+            <column name="master_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="short_name" type="VARCHAR(64)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1760103309001-5" author="RillG">
+        <createTable tableName="warehouses">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_warehouses"/>
+            </column>
+            <column name="master_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1760103309001-6" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="master_id" baseTableName="ingredients"
+                                 constraintName="FK_INGREDIENTS_ON_MASTER" referencedColumnNames="id"
+                                 referencedTableName="master_account"/>
+    </changeSet>
+    <changeSet id="1760103309001-7" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="unit_id" baseTableName="ingredients"
+                                 constraintName="FK_INGREDIENTS_ON_UNIT" referencedColumnNames="id"
+                                 referencedTableName="units"/>
+    </changeSet>
+    <changeSet id="1760103309001-8" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="ingredient_id" baseTableName="stock"
+                                 constraintName="FK_STOCK_ON_INGREDIENT" referencedColumnNames="id"
+                                 referencedTableName="ingredients"/>
+    </changeSet>
+    <changeSet id="1760103309001-9" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="master_id" baseTableName="stock" constraintName="FK_STOCK_ON_MASTER"
+                                 referencedColumnNames="id" referencedTableName="master_account"/>
+    </changeSet>
+    <changeSet id="1760103309001-10" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="warehouse_id" baseTableName="stock"
+                                 constraintName="FK_STOCK_ON_WAREHOUSE" referencedColumnNames="id"
+                                 referencedTableName="warehouses"/>
+    </changeSet>
+    <changeSet id="1760103309001-11" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="master_id" baseTableName="suppliers"
+                                 constraintName="FK_SUPPLIERS_ON_MASTER" referencedColumnNames="id"
+                                 referencedTableName="master_account"/>
+    </changeSet>
+    <changeSet id="1760103309001-12" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="master_id" baseTableName="units" constraintName="FK_UNITS_ON_MASTER"
+                                 referencedColumnNames="id" referencedTableName="master_account"/>
+    </changeSet>
+    <changeSet id="1760103309001-13" author="RillG">
+        <addForeignKeyConstraint baseColumnNames="master_id" baseTableName="warehouses"
+                                 constraintName="FK_WAREHOUSES_ON_MASTER" referencedColumnNames="id"
+                                 referencedTableName="master_account"/>
+    </changeSet>
+
+</databaseChangeLog>
