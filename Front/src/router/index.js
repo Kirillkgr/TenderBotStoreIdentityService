@@ -15,6 +15,7 @@ import AdminClientsView from '../views/AdminClientsView.vue';
 import TagsView from '../views/TagsView.vue';
 import ProfileEditView from '../views/ProfileEditView.vue';
 import StaffManagementView from '../views/StaffManagementView.vue';
+import WarehousesView from '../views/inventory/WarehousesView.vue';
 import ArchiveProductsView from '../views/ArchiveProductsView.vue';
 import MyOrdersView from '../views/MyOrdersView.vue';
 
@@ -102,6 +103,12 @@ const routes = [
         name: 'StaffManagement',
         meta: { title: 'Управление персоналом', requiresAuth: true, roles: ['ADMIN', 'OWNER'] },
         component: StaffManagementView,
+    },
+    {
+        path: '/admin/inventory/warehouses',
+        name: 'Warehouses',
+        meta: {title: 'Склады', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        component: WarehousesView,
     },
     {
         path: '/brands/:brandId/tags',
