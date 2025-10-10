@@ -114,6 +114,12 @@
         >
           ➜ Склады
         </router-link>
+        <router-link
+            :to="{ name: 'Units' }"
+            class="admin-action-btn tertiary"
+        >
+          ➜ Единицы
+        </router-link>
       </template>
     </div>
 
