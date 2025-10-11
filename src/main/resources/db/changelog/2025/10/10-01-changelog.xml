@@ -124,4 +124,11 @@
                                  referencedTableName="master_account"/>
     </changeSet>
 
+    <!-- Ensure unique warehouse name per master -->
+    <changeSet id="1760103309001-14" author="RillG">
+        <addUniqueConstraint tableName="warehouses"
+                             columnNames="master_id, name"
+                             constraintName="uk_warehouses_master_name"/>
+    </changeSet>
+
 </databaseChangeLog>

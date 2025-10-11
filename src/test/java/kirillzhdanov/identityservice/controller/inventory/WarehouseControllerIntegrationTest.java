@@ -191,4 +191,128 @@ public class WarehouseControllerIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(get("/auth/v1/inventory/warehouses"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("Дубликат имени в рамках одного master -> 409")
+    void create_DuplicateNameSameMaster_409() throws Exception {
+        // Arrange: мастер и ADMIN membership
+        MasterAccount m = masterRepo.save(MasterAccount.builder().name("M").status("ACTIVE").build());
+        Long userId = userRepo.findByUsername(currentUsername).orElseThrow().getId();
+        UserMembership um = new UserMembership();
+        um.setUser(userRepo.findById(userId).orElseThrow());
+        um.setMaster(m);
+        um.setRole(RoleMembership.ADMIN);
+        Long mem = membershipRepo.save(um).getId();
+        Cookie adminCtx = switchContext(authCookie, mem);
+        Cookie ctx = CtxTestCookies.createCtx(m.getId(), null, null, "change-me");
+
+        WarehouseDto dto = new WarehouseDto(null, "WH-DUP");
+        mockMvc.perform(post("/auth/v1/inventory/warehouses")
+                        .cookie(adminCtx, ctx)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated());
+
+        // Try create duplicate (case-insensitive)
+        WarehouseDto dup = new WarehouseDto(null, "wh-dup");
+        mockMvc.perform(post("/auth/v1/inventory/warehouses")
+                        .cookie(adminCtx, ctx)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dup)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("Одинаковое имя в разных мастерах допускается (оба 201)")
+    void create_SameNameDifferentMasters_201Allowed() throws Exception {
+        // Arrange: два мастера и ADMIN membership в каждом
+        MasterAccount m1 = masterRepo.save(MasterAccount.builder().name("M1").status("ACTIVE").build());
+        MasterAccount m2 = masterRepo.save(MasterAccount.builder().name("M2").status("ACTIVE").build());
+        Long userId = userRepo.findByUsername(currentUsername).orElseThrow().getId();
+        // Admin membership for M1
+        UserMembership um1 = new UserMembership();
+        um1.setUser(userRepo.findById(userId).orElseThrow());
+        um1.setMaster(m1);
+        um1.setRole(RoleMembership.ADMIN);
+        Long mem1 = membershipRepo.save(um1).getId();
+        Cookie adminCtxM1 = switchContext(authCookie, mem1);
+        Cookie ctxM1 = CtxTestCookies.createCtx(m1.getId(), null, null, "change-me");
+
+        // Admin membership for M2
+        UserMembership um2 = new UserMembership();
+        um2.setUser(userRepo.findById(userId).orElseThrow());
+        um2.setMaster(m2);
+        um2.setRole(RoleMembership.ADMIN);
+        Long mem2 = membershipRepo.save(um2).getId();
+        Cookie adminCtxM2 = switchContext(authCookie, mem2);
+        Cookie ctxM2 = CtxTestCookies.createCtx(m2.getId(), null, null, "change-me");
+
+        WarehouseDto dto = new WarehouseDto(null, "WH-SAME");
+
+        mockMvc.perform(post("/auth/v1/inventory/warehouses")
+                        .cookie(adminCtxM1, ctxM1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/auth/v1/inventory/warehouses")
+                        .cookie(adminCtxM2, ctxM2)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("RBAC: USER без OWNER/ADMIN получает 403 на POST/PUT/DELETE")
+    void rbac_UserForbiddenOnMutations_403() throws Exception {
+        // Arrange: мастер, ADMIN создаёт склад, затем переключаемся в USER membership
+        MasterAccount m = masterRepo.save(MasterAccount.builder().name("M").status("ACTIVE").build());
+        Long userId = userRepo.findByUsername(currentUsername).orElseThrow().getId();
+        // Admin membership to create initial warehouse
+        UserMembership admin = new UserMembership();
+        admin.setUser(userRepo.findById(userId).orElseThrow());
+        admin.setMaster(m);
+        admin.setRole(RoleMembership.ADMIN);
+        Long memAdmin = membershipRepo.save(admin).getId();
+        Cookie adminCtx = switchContext(authCookie, memAdmin);
+        Cookie ctx = CtxTestCookies.createCtx(m.getId(), null, null, "change-me");
+
+        WarehouseDto dto = new WarehouseDto(null, "WH-RBAC");
+        MvcResult createdRes = mockMvc.perform(post("/auth/v1/inventory/warehouses")
+                        .cookie(adminCtx, ctx)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        WarehouseDto created = objectMapper.readValue(createdRes.getResponse().getContentAsString(), WarehouseDto.class);
+
+        // Create USER membership and switch context
+        UserMembership userMem = new UserMembership();
+        userMem.setUser(userRepo.findById(userId).orElseThrow());
+        userMem.setMaster(m);
+        userMem.setRole(RoleMembership.CLIENT);
+        Long memUser = membershipRepo.save(userMem).getId();
+        Cookie userCtx = switchContext(authCookie, memUser);
+
+        // POST forbidden
+        WarehouseDto createAttempt = new WarehouseDto(null, "WH-RBAC-NEW");
+        mockMvc.perform(post("/auth/v1/inventory/warehouses")
+                        .cookie(userCtx, ctx)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createAttempt)))
+                .andExpect(status().isForbidden());
+
+        // PUT forbidden
+        WarehouseDto upd = new WarehouseDto(created.getId(), "WH-RBAC-UPD");
+        mockMvc.perform(put("/auth/v1/inventory/warehouses/" + created.getId())
+                        .cookie(userCtx, ctx)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(upd)))
+                .andExpect(status().isForbidden());
+
+        // DELETE forbidden
+        mockMvc.perform(delete("/auth/v1/inventory/warehouses/" + created.getId())
+                        .cookie(userCtx, ctx))
+                .andExpect(status().isForbidden());
+    }
 }

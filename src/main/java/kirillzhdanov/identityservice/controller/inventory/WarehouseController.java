@@ -1,6 +1,9 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
+import kirillzhdanov.identityservice.dto.inventory.CreateWarehouseRequest;
+import kirillzhdanov.identityservice.dto.inventory.UpdateWarehouseRequest;
 import kirillzhdanov.identityservice.dto.inventory.WarehouseDto;
 import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.WarehouseService;
@@ -28,15 +31,17 @@ public class WarehouseController {
 
     @PostMapping
     @Operation(summary = "Создать склад", description = "Требуется роль OWNER или ADMIN.")
-    public ResponseEntity<WarehouseDto> create(@RequestBody WarehouseDto dto) {
+    public ResponseEntity<WarehouseDto> create(@Valid @RequestBody CreateWarehouseRequest req) {
         rbacGuard.requireOwnerOrAdmin();
+        WarehouseDto dto = new WarehouseDto(null, req.getName());
         return new ResponseEntity<>(warehouseService.create(dto), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Обновить склад", description = "Требуется роль OWNER или ADMIN. Доступ только к своему master.")
-    public ResponseEntity<WarehouseDto> update(@PathVariable Long id, @RequestBody WarehouseDto dto) {
+    public ResponseEntity<WarehouseDto> update(@PathVariable Long id, @Valid @RequestBody UpdateWarehouseRequest req) {
         rbacGuard.requireOwnerOrAdmin();
+        WarehouseDto dto = new WarehouseDto(id, req.getName());
         return ResponseEntity.ok(warehouseService.update(id, dto));
     }
 
