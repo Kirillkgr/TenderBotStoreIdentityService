@@ -1,6 +1,7 @@
 import {defineStore} from 'pinia';
 import {deleteUnit, getUnits, updateUnit} from '../services/inventory/unitService';
 import {createSupplier, deleteSupplier, getSuppliers, updateSupplier} from '../services/inventory/supplierService';
+import {createWarehouse, deleteWarehouse, getWarehouses, updateWarehouse} from '../services/inventory/warehouseService';
 
 export const useInventoryStore = defineStore('inventory', {
     state: () => ({
@@ -10,6 +11,9 @@ export const useInventoryStore = defineStore('inventory', {
         suppliers: [],
         suppliersLoading: false,
         suppliersError: null,
+        warehouses: [],
+        warehousesLoading: false,
+        warehousesError: null,
     }),
     actions: {
         async fetchUnits() {
@@ -57,6 +61,31 @@ export const useInventoryStore = defineStore('inventory', {
         async deleteSupplier(id) {
             await deleteSupplier(id);
             await this.fetchSuppliers();
+        },
+        async fetchWarehouses() {
+            this.warehousesLoading = true;
+            this.warehousesError = null;
+            try {
+                const {data} = await getWarehouses();
+                this.warehouses = Array.isArray(data) ? data : [];
+            } catch (e) {
+                this.warehousesError = e?.response?.data?.message || e?.message || 'Ошибка загрузки складов';
+                throw e;
+            } finally {
+                this.warehousesLoading = false;
+            }
+        },
+        async createWarehouse(payload) {
+            await createWarehouse(payload);
+            await this.fetchWarehouses();
+        },
+        async updateWarehouse(id, payload) {
+            await updateWarehouse(id, payload);
+            await this.fetchWarehouses();
+        },
+        async deleteWarehouse(id) {
+            await deleteWarehouse(id);
+            await this.fetchWarehouses();
         },
     },
 });

@@ -108,7 +108,7 @@ const routes = [
     {
         path: '/admin/inventory/warehouses',
         name: 'Warehouses',
-        meta: {title: 'Склады', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        meta: {title: 'Склады', requiresAuth: true, roles: ['ADMIN', 'OWNER', 'COOK', 'CASHIER']},
         component: WarehousesView,
     },
     {
