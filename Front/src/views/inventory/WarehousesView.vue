@@ -36,6 +36,7 @@
           <th>Название</th>
           <th style="width: 1%">Действия</th>
         </tr>
+        </thead>
         <tbody>
         <tr v-for="(w, idx) in filtered" :key="w.id">
           <td>{{ idx + 1 }}</td>
