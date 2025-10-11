@@ -3,13 +3,30 @@
     <header class="page-header">
       <h1>Склады</h1>
       <div class="actions">
-        <button class="btn primary" @click="onCreate">Добавить склад</button>
+        <router-link :to="{ name: 'Suppliers' }" class="btn">Поставщики</router-link>
+        <router-link :to="{ name: 'Units' }" class="btn">Единицы</router-link>
         <input v-model="q" placeholder="Поиск по названию" type="text"/>
+        <button class="btn primary" @click="onCreate">Добавить склад</button>
       </div>
     </header>
 
+    <!-- Вкладки складов (выбор активного склада) -->
+    <div v-if="!loading" class="warehouse-tabs">
+      <button
+          v-for="w in items"
+          :key="w.id"
+          :class="['tab', { active: selectedWarehouseId === w.id }]"
+          :title="w.name"
+          @click="selectedWarehouseId = w.id"
+      >
+        {{ w.name }}
+      </button>
+      <span v-if="items.length === 0" class="muted">Складов пока нет</span>
+    </div>
+
     <div v-if="loading" class="loading">Загрузка…</div>
-    <div v-else>
+    <div v-else class="grid">
+      <!-- Левая колонка: таблица складов -->
       <table class="table">
         <thead>
         <tr>
@@ -32,6 +49,25 @@
         </tr>
         </tbody>
       </table>
+
+      <!-- Правая колонка: шаблон будущего списка ингредиентов по складу -->
+      <section class="warehouse-inventory">
+        <div class="panel">
+          <h3>
+            {{ selectedWarehouse ? `Товары на складе: ${selectedWarehouse.name}` : 'Выберите склад' }}
+          </h3>
+          <p v-if="selectedWarehouse" class="muted">
+            Здесь будет список ингредиентов для выбранного склада (BL3-08). Будут фильтры, поиск и операции перемещения.
+          </p>
+          <p v-else class="muted">
+            Выберите склад во вкладках сверху, чтобы увидеть товары.
+          </p>
+          <div class="pill-actions">
+            <router-link :to="{ name: 'Suppliers' }" class="btn pill">➜ Поставщики</router-link>
+            <router-link :to="{ name: 'Units' }" class="btn pill">➜ Единицы измерения</router-link>
+          </div>
+        </div>
+      </section>
     </div>
 
     <WarehouseForm
@@ -57,6 +93,7 @@ const items = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const q = ref('');
+const selectedWarehouseId = ref(null);
 
 const showForm = ref(false);
 const editing = ref(null);
@@ -67,12 +104,20 @@ const filtered = computed(() => {
   return items.value.filter(x => x.name.toLowerCase().includes(query));
 });
 
+const selectedWarehouse = computed(() =>
+    (items.value || []).find(w => w.id === selectedWarehouseId.value) || null
+);
+
 async function load() {
   loading.value = true;
   error.value = null;
   try {
     const {data} = await getWarehouses();
     items.value = Array.isArray(data) ? data : [];
+    // Выбираем первый склад по умолчанию для предпросмотра панели
+    if (!selectedWarehouseId.value && items.value.length > 0) {
+      selectedWarehouseId.value = items.value[0].id;
+    }
   } catch (e) {
     error.value = e?.message || 'Ошибка загрузки';
   } finally {
@@ -143,6 +188,39 @@ onMounted(load);
   align-items: center;
 }
 
+.warehouse-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.warehouse-tabs .tab {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.warehouse-tabs .tab.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -165,6 +243,10 @@ onMounted(load);
   border-radius: 6px;
   background: #fff;
   cursor: pointer;
+}
+
+.btn.pill {
+  border-radius: 999px;
 }
 
 .btn.primary {
@@ -192,5 +274,12 @@ input[type="text"] {
   padding: 6px 10px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
+}
+
+.warehouse-inventory .panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
 }
 </style>

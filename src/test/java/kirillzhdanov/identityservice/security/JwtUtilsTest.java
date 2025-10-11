@@ -2,6 +2,7 @@ package kirillzhdanov.identityservice.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import kirillzhdanov.identityservice.model.Brand;
 import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.Token;
@@ -135,8 +136,8 @@ public class JwtUtilsTest {
 
 		// Преобразуем в Set для сравнения содержимого независимо от порядка
 		Set<Long> brandIdSet = new HashSet<>(brandIds);
-		assertTrue(brandIdSet.contains(1));
-		assertTrue(brandIdSet.contains(2));
+		assertTrue(brandIdSet.contains(1L));
+		assertTrue(brandIdSet.contains(2L));
 
 		List<String> roles = jwtUtils.extractRoles(accessToken);
 		assertEquals(2, roles.size());
@@ -152,7 +153,7 @@ public class JwtUtilsTest {
 	void generateRefreshToken_Success() {
 		// Проверка
 		assertNotNull(refreshToken);
-		assertTrue(!refreshToken.isEmpty());
+		assertFalse(refreshToken.isEmpty());
 
 		// Проверяем, что токен содержит правильные данные
 		String username = jwtUtils.extractUsername(refreshToken);
@@ -234,8 +235,8 @@ public class JwtUtilsTest {
 
 		// Преобразуем в Set для сравнения содержимого независимо от порядка
 		Set<Long> brandIdSet = new HashSet<>(brandIds);
-		assertTrue(brandIdSet.contains(1));
-		assertTrue(brandIdSet.contains(2));
+		assertTrue(brandIdSet.contains(1L));
+		assertTrue(brandIdSet.contains(2L));
 	}
 
 	@Test

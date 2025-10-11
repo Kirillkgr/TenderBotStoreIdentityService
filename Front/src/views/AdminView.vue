@@ -120,6 +120,12 @@
         >
           ➜ Единицы
         </router-link>
+        <router-link
+            :to="{ name: 'Suppliers' }"
+            class="admin-action-btn tertiary"
+        >
+          ➜ Поставщики
+        </router-link>
       </template>
     </div>
 
