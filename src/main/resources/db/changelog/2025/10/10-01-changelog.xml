@@ -131,4 +131,11 @@
                              constraintName="uk_warehouses_master_name"/>
     </changeSet>
 
+    <!-- Ensure unique ingredient name per master -->
+    <changeSet id="1760103309001-15" author="RillG">
+        <addUniqueConstraint tableName="ingredients"
+                             columnNames="master_id, name"
+                             constraintName="uk_ingredients_master_name"/>
+    </changeSet>
+
 </databaseChangeLog>
