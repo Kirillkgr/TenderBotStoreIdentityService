@@ -177,7 +177,21 @@ public class JwtUtils {
 
 		return extractClaim(token, claims -> {
 			Object brandIds = claims.get("brandIds");
-			return brandIds != null ? (List<Long>) brandIds : Collections.emptyList();
+			if (brandIds instanceof List<?> list) {
+				List<Long> result = new ArrayList<>(list.size());
+				for (Object item : list) {
+					if (item instanceof Number n) {
+						result.add(n.longValue());
+					} else if (item != null) {
+						try {
+							result.add(Long.parseLong(item.toString()));
+						} catch (NumberFormatException ignored) {
+						}
+					}
+				}
+				return result;
+			}
+			return Collections.emptyList();
 		});
 	}
 

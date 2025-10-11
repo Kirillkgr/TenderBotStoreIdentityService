@@ -17,6 +17,7 @@ import ProfileEditView from '../views/ProfileEditView.vue';
 import StaffManagementView from '../views/StaffManagementView.vue';
 import WarehousesView from '../views/inventory/WarehousesView.vue';
 import UnitsView from '../views/inventory/UnitsView.vue';
+import SuppliersView from '../views/inventory/SuppliersView.vue';
 import ArchiveProductsView from '../views/ArchiveProductsView.vue';
 import MyOrdersView from '../views/MyOrdersView.vue';
 
@@ -117,10 +118,18 @@ const routes = [
         component: UnitsView,
     },
     {
+        path: '/admin/inventory/suppliers',
+        name: 'Suppliers',
+        meta: {title: 'Поставщики', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        component: SuppliersView,
+    },
+    {
         path: '/brands/:brandId/tags',
         name: 'BrandTags',
         meta: {title: 'Управление тегами', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
         component: TagsView,
+    },
+    {
         path: '/kitchen',
         name: 'Kitchen',
         meta: {title: 'Кухня', requiresAuth: true, roles: ['COOK']},
