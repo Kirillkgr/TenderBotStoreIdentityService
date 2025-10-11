@@ -6,7 +6,9 @@
         <router-link :to="{ name: 'Suppliers' }" class="btn">Поставщики</router-link>
         <router-link :to="{ name: 'Units' }" class="btn">Единицы</router-link>
         <input v-model="q" placeholder="Поиск по названию" type="text"/>
-        <button class="btn primary" @click="onCreate">Добавить склад</button>
+        <button v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }" class="btn primary"
+                @click="onCreate">Добавить склад
+        </button>
       </div>
     </header>
 
@@ -40,8 +42,12 @@
           <td>{{ idx + 1 }}</td>
           <td>{{ w.name }}</td>
           <td class="row-actions">
-            <button class="btn" @click="onEdit(w)">✏️</button>
-            <button class="btn danger" @click="onDelete(w)">🗑️</button>
+            <button v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }" class="btn"
+                    @click="onEdit(w)">✏️
+            </button>
+            <button v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }" class="btn danger"
+                    @click="onDelete(w)">🗑️
+            </button>
           </td>
         </tr>
         <tr v-if="filtered.length === 0">
@@ -81,17 +87,13 @@
 
 <script setup>
 import {computed, onMounted, ref} from 'vue';
-import {
-  createWarehouse,
-  deleteWarehouse,
-  getWarehouses,
-  updateWarehouse
-} from '../../services/inventory/warehouseService';
+import {useInventoryStore} from '../../store/inventoryStore';
 import WarehouseForm from '../../components/inventory/WarehouseForm.vue';
 
-const items = ref([]);
-const loading = ref(false);
-const error = ref(null);
+const store = useInventoryStore();
+const items = computed(() => store.warehouses);
+const loading = computed(() => store.warehousesLoading);
+const error = computed(() => store.warehousesError);
 const q = ref('');
 const selectedWarehouseId = ref(null);
 
@@ -109,19 +111,12 @@ const selectedWarehouse = computed(() =>
 );
 
 async function load() {
-  loading.value = true;
-  error.value = null;
   try {
-    const {data} = await getWarehouses();
-    items.value = Array.isArray(data) ? data : [];
-    // Выбираем первый склад по умолчанию для предпросмотра панели
-    if (!selectedWarehouseId.value && items.value.length > 0) {
-      selectedWarehouseId.value = items.value[0].id;
+    await store.fetchWarehouses();
+    if (!selectedWarehouseId.value && store.warehouses.length > 0) {
+      selectedWarehouseId.value = store.warehouses[0].id;
     }
-  } catch (e) {
-    error.value = e?.message || 'Ошибка загрузки';
-  } finally {
-    loading.value = false;
+  } catch (_) {
   }
 }
 
@@ -139,25 +134,23 @@ async function onDelete(w) {
   if (!w?.id) return;
   if (!confirm(`Удалить склад "${w.name}"?`)) return;
   try {
-    await deleteWarehouse(w.id);
-    await load();
+    await store.deleteWarehouse(w.id);
   } catch (e) {
-    alert(e?.response?.data?.message || 'Ошибка удаления');
+    alert(e?.response?.data?.message || error.value || 'Ошибка удаления');
   }
 }
 
 async function onSave(payload) {
   try {
     if (payload.id) {
-      await updateWarehouse(payload.id, {name: payload.name});
+      await store.updateWarehouse(payload.id, {name: payload.name});
     } else {
-      await createWarehouse({name: payload.name});
+      await store.createWarehouse({name: payload.name});
     }
     showForm.value = false;
     editing.value = null;
-    await load();
   } catch (e) {
-    alert(e?.response?.data?.message || 'Ошибка сохранения');
+    alert(e?.response?.data?.message || error.value || 'Ошибка сохранения');
   }
 }
 
