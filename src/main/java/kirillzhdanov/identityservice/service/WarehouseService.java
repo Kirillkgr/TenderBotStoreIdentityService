@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import kirillzhdanov.identityservice.dto.inventory.WarehouseDto;
 import kirillzhdanov.identityservice.exception.BadRequestException;
+import kirillzhdanov.identityservice.exception.ResourceAlreadyExistsException;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.inventory.Warehouse;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
@@ -33,7 +34,7 @@ public class WarehouseService {
         }
         String name = dto.getName().trim();
         if (warehouseRepository.existsByMaster_IdAndNameIgnoreCase(masterId, name)) {
-            throw new BadRequestException("Warehouse with this name already exists");
+            throw new ResourceAlreadyExistsException("Warehouse with this name already exists");
         }
         Warehouse saved = warehouseRepository.save(new Warehouse(em.getReference(MasterAccount.class, masterId), name));
         return toDto(saved);
@@ -49,7 +50,7 @@ public class WarehouseService {
         }
         String name = dto.getName().trim();
         if (!name.equalsIgnoreCase(w.getName()) && warehouseRepository.existsByMaster_IdAndNameIgnoreCase(masterId, name)) {
-            throw new BadRequestException("Warehouse with this name already exists");
+            throw new ResourceAlreadyExistsException("Warehouse with this name already exists");
         }
         w.setName(name);
         Warehouse saved = warehouseRepository.save(w);
