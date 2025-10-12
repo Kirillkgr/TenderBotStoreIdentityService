@@ -15,15 +15,18 @@ Master/Brand/Location и ролям Membership (RBAC). Репозиторий с
 
 ### Документация
 
-- Wiki: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki
+- Wiki (главная): https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki
 - Навигатор (исходники): [docs/index.md](docs/index.md)
-- RBAC (BL‑2): [docs/services/rbac.md](docs/services/rbac.md)
-- Многотенантность/контекст: [docs/architecture/multitenancy.md](docs/architecture/multitenancy.md)
+- RBAC (BL‑2): https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/RBAC
+- Многотенантность/контекст: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Context
+- Инвентарь/склад: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Inventory
+- Поставки и остатки: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Supplies-and-Stock
 
 #### Документация в Wiki (онлайн)
 
 - Главная Wiki: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Home
-- Все внутренние ссылки в Wiki ведут на отрендеренные страницы (без расширения .md).
+- Внутренние ссылки указывают на страницы Wiki (без расширений .md), например:
+  `https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Context`.
 
 ### Документация API (Swagger/OpenAPI)
 
@@ -148,7 +151,7 @@ Frontend-поток:
 
 ## Многотенантность и контекст — кратко (DoD 1.8)
 
-Ниже — самое важное для понимания изоляции данных и контекста. Полные версии смотрите в docs/.
+Ниже — самое важное для понимания изоляции данных и контекста. Полные версии смотрите в Wiki и в `docs/`.
 
 - ER‑картинка (упрощённо):
     - `MasterAccount` (владелец) → `Brand` → (`GroupTag`/`Product`/`Order`)
@@ -168,7 +171,7 @@ Frontend-поток:
   }
   ```
     - Контекст попадает в токен после `POST /auth/v1/context/switch`.
-    - Подробнее: `docs/architecture/multitenancy.md`.
+  - Подробнее: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Context.
 
 - Заголовки:
     - `Authorization: Bearer <accessToken>` — обязательно для защищённых ручек `/auth/v1/**`.
@@ -178,11 +181,11 @@ Frontend-поток:
 - Миграции (Liquibase):
     - Мастер‑файл: `src/main/resources/db/changelog/db.changelog-master.xml`.
     - Новые файлы кладём по дате и подключаем через `<include/>`.
-    - Best practices и примеры: `docs/backend/migrations.md`.
+  - Best practices и примеры: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Migrations.
 
 - Фронт и контекст:
     - Login → `GET /auth/v1/memberships` → выбор → `POST /auth/v1/context/switch` → новый `accessToken`.
     - E2E smoke тест (полностью мокнутый): `Front/tests/AuthContextE2ESmoke.spec.js`.
-    - Подробнее: `docs/frontend/context.md`.
+  - Подробнее: https://github.com/Kirillkgr/TenderBotStoreIdentityService/wiki/Frontend-Context.
 
 Если вы новичок, начните с `docs/index.md` — там есть короткий путеводитель.

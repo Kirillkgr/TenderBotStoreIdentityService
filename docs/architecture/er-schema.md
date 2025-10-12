@@ -87,6 +87,16 @@ erDiagram
     brands ||--o{ product_archive : archived
     brands ||--o{ group_tag_archive : archived
 
+    %% ===== Inventory (new) =====
+    master_account ||--o{ warehouses : owns
+    warehouses ||--o{ stock : holds
+    master_account ||--o{ units : measures
+    master_account ||--o{ ingredients : has
+    master_account ||--o{ packagings : packs
+    master_account ||--o{ supplies : receives
+    supplies ||--o{ supply_items : contains
+    ingredients ||--o{ stock : aggregated
+
     users ||--o{ user_membership : has
     users ||--o{ orders : places
     users ||--o{ user_brand_membership : linked
@@ -107,6 +117,64 @@ erDiagram
         varchar status
         timestamp created_at
         timestamp updated_at
+    }
+
+    warehouses {
+        bigint id PK
+        varchar name
+        bigint master_id FK
+    }
+
+    units {
+        bigint id PK
+        varchar name
+        varchar short_name
+        bigint master_id FK
+    }
+
+    ingredients {
+        bigint id PK
+        varchar name
+        bigint unit_id FK
+        bigint master_id FK
+        decimal package_size
+        varchar notes
+    }
+
+    packagings {
+        bigint id PK
+        bigint master_id FK
+        varchar name
+        bigint unit_id FK
+        decimal size
+    }
+
+    supplies {
+        bigint id PK
+        bigint master_id FK
+        bigint warehouse_id FK
+        bigint supplier_id
+        timestamp date
+        varchar notes
+        varchar status
+    }
+
+    supply_items {
+        bigint id PK
+        bigint supply_id FK
+        bigint ingredient_id FK
+        decimal qty
+        date expires_at
+    }
+
+    stock {
+        bigint id PK
+        bigint master_id FK
+        bigint warehouse_id FK
+        bigint ingredient_id FK
+        decimal quantity
+        date earliest_expiry
+        timestamp last_supply_date
     }
 
     brands {
@@ -350,3 +418,10 @@ erDiagram
 - Для защищённых операций требуется заголовок `X-Master-Id` (контекст мастера).
 - Уникальность `(user_id, brand_id)` обеспечивает отсутствие дубликатов членства в бренде.
 - Публичные операции (меню) не требуют контекста и работают по `brand_id` напрямую.
+
+### Примечания по инвентарю
+
+- `stock` хранит агрегированные остатки по `(master, warehouse, ingredient)`.
+- `earliest_expiry` — минимальная дата годности из последних партий; `last_supply_date` — дата последней проведённой
+  поставки.
+- Проведение поставки (`supplies.status = POSTED`) увеличивает `stock.quantity` на сумму позиций.
