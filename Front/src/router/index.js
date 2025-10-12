@@ -18,6 +18,7 @@ import StaffManagementView from '../views/StaffManagementView.vue';
 import WarehousesView from '../views/inventory/WarehousesView.vue';
 import UnitsView from '../views/inventory/UnitsView.vue';
 import SuppliersView from '../views/inventory/SuppliersView.vue';
+import IngredientsView from '../views/inventory/IngredientsView.vue';
 import ArchiveProductsView from '../views/ArchiveProductsView.vue';
 import MyOrdersView from '../views/MyOrdersView.vue';
 
@@ -116,6 +117,12 @@ const routes = [
         name: 'Units',
         meta: {title: 'Единицы измерения', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
         component: UnitsView,
+    },
+    {
+        path: '/admin/inventory/ingredients',
+        name: 'Ingredients',
+        meta: {title: 'Ингредиенты', requiresAuth: true, roles: ['ADMIN', 'OWNER', 'COOK', 'CASHIER']},
+        component: IngredientsView,
     },
     {
         path: '/admin/inventory/suppliers',
