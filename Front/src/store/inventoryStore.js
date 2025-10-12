@@ -2,6 +2,14 @@ import {defineStore} from 'pinia';
 import {deleteUnit, getUnits, updateUnit} from '../services/inventory/unitService';
 import {createSupplier, deleteSupplier, getSuppliers, updateSupplier} from '../services/inventory/supplierService';
 import {createWarehouse, deleteWarehouse, getWarehouses, updateWarehouse} from '../services/inventory/warehouseService';
+import {
+    createIngredient,
+    deleteIngredient,
+    getIngredients,
+    updateIngredient
+} from '../services/inventory/ingredientService';
+import {getWarehouseStock} from '../services/inventory/stockService';
+import {createPackaging, deletePackaging, getPackagings, updatePackaging} from '../services/inventory/packagingService';
 
 export const useInventoryStore = defineStore('inventory', {
     state: () => ({
@@ -14,6 +22,15 @@ export const useInventoryStore = defineStore('inventory', {
         warehouses: [],
         warehousesLoading: false,
         warehousesError: null,
+        ingredients: [],
+        ingredientsLoading: false,
+        ingredientsError: null,
+        packagings: [],
+        packagingsLoading: false,
+        packagingsError: null,
+        warehouseStock: [],
+        warehouseStockLoading: false,
+        warehouseStockError: null,
     }),
     actions: {
         async fetchUnits() {
@@ -86,6 +103,88 @@ export const useInventoryStore = defineStore('inventory', {
         async deleteWarehouse(id) {
             await deleteWarehouse(id);
             await this.fetchWarehouses();
+        },
+
+        // Ingredients
+        async fetchIngredients() {
+            this.ingredientsLoading = true;
+            this.ingredientsError = null;
+            try {
+                const {data} = await getIngredients();
+                this.ingredients = Array.isArray(data) ? data : [];
+            } catch (e) {
+                this.ingredientsError = e?.response?.data?.message || e?.message || 'Ошибка загрузки ингредиентов';
+                throw e;
+            } finally {
+                this.ingredientsLoading = false;
+            }
+        },
+        async createIngredient(payload) {
+            await createIngredient(payload);
+            await this.fetchIngredients();
+        },
+        async updateIngredient(id, payload) {
+            await updateIngredient(id, payload);
+            await this.fetchIngredients();
+        },
+        async deleteIngredient(id) {
+            await deleteIngredient(id);
+            await this.fetchIngredients();
+        },
+        async createIngredientReturning(payload) {
+            const {data} = await createIngredient(payload);
+            // поддерживаем кэш, но возвращаем объект
+            try {
+                await this.fetchIngredients();
+            } catch (_) {
+            }
+            return data;
+        },
+
+        // Packagings
+        async fetchPackagings() {
+            this.packagingsLoading = true;
+            this.packagingsError = null;
+            try {
+                const {data} = await getPackagings();
+                this.packagings = Array.isArray(data) ? data : [];
+            } catch (e) {
+                this.packagingsError = e?.response?.data?.message || e?.message || 'Ошибка загрузки фасовок';
+                throw e;
+            } finally {
+                this.packagingsLoading = false;
+            }
+        },
+        async createPackaging(payload) {
+            await createPackaging(payload);
+            await this.fetchPackagings();
+        },
+        async updatePackaging(id, payload) {
+            await updatePackaging(id, payload);
+            await this.fetchPackagings();
+        },
+        async deletePackaging(id) {
+            await deletePackaging(id);
+            await this.fetchPackagings();
+        },
+
+        // Warehouse stock
+        async fetchWarehouseStock(warehouseId) {
+            if (!warehouseId) {
+                this.warehouseStock = [];
+                return;
+            }
+            this.warehouseStockLoading = true;
+            this.warehouseStockError = null;
+            try {
+                const {data} = await getWarehouseStock(Number(warehouseId));
+                this.warehouseStock = Array.isArray(data) ? data : [];
+            } catch (e) {
+                this.warehouseStockError = e?.response?.data?.message || e?.message || 'Ошибка загрузки остатков склада';
+                throw e;
+            } finally {
+                this.warehouseStockLoading = false;
+            }
         },
     },
 });

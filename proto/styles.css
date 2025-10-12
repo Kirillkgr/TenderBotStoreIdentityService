@@ -1,0 +1,448 @@
+.root-dark {
+    --bg: #0b0b0d
+}
+
+:root {
+    --bg: #0b0b0d;
+    --surface: #0f1720;
+    --muted: #9ca3af;
+    --primary: #1f6feb;
+    --low: #3a2f12;
+    --expired: #3a1014;
+    --border: #1f2933;
+    --muted-2: #6b7280;
+    --tab-bg: rgba(255, 255, 255, 0.02);
+    --tab-text: #9ca3af;
+    --tab-active-bg: linear-gradient(180deg, #f7e8cf, #f2d8a8);
+    --tab-active-text: #111827;
+}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--bg);
+    color: #e6eef8;
+}
+
+.topbar {
+    background: #0b0b0b;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04)
+}
+
+.topbar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px
+}
+
+.logo {
+    font-weight: 700
+}
+
+.brand-badge {
+    font-size: 12px;
+    color: var(--muted-2);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 6px 8px;
+    border-radius: 8px;
+    margin-left: 10px
+}
+
+.topnav a {
+    color: var(--muted);
+    margin: 0 8px;
+    text-decoration: none;
+    font-size: 14px
+}
+
+.top-actions .user {
+    color: var(--muted);
+    font-size: 13px
+}
+
+.inventory {
+    max-width: 1200px;
+    margin: 24px auto;
+    padding: 18px;
+    border-radius: 8px
+}
+
+.dark-surface {
+    background: transparent
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 20px
+}
+
+.page-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center
+}
+
+.search {
+    background: #0b0b0b;
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: var(--muted)
+}
+
+select, input[type="date"] {
+    background: #0b0b0b;
+    border: 1px solid var(--border);
+    padding: 8px;
+    border-radius: 8px;
+    color: var(--muted)
+}
+
+.btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted)
+}
+
+.btn.primary {
+    background: var(--primary);
+    color: white;
+    border: transparent
+}
+
+.btn.small {
+    padding: 6px 8px;
+    font-size: 13px
+}
+
+.btn.outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.04)
+}
+
+.table-wrap {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 6px
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px
+}
+
+.items-table th, .items-table td {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    font-size: 14px
+}
+
+.items-table thead th {
+    font-weight: 600;
+    background: transparent;
+    color: var(--muted)
+}
+
+.items-table tbody tr {
+    background: transparent
+}
+
+.items-table tbody tr.row {
+    border-top: 1px solid rgba(255, 255, 255, 0.02)
+}
+
+.items-table tbody tr.low-stock {
+    background: rgba(255, 255, 255, 0.02)
+}
+
+.items-table tbody tr.expired {
+    background: linear-gradient(90deg, rgba(255, 72, 66, 0.12), rgba(255, 72, 66, 0.06));
+}
+
+.items-table tbody tr.low-stock {
+    box-shadow: inset 4px 0 0 0 rgba(255, 193, 7, 0.12)
+}
+
+.items-table tbody tr.expired {
+    box-shadow: inset 4px 0 0 0 rgba(255, 72, 66, 0.16)
+}
+
+.muted {
+    color: var(--muted)
+}
+
+.actions {
+    display: flex;
+    gap: 8px
+}
+
+.table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px
+}
+
+.pager {
+    display: flex;
+    gap: 8px;
+    align-items: center
+}
+
+.perpage select {
+    margin-left: 8px;
+    background: #0b0b0b;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px;
+    border-radius: 6px
+}
+
+.legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 18px;
+    color: var(--muted);
+    align-items: center
+}
+
+.chip {
+    display: inline-block;
+    width: 18px;
+    height: 12px;
+    border-radius: 4px;
+    margin-right: 8px
+}
+
+.chip.low {
+    background: #ffd964;
+    border: 1px solid #d9a800
+}
+
+.chip.expired {
+    background: #ff6b6b;
+    border: 1px solid #ff3b3b
+}
+
+/* Light theme overrides */
+body.light {
+    background: #f7fafc;
+    color: #111827
+}
+
+body.light .topbar {
+    background: #ffffff
+}
+
+body.light .topbar-inner {
+    color: #111
+}
+
+body.light .topnav a {
+    color: #374151
+}
+
+body.light .brand-badge {
+    background: #f3f4f6;
+    color: #374151
+}
+
+body.light .inventory {
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06)
+}
+
+body.light .search, body.light select, body.light input[type="date"] {
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    color: #111
+}
+
+body.light .btn {
+    color: #374151;
+    border: 1px solid #e6e6e6
+}
+
+body.light .btn.primary {
+    background: #2563eb;
+    color: #fff
+}
+
+body.light .items-table thead th {
+    color: #374151
+}
+
+body.light .items-table th, .items-table td {
+    border-bottom: 1px solid #eef2f7
+}
+
+body.light .items-table tbody tr.low-stock {
+    background: #fff3cd
+}
+
+body.light .items-table tbody tr.expired {
+    background: #f8d7da
+}
+
+/* Warehouse tabs */
+.warehouse-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 12px 0 0
+}
+
+.warehouse-tab {
+    background: var(--tab-bg);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 8px 14px;
+    border-radius: 10px 10px 0 0; /* rounded top corners like a tab */
+    color: var(--tab-text);
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25) inset;
+    transition: background .15s ease, color .15s ease, transform .06s ease;
+}
+
+.warehouse-tab:not(.active):hover {
+    transform: translateY(-1px)
+}
+
+.warehouse-tab.active {
+    background: var(--tab-active-bg);
+    color: var(--tab-active-text);
+    border-color: rgba(0, 0, 0, 0.2);
+    /* visually connect with the table: remove bottom border and lift slightly */
+    margin-bottom: -1px;
+    box-shadow: none;
+}
+
+body.light .warehouse-tab {
+    background: transparent;
+    border: 1px solid #e6e6e6;
+    color: #374151
+}
+
+body.light .warehouse-tab.active {
+    background: linear-gradient(180deg, #fff3e0, #ffe9c2);
+    color: #111;
+    border-color: #e6c79c;
+    margin-bottom: -1px
+}
+
+/* modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 6, 23, 0.6);
+    z-index: 1200
+}
+
+.modal-dialog {
+    background: var(--surface);
+    padding: 18px;
+    border-radius: 10px;
+    min-width: 320px;
+    max-width: 720px;
+    color: #e6eef8
+}
+
+.modal-large {
+    max-width: 900px
+}
+
+.modal h3 {
+    margin-top: 0
+}
+
+.modal label {
+    display: block;
+    margin: 8px 0
+}
+
+.modal input, .modal textarea {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: transparent;
+    color: inherit
+}
+
+.modal textarea {
+    min-height: 80px
+}
+
+.modal .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px
+}
+
+.warehouse-tabs-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between
+}
+
+.warehouse-tabs-wrap .btn.small {
+    height: 36px;
+    width: 36px;
+    padding: 0;
+    border-radius: 8px
+}
+
+/* grid inside modal */
+.grid-2 {
+    display: grid;
+    grid-template-columns:1fr 1fr;
+    gap: 12px
+}
+
+@media (max-width: 720px) {
+    .grid-2 {
+        grid-template-columns:1fr
+    }
+}
+
+
+@media (max-width: 720px) {
+    .inventory {
+        padding: 12px;
+        margin: 12px
+    }
+
+    .items-table th:nth-child(5), .items-table td:nth-child(5),
+    .items-table th:nth-child(6), .items-table td:nth-child(6) {
+        display: none
+    }
+
+    .topnav {
+        display: none
+    }
+}
+

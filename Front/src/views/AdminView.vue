@@ -115,6 +115,12 @@
           ➜ Склады
         </router-link>
         <router-link
+            :to="{ name: 'Ingredients' }"
+            class="admin-action-btn tertiary"
+        >
+          ➜ Ингредиенты
+        </router-link>
+        <router-link
             :to="{ name: 'Units' }"
             class="admin-action-btn tertiary"
         >

@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import kirillzhdanov.identityservice.dto.inventory.CreateIngredientRequest;
 import kirillzhdanov.identityservice.dto.inventory.IngredientDto;
 import kirillzhdanov.identityservice.dto.inventory.UpdateIngredientRequest;
+import kirillzhdanov.identityservice.dto.inventory.supply.CreateSupplyRequest;
 import kirillzhdanov.identityservice.exception.BadRequestException;
 import kirillzhdanov.identityservice.exception.ResourceAlreadyExistsException;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
@@ -28,6 +29,7 @@ public class IngredientService {
 
     private final IngredientRepository ingredientRepository;
     private final UnitRepository unitRepository;
+    private final SupplyService supplyService;
 
     @PersistenceContext
     private EntityManager em;
@@ -63,6 +65,27 @@ public class IngredientService {
         entity.setNotes(trimOrNull(req.getNotes()));
 
         Ingredient saved = ingredientRepository.save(entity);
+
+        // Variant A: create and post initial supply to produce stock for a warehouse
+        if (req.getInitialQty() != null && req.getWarehouseId() != null) {
+            if (req.getInitialQty().signum() > 0) {
+                CreateSupplyRequest sreq = new CreateSupplyRequest();
+                sreq.setWarehouseId(req.getWarehouseId());
+                sreq.setSupplierId(null);
+                sreq.setDate(java.time.OffsetDateTime.now());
+                sreq.setNotes("Initial stock for ingredient " + saved.getName());
+
+                CreateSupplyRequest.Item item = new CreateSupplyRequest.Item();
+                item.setIngredientId(saved.getId());
+                item.setQty(req.getInitialQty().doubleValue());
+                item.setExpiresAt(null);
+                sreq.setItems(java.util.List.of(item));
+
+                var supply = supplyService.create(sreq);
+                supplyService.post(supply.getId());
+            }
+        }
+
         return toDto(saved);
     }
 

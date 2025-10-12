@@ -22,4 +22,8 @@ public class CreateIngredientRequest {
 
     @Size(max = 1024, message = "Notes must be at most 1024 characters")
     private String notes;
+
+    // Variant A: optional initial stock creation
+    private Long warehouseId; // optional, target warehouse for initialQty
+    private BigDecimal initialQty; // optional, if > 0 then create and post supply
 }
