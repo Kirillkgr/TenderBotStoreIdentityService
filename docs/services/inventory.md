@@ -14,7 +14,7 @@ Inventory: как создать склад/единицу/ингредиент 
 - **Unit** — единица измерения (например, кг, л, шт), общая для ингредиентов и фасовок.
 - **Ingredient** — ингредиент с базовой единицей измерения и опциональной фасовкой/размером упаковки.
 - **Packaging** — тип фасовки (имя, единица, размер), уникален в рамках `master`.
-- См. ER: Wiki → ER-Schema (блок Inventory) или `docs/architecture/er-schema.md`.
+- См. ER: [Wiki → ER‑схема](wiki/er-schema) (блок Inventory) или `docs/architecture/er-schema.md`.
 
 ## Эндпоинты (основные)
 
@@ -65,4 +65,4 @@ RBAC: мутирующие операции доступны ролям OWNER/AD
 - В тестах/локально можно использовать заголовок `X-Master-Id` (dev).
 - Роли OWNER/ADMIN — полные права на инвентарь; COOK/CASHIER — чтение.
 
-См. также: Wiki → Context, Wiki → RBAC.
+См. также: [Wiki → Context](wiki/multitenancy), [Wiki → RBAC](wiki/rbac).
