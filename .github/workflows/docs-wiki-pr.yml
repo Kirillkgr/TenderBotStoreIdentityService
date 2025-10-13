@@ -36,6 +36,19 @@ jobs:
           if command -v sed >/dev/null 2>&1; then
             find wiki -type f -name "*.md" -print0 | xargs -0 sed -i "s/](\([^)#?]*\)\.md)/](\1)/g"
           fi
+
+          # Create root-level slug files to match (wiki/<slug>) links used in repo
+          # Architecture ER schema
+          if [ -f wiki/architecture/er-schema.md ]; then
+            cp wiki/architecture/er-schema.md wiki/er-schema.md
+          fi
+          # Inventory and Supplies pages
+          if [ -f wiki/services/inventory.md ]; then
+            cp wiki/services/inventory.md wiki/inventory.md
+          fi
+          if [ -f wiki/services/supplies-and-stock.md ]; then
+            cp wiki/services/supplies-and-stock.md wiki/supplies-and-stock.md
+          fi
           # Generate wiki-friendly Home.md (links without .md extensions)
           printf '%s\n' \
             '# TenderBotStore — Документация' \
