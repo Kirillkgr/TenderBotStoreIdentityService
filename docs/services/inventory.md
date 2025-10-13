@@ -65,4 +65,4 @@ RBAC: мутирующие операции доступны ролям OWNER/AD
 - В тестах/локально можно использовать заголовок `X-Master-Id` (dev).
 - Роли OWNER/ADMIN — полные права на инвентарь; COOK/CASHIER — чтение.
 
-См. также: [Wiki → Context](wiki/multitenancy), [Wiki → RBAC](wiki/rbac).
+См. также: Wiki → Context, Wiki → RBAC.
