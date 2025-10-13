@@ -65,14 +65,4 @@ RBAC: мутирующие операции доступны ролям OWNER/AD
 - В тестах/локально можно использовать заголовок `X-Master-Id` (dev).
 - Роли OWNER/ADMIN — полные права на инвентарь; COOK/CASHIER — чтение.
 
-См. также: [Wiki → Context](wiki/multitenancy), [Wiki → RBAC](wiki/rbac).
-
-## Ручная корректировка остатков
-
-Для корректировок вне поставок используйте ручки:
-
-- Приход: `POST /auth/v1/inventory/stock/increase`
-- Списание: `POST /auth/v1/inventory/stock/decrease`
-
-Подробно: см.
-раздел [Supplies and Stock → Ручные операции](wiki/supplies-and-stock#ручные-операции-с-остатками-приходсписание).
+См. также: Wiki → Context, Wiki → RBAC.
