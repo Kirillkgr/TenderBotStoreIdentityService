@@ -125,6 +125,7 @@ apiClient.interceptors.request.use(
       }
 
     const url = config.url || '';
+        const isLp = isLongpollUrl(url);
     const isPublicAuthEndpoint = url.startsWith('/auth/v1/login')
       || url.startsWith('/auth/v1/register')
       || url.startsWith('/auth/v1/checkUsername')
@@ -137,7 +138,7 @@ apiClient.interceptors.request.use(
         // Удалено: контекст больше не передаём через X-* заголовки (используем httpOnly cookie ctx)
 
         // Если запрос защищённый, а токена пока нет, но идёт восстановление — коротко подождём
-        if (!isPublicAuthEndpoint && !isPublicMenuEndpoint && !isPublicCartEndpoint && !hasBasicHeader && !token && authStore?.isRestoringSession) {
+        if (!isPublicAuthEndpoint && !isPublicMenuEndpoint && !isPublicCartEndpoint && !isLp && !hasBasicHeader && !token && authStore?.isRestoringSession) {
             try {
                 if (DEBUG_HTTP) console.log('[HTTP] waiting restoreSession before request', url);
                 await new Promise(r => setTimeout(r, 300));
@@ -147,7 +148,7 @@ apiClient.interceptors.request.use(
         const effToken = authStore?.accessToken || token;
         // Явная отсечка: если это защищённый эндпоинт, токена нет и не публичный auth —
         // не шлём запрос на сервер, а просим пользователя авторизоваться
-        if (!isPublicAuthEndpoint && !isPublicMenuEndpoint && !isPublicCartEndpoint && !hasBasicHeader && !effToken) {
+        if (!isPublicAuthEndpoint && !isPublicMenuEndpoint && !isPublicCartEndpoint && !isLp && !hasBasicHeader && !effToken) {
             try {
                 window.dispatchEvent(new Event('open-login-modal'));
             } catch (_) {
@@ -214,6 +215,8 @@ apiClient.interceptors.response.use(
       || url.startsWith('/auth/v1/register')
       || url.startsWith('/auth/v1/checkUsername')
       || url.startsWith('/auth/v1/refresh');
+      const isPublicMenuEndpoint = url.startsWith('/menu/');
+      const isPublicCartEndpoint = url.startsWith('/cart');
 
     const hasBasicHeader = !!originalRequest.headers?.Authorization && /^Basic\s/i.test(originalRequest.headers.Authorization);
 

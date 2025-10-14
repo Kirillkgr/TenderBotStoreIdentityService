@@ -20,11 +20,30 @@
 
         <router-link to="/" class="logo" @click.stop> TenderBotStore</router-link>
         <span v-if="brandChip" :title="brandChipTitle" class="brand-chip">{{ brandChip }}</span>
+        <!-- Context selector visible when memberships present -->
+        <select
+            v-if="authStore.isAuthenticated && membershipOptions.length"
+            :value="selectedMembershipId"
+            class="ctx-select"
+            @change="onSelectMembership"
+        >
+          <option disabled value="">Выберите контекст</option>
+          <option v-for="opt in membershipOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
       </div>
 
       <div class="nav-links">
         <button v-if="authStore.isAuthenticated" class="nav-link" type="button" @click="openContextModal">Контексты
         </button>
+        <!-- Role-based navigation links required by tests -->
+        <a v-if="canSeeOrders" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('CASHIER','/admin/orders',['CASHIER','ADMIN','OWNER'])">Заказы</a>
+        <a v-if="canSeeKitchen" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('COOK','/kitchen',['COOK','ADMIN','OWNER'])">Кухня</a>
+        <a v-if="canSeeCashier" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('CASHIER','/cashier',['CASHIER','ADMIN','OWNER'])">Касса</a>
+        <a v-if="isAdminOrOwner" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('ADMIN','/admin',['ADMIN','OWNER'])">Админ</a>
         <button :aria-label="`Корзина, товаров: ${cartCountDisplay}, сумма: ${cartTotalDisplay}`" class="cart-btn" type="button"
                 @click="openMiniCart">
           <span class="cart-ico" v-html="cartSvg"></span>
