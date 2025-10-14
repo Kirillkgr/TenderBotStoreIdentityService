@@ -1,119 +1,84 @@
 <template>
-  <div class="header-container">
     <nav class="main-nav" :class="{ 'main-nav--hidden': !isHeaderVisible }">
       <div class="logo-wrap">
-        <!-- Вертикальный переключатель темы -->
-        <div class="theme-toggle-vert" @click.stop>
-          <button class="ttv-btn" :class="{active: computedTheme === 'light' && themeMode !== 'auto'}"
-                  @click="setTheme('light')" title="День">☀
-          </button>
-          <button class="ttv-btn" :class="{active: computedTheme === 'dark' && themeMode !== 'auto'}"
-                  @click="setTheme('dark')" title="Ночь">🌙
-          </button>
+        <!-- Burger moved to the left side -->
+        <div :class="{ 'is-active': false }" class="burger" title="Меню" @click="ui.toggleSidebar">
+          <span></span>
+          <span></span>
+          <span></span>
         </div>
 
+        <!-- Single theme toggle button: Auto → Dark → Light → Auto -->
+        <div class="theme-toggle-vert" @click.stop>
+          <button :title="`Тема: ${themeMode}`" class="ttv-btn" @click="cycleTheme">{{ themeIcon }}</button>
+        </div>
+
+        <!-- QR quick button -->
         <button class="qr-btn" @click.stop="openQr" aria-label="Показать QR код" type="button">
-          <!-- data URL to avoid network fetch and keep predictable sizing -->
           <img class="qr-img" :src="qrDataUrl" alt="QR code" width="28" height="28" />
         </button>
+
         <router-link to="/" class="logo" @click.stop> TenderBotStore</router-link>
         <span v-if="brandChip" :title="brandChipTitle" class="brand-chip">{{ brandChip }}</span>
+        <!-- Context selector visible when memberships present -->
+        <select
+            v-if="authStore.isAuthenticated && membershipOptions.length"
+            :value="selectedMembershipId"
+            class="ctx-select"
+            @change="onSelectMembership"
+        >
+          <option disabled value="">Выберите контекст</option>
+          <option v-for="opt in membershipOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
       </div>
 
-      <div class="burger" @click="toggleMenu" :class="{ 'is-active': isMenuOpen }">
-        <span></span>
-        <span></span>
-        <span></span>
+      <div class="nav-links">
+        <button v-if="authStore.isAuthenticated" class="nav-link" type="button" @click="openContextModal">Контексты
+        </button>
+        <!-- Role-based navigation links required by tests -->
+        <a v-if="canSeeOrders" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('CASHIER','/admin/orders',['CASHIER','ADMIN','OWNER'])">Заказы</a>
+        <a v-if="canSeeKitchen" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('COOK','/kitchen',['COOK','ADMIN','OWNER'])">Кухня</a>
+        <a v-if="canSeeCashier" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('CASHIER','/cashier',['CASHIER','ADMIN','OWNER'])">Касса</a>
+        <a v-if="isAdminOrOwner" class="nav-link" href="#"
+           @click.prevent="ensureRoleAndGo('ADMIN','/admin',['ADMIN','OWNER'])">Админ</a>
+        <button :aria-label="`Корзина, товаров: ${cartCountDisplay}, сумма: ${cartTotalDisplay}`" class="cart-btn" type="button"
+                @click="openMiniCart">
+          <span class="cart-ico" v-html="cartSvg"></span>
+          <span v-if="cartCount > 0" :class="{ pulse: badgePulse }" :title="`В корзине: ${cartCountDisplay}`"
+                class="cart-badge">{{ cartCountDisplay }}</span>
+        </button>
       </div>
 
-      <div class="nav-links" :class="{ 'is-active': isMenuOpen }" @click="closeMenu">
-        <router-link v-if="route.name !== 'Home'" to="/">Главная</router-link>
-        <template v-if="authStore.isAuthenticated">
-          <!-- Скрыли ссылки Профиль/Редактировать/Выйти: они доступны в меню аватара -->
-          <router-link
-            v-if="isAdminOrOwner"
-            v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
-            to="/staff"
-            class="nav-link btn-primary"
-          >Управление персоналом</router-link>
-          <button class="nav-link btn-primary" type="button" @click.stop="openMiniCart">
-            Корзина ({{ cartStore.items.length }})
-          </button>
-
-          <button v-if="authStore.isAuthenticated" class="nav-link btn-primary" type="button"
-                  @click.stop="openContextModal">
-            Контекст
-          </button>
-          <!-- Быстрый селектор контекста (Master / Brand / Point) -->
-          <select
-              v-if="authStore.isAuthenticated && (authStore.memberships?.length || 0) > 0"
-              :value="selectedMembershipId"
-              class="ctx-select"
-              @change="onSelectMembership"
-          >
-            <option
-                v-for="opt in membershipOptions"
-                :key="opt.value"
-                :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
-          <!-- Ссылки на специализированные экраны по ролям
-               Видимы если текущие роли или доступные memberships содержат требуемую роль.
-               При клике, если роль не активна в токене — переключаем membership и переходим. -->
-          <a
-              v-if="canSeeKitchen"
-              href="/kitchen"
-              @click.prevent="ensureRoleAndGo('COOK', '/kitchen')"
-          >Кухня</a>
-          <a
-              v-if="canSeeCashier"
-              href="/cashier"
-              @click.prevent="ensureRoleAndGo('CASHIER', '/cashier')"
-          >Касса</a>
-          <a
-              v-if="canSeeOrders"
-              href="/admin/orders"
-              @click.prevent="ensureRoleAndGo('CASHIER', '/admin/orders', ['ADMIN','OWNER','CASHIER'])"
-          >Заказы</a>
-
-          <span v-if="isAdminOrOwner" class="nav-link-wrap">
-            <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin">Админ</router-link>
-            <span v-if="nStore.hasQueued" class="nav-dot" title="Новый заказ"></span>
-          </span>
-        </template>
-        <template v-else>
-          <button @click="openLogin" class="nav-link btn-primary">Войти</button>
-          <button class="nav-link btn-primary" type="button" @click.stop="openMiniCart">
-            Корзина ({{ cartStore.items.length }})
-          </button>
-          <a href="#" @click.prevent="openRegister">Регистрация</a>
-        </template>
-      </div>
-
-      <!-- User avatar on the right side -->
-      <div v-if="authStore.isAuthenticated" class="user-chip-wrap" @mouseenter="chipHover = true"
-           @mouseleave="chipHover = false">
-        <button :title="authStore.user?.username || 'Профиль'" class="user-chip" type="button" @click.stop="goProfile">
+      <!-- User avatar/menu (visible for guests as well) -->
+      <div class="user-chip-wrap" @mouseenter="chipHover = true" @mouseleave="chipHover = false">
+        <button
+            :title="authStore.isAuthenticated ? (authStore.user?.username || 'Профиль') : 'Войти или зарегистрироваться'"
+            class="user-chip" type="button"
+            @click.stop="authStore.isAuthenticated ? goProfile() : (chipHover = !chipHover)">
           <img v-if="authStore.user?.avatarUrl" :src="authStore.user.avatarUrl" alt="avatar" class="user-chip__img"
                height="28" width="28"/>
           <img v-else :src="userIcon" alt="user" class="user-chip__img user-chip__img--placeholder" height="28"
                width="28"/>
-          <span v-if="nStore.hasAnyUnread" :title="`Есть непрочитанные сообщения`" class="unread-dot"></span>
+          <span v-if="authStore.isAuthenticated && (nStore.hasAnyUnread || nStore.hasClientNavDot)"
+                :title="`Есть новые события`" class="unread-dot"></span>
         </button>
         <transition name="fade-scale">
           <div v-if="chipHover" class="user-menu" @mouseenter="chipHover = true" @mouseleave="chipHover = false">
-            <button class="user-menu__item" type="button" @click="goProfile">Профиль</button>
-            <button class="user-menu__item user-menu__item--danger" type="button" @click="handleLogout">Выйти</button>
+            <template v-if="authStore.isAuthenticated">
+              <button class="user-menu__item" type="button" @click="goProfile">Профиль</button>
+              <button class="user-menu__item user-menu__item--danger" type="button" @click="handleLogout">Выйти</button>
+            </template>
+            <template v-else>
+              <button class="user-menu__item" type="button" @click="openLogin">Войти</button>
+              <button class="user-menu__item" type="button" @click="openRegister">Зарегистрироваться</button>
+            </template>
           </div>
         </transition>
       </div>
     </nav>
-    <!-- Spacer to offset fixed header height -->
-    <div class="header-spacer" aria-hidden="true"></div>
-    <div v-if="isMenuOpen" class="nav-overlay" @click="closeMenu"></div>
-    
     <!-- Modal with enlarged QR for easy scanning (teleported to body) -->
     <teleport to="body">
       <transition name="fade-scale">
@@ -129,7 +94,6 @@
 
     <!-- Context select modal -->
     <ContextSelectModal :visible="showContext" @close="showContext=false"/>
-  </div>
 </template>
 
 <script setup>
@@ -140,9 +104,11 @@ import {useNotificationsStore} from '../store/notifications';
 import {useCartStore} from '../store/cart';
 import {getBrandHint} from '../utils/brandHint';
 import ContextSelectModal from './modals/ContextSelectModal.vue';
+import {useUiStore} from '../store/ui';
 
 import qrInline from '../assets/qr-code.svg?raw';
 import userIcon from '../assets/user.svg';
+import cartSvg from '../assets/cart.svg?raw';
 
 const props = defineProps({
   isModalVisible: {
@@ -158,9 +124,12 @@ const nStore = useNotificationsStore();
 const cartStore = useCartStore();
 const router = useRouter();
 const qrInlineRef = ref(qrInline);
+const ui = useUiStore();
 const qrDataUrl = computed(() =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
 );
+const cartSvgRef = ref(cartSvg);
+const badgePulse = ref(false);
 
 function openContextModal() {
   showContext.value = true;
@@ -264,6 +233,14 @@ function setTheme(mode) {
   // Пользователь явно выбирает режим: сохраняем
   themeMode.value = mode; // 'light' | 'dark'
 }
+
+// Cycle order: auto -> dark -> light -> auto
+function cycleTheme() {
+  const next = themeMode.value === 'auto' ? 'dark' : themeMode.value === 'dark' ? 'light' : 'auto';
+  setTheme(next);
+}
+
+const themeIcon = computed(() => themeMode.value === 'auto' ? 'A' : (computedTheme.value === 'dark' ? '🌙' : '☀️'));
 const isMenuOpen = ref(false);
 const showQr = ref(false);
 const showContext = ref(false);
@@ -453,6 +430,12 @@ onMounted(() => {
   } catch (_) {
   }
   applyBrandClass();
+
+  // Инициализируем корзину при загрузке
+  try {
+    cartStore.fetchCart();
+  } catch (_) {
+  }
 });
 
 onBeforeUnmount(() => {
@@ -474,6 +457,48 @@ watch(themeMode, (v) => {
 watch(() => [authStore.membershipId, authStore.brandId], () => {
   applyBrandClass();
 });
+
+// Следим за авторизацией и обновляем корзину
+watch(() => authStore.isAuthenticated, (v) => {
+  if (v) {
+    try {
+      cartStore.fetchCart();
+    } catch (_) {
+    }
+  }
+});
+
+const cartCount = computed(() => {
+  const items = Array.isArray(cartStore.items) ? cartStore.items : [];
+  try {
+    return items.reduce((acc, it) => acc + (Number(it.quantity ?? it.qty ?? 1) || 0), 0) || 0;
+  } catch {
+    return items.length;
+  }
+});
+
+const cartCountDisplay = computed(() => (cartCount.value > 99 ? '99+' : String(cartCount.value)));
+
+watch(cartCount, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    badgePulse.value = true;
+    setTimeout(() => {
+      badgePulse.value = false;
+    }, 160);
+  }
+});
+
+function formatMoney(n) {
+  try {
+    return new Intl.NumberFormat('ru-RU').format(Math.max(0, Number(n) || 0));
+  } catch {
+    return String(n || 0);
+  }
+}
+
+const cartTotalDisplay = computed(() => `${formatMoney(cartStore.total)} ₽`);
+const cartTotalFull = computed(() => `${formatMoney(cartStore.total)} рублей`);
+const cartHasTotal = computed(() => Number(cartStore.total || 0) > 0);
 
 // Lock body scroll when modal is open
 watch(showQr, (open) => {
@@ -642,6 +667,7 @@ watch(showQr, (open) => {
   top: 0;
   left: 0;
   right: 0;
+  --header-height: 60px;
   background: #2c2c2c;
   padding: 0.75rem 1.5rem;
   z-index: 1000;
@@ -650,7 +676,7 @@ watch(showQr, (open) => {
   align-items: center;
   transition: transform 0.3s ease-in-out;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  min-height: 60px; /* стабильная высота шапки */
+  min-height: var(--header-height); /* стабильная высота шапки */
 }
 
 /* Header-specific tweaks for inline QR icon (small size like before) */
@@ -688,12 +714,13 @@ watch(showQr, (open) => {
   align-items: center;
   gap: 0.5rem; /* небольшой отступ между иконкой и названием */
   position: relative;
-  z-index: 2;
+  z-index: 1; /* ниже, чем overlay-элементы справа */
 }
 
 /* User compact avatar next to logo */
 .user-chip-wrap {
   position: relative;
+  z-index: 2; /* выше, чем логотип */
   align-self: center; /* вертикально по центру навбара */
   margin-left: 12px; /* небольшой отступ от ссылок справа */
 }
@@ -823,9 +850,9 @@ watch(showQr, (open) => {
 }
 
 .nav-links {
-  margin-left: auto; /* сдвигаем блок ссылок вправо */
+  margin-left: auto;
   display: flex;
-  align-items: center; /* вертикальное выравнивание */
+  align-items: center;
   gap: 14px;
 }
 
@@ -841,6 +868,87 @@ watch(showQr, (open) => {
   font-size: 1rem;
 }
 
+/* Cart button aligned with avatar size and styling */
+.cart-btn {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.cart-ico {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  color: var(--text);
+  opacity: .85;
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, .5));
+}
+
+.cart-ico :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: currentColor;
+}
+
+.cart-ico :deep(path) {
+  stroke: currentColor;
+  stroke-width: .6;
+}
+
+/* Badge and compact total label */
+.cart-badge {
+  position: absolute;
+  left: -6px;
+  bottom: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  z-index: 2;
+}
+
+/* DNS-like orange badge, always readable */
+.cart-badge {
+  background: #ff9800;
+  color: #fff;
+  border-color: rgba(0, 0, 0, .06);
+}
+
+.cart-btn:hover .cart-badge {
+  filter: brightness(1.05);
+}
+
+.cart-total {
+  position: absolute;
+  top: -14px; /* place above icon without changing layout height */
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  pointer-events: none;
+}
+
+.cart-btn:hover .cart-ico {
+  opacity: 1;
+}
+
 .nav-link:hover {
   opacity: 0.8;
 }
@@ -851,16 +959,138 @@ watch(showQr, (open) => {
   transition: opacity 0.3s ease;
 }
 
-.nav-links a:hover {
-  opacity: 0.8;
+/* Mobile adaptations: iPhone SE (<=360px) */
+@media (max-width: 360px) {
+  .main-nav {
+    padding: 6px 8px;
+    --header-height: 52px;
+  }
+
+  .logo {
+    font-size: 1.25rem;
+  }
+
+  .logo {
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brand-chip {
+    display: none;
+  }
+
+  .nav-links {
+    gap: 8px;
+    position: absolute;
+    right: 44px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    pointer-events: auto;
+  }
+
+  .user-chip-wrap {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 6;
+    pointer-events: auto;
+  }
+
+  .nav-link {
+    display: none;
+  }
+
+  /* hide verbose 'Контексты' on very small screens */
+  .cart-total {
+    top: -12px;
+    font-size: 10px;
+  }
+
+  .header-spacer {
+    height: 52px;
+  }
+}
+
+/* Ultra small: <=320px */
+@media (max-width: 320px) {
+  .main-nav {
+    padding: 4px 6px;
+    --header-height: 50px;
+  }
+
+  .logo {
+    max-width: 43vw;
+  }
+
+  .header-spacer {
+    height: 50px;
+  }
+
+  .cart-total {
+    top: -11px;
+    font-size: 9.5px;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-spacer {
+    height: 50px;
+  }
+}
+
+/* Legacy tiny: <=300px */
+@media (max-width: 300px) {
+  .main-nav {
+    padding: 3px 5px;
+    --header-height: 48px;
+  }
+
+  .logo {
+    font-size: 1.05rem;
+  }
+
+  .logo {
+    max-width: 40vw;
+  }
+
+  .cart-total {
+    top: -10px;
+    font-size: 9px;
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cart-total {
+    display: none;
+  }
+
+  /* ultra-compact: прячем сумму, чтобы не мешала кликам */
+  .nav-links {
+    right: 42px;
+  }
+
+  .user-chip-wrap {
+    right: 6px;
+  }
+
+  .header-spacer {
+    height: 48px;
+  }
 }
 
 .burger {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 6px;
   cursor: pointer;
   padding: 8px;
+  margin-left: 12px;
 }
 
 .burger span {
@@ -883,38 +1113,8 @@ watch(showQr, (open) => {
 }
 
 @media (max-width: 768px) {
-  .nav-links {
-    position: fixed;
-    top: 0;
-    right: -100%;
-    width: 80%;
-    height: 100vh;
-    background: #2c2c2c;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 2rem;
-    padding: 2rem;
-    transition: right 0.3s ease;
-  }
-
-  .nav-links.is-active {
-    right: 0;
-  }
-
   .burger {
     display: flex;
-  }
-
-  /* Анимация бургера в крестик */
-  .burger.is-active span:nth-child(1) {
-    transform: rotate(45deg) translate(5px, 5px);
-  }
-  .burger.is-active span:nth-child(2) {
-    opacity: 0;
-  }
-  .burger.is-active span:nth-child(3) {
-    transform: rotate(-45deg) translate(7px, -6px);
   }
 }
 </style>

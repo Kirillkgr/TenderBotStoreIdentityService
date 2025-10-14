@@ -18,7 +18,9 @@ import StaffManagementView from '../views/StaffManagementView.vue';
 import WarehousesView from '../views/inventory/WarehousesView.vue';
 import UnitsView from '../views/inventory/UnitsView.vue';
 import SuppliersView from '../views/inventory/SuppliersView.vue';
+import SuppliesView from '../views/inventory/SuppliesView.vue';
 import IngredientsView from '../views/inventory/IngredientsView.vue';
+import StockView from '../views/inventory/StockView.vue';
 import ArchiveProductsView from '../views/ArchiveProductsView.vue';
 import MyOrdersView from '../views/MyOrdersView.vue';
 
@@ -123,6 +125,18 @@ const routes = [
         name: 'Ingredients',
         meta: {title: 'Ингредиенты', requiresAuth: true, roles: ['ADMIN', 'OWNER', 'COOK', 'CASHIER']},
         component: IngredientsView,
+    },
+    {
+        path: '/admin/inventory/stock',
+        name: 'Stock',
+        meta: {title: 'Остатки', requiresAuth: true, roles: ['ADMIN', 'OWNER', 'COOK', 'CASHIER']},
+        component: StockView,
+    },
+    {
+        path: '/admin/inventory/supplies',
+        name: 'Supplies',
+        meta: {title: 'Поставки', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        component: SuppliesView,
     },
     {
         path: '/admin/inventory/suppliers',

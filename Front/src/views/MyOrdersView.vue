@@ -111,7 +111,14 @@ function isCompleted(status) {
 
 function openMessage(order) {
   try {
+    // Помечаем чат как активный, чтобы не накапливать непрочитанные во время просмотра
+    nStore.setActive(order?.id);
+    // Сбрасываем счётчик непрочитанных по конкретному заказу
     nStore.clearOrder(order?.id);
+    // Клиент увидел сообщения — убираем nav-dot с аватарки только если больше нет непрочитанных
+    if (!nStore.hasAnyUnread) {
+      nStore.clearClientNavDot();
+    }
   } catch (_) {
   }
   messageModal.value = {visible: true, order};
@@ -119,6 +126,10 @@ function openMessage(order) {
 
 function closeMessage() {
   messageModal.value.visible = false;
+  try {
+    nStore.clearActive();
+  } catch (_) {
+  }
 }
 
 function openReview(order) {
@@ -188,10 +199,12 @@ onMounted(async () => {
   client.start();
   unsubscribe = client.subscribe((evt) => {
     try {
-      if (evt?.type === 'COURIER_MESSAGE' && evt.orderId) {
-        const order = (orderStore.orders || []).find(o => o.id === evt.orderId);
-        if (order && isActive(order.status)) openMessage(order);
-      } else if (evt?.type === 'ORDER_STATUS_CHANGED' && evt.orderId) {
+      const t = String(evt?.type || '').toUpperCase();
+      if (!evt?.orderId) return;
+      if (t.includes('MESSAGE')) {
+        // Входящее сообщение от персонала — отмечаем непрочитанным для клиента
+        if (!nStore.isActive(evt.orderId)) nStore.markUnread(evt.orderId, 1);
+      } else if (t === 'ORDER_STATUS_CHANGED') {
         orderStore.fetchOrders();
       }
     } catch (_) {

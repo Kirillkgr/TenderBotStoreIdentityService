@@ -9,7 +9,7 @@ server:
 
 spring:
   jpa:
-    show-sql: true  # ← переместить сюда
+    show-sql: false
     open-in-view: false
     hibernate:
       ddl-auto: validate

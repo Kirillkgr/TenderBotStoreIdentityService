@@ -8,7 +8,12 @@ import {
     getIngredients,
     updateIngredient
 } from '../services/inventory/ingredientService';
-import {getWarehouseStock} from '../services/inventory/stockService';
+import {
+    getWarehouseStock,
+    listStock,
+    increaseStock as apiIncreaseStock,
+    decreaseStock as apiDecreaseStock
+} from '../services/inventory/stockService';
 import {createPackaging, deletePackaging, getPackagings, updatePackaging} from '../services/inventory/packagingService';
 
 export const useInventoryStore = defineStore('inventory', {
@@ -31,6 +36,11 @@ export const useInventoryStore = defineStore('inventory', {
         warehouseStock: [],
         warehouseStockLoading: false,
         warehouseStockError: null,
+        // BL3-11 generic stock
+        stockRows: [],
+        stockLoading: false,
+        stockError: null,
+        stockFilters: {warehouseId: null, ingredientId: null},
     }),
     actions: {
         async fetchUnits() {
@@ -185,6 +195,31 @@ export const useInventoryStore = defineStore('inventory', {
             } finally {
                 this.warehouseStockLoading = false;
             }
+        },
+
+        // --- BL3-11 generic stock ---
+        async fetchStock(filters = {}) {
+            const {warehouseId = null, ingredientId = null} = filters;
+            this.stockLoading = true;
+            this.stockError = null;
+            this.stockFilters = {warehouseId, ingredientId};
+            try {
+                const {data} = await listStock({warehouseId, ingredientId});
+                this.stockRows = Array.isArray(data) ? data : [];
+            } catch (e) {
+                this.stockError = e?.response?.data?.message || e?.message || 'Ошибка загрузки остатков';
+                throw e;
+            } finally {
+                this.stockLoading = false;
+            }
+        },
+        async increaseStock(payload) {
+            await apiIncreaseStock(payload);
+            await this.fetchStock(this.stockFilters);
+        },
+        async decreaseStock(payload) {
+            await apiDecreaseStock(payload);
+            await this.fetchStock(this.stockFilters);
         },
     },
 });

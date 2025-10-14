@@ -8,6 +8,11 @@ export const useNotificationsStore = defineStore('notifications', {
         activeOrderId: null,
         queuedCount: 0,
         queuedByOrder: {}, // { [orderId]: true }
+        // Дедупликация пользовательских тостов (клиентские подсказки)
+        cartAnonPromptShown: false, // показать "Зарегистрируйтесь, чтобы оформить заказ" только один раз за сессию
+        cartAddedByProduct: {}, // { [productId]: true } — тост "товар добавлен" один раз для каждого товара
+        // nav-dot (красная точка на аватарке клиента)
+        clientNavDot: false,
     }),
     getters: {
         hasUnreadByOrder: (state) => (orderId) => {
@@ -25,6 +30,9 @@ export const useNotificationsStore = defineStore('notifications', {
             const id = Number(orderId);
             return !!id && Number(state.activeOrderId) === id;
         },
+        wasAnonPromptShown: (state) => !!state.cartAnonPromptShown,
+        wasProductAddedToastShown: (state) => (productId) => !!state.cartAddedByProduct?.[Number(productId)],
+        hasClientNavDot: (state) => !!state.clientNavDot,
     },
     actions: {
         markUnread(orderId, inc = 1) {
@@ -80,6 +88,32 @@ export const useNotificationsStore = defineStore('notifications', {
             });
             this.queuedByOrder = map;
             this.queuedCount = Object.keys(map).length;
+        },
+
+        // --- Дедуп тостов корзины ---
+        shouldShowAnonCartPrompt() {
+            if (this.cartAnonPromptShown) return false;
+            this.cartAnonPromptShown = true;
+            return true;
+        },
+        shouldShowAddedProductToast(productId) {
+            const id = Number(productId);
+            if (!id) return false;
+            if (this.cartAddedByProduct?.[id]) return false;
+            this.cartAddedByProduct = {...(this.cartAddedByProduct || {}), [id]: true};
+            return true;
+        },
+        resetCartToasts() {
+            this.cartAnonPromptShown = false;
+            this.cartAddedByProduct = {};
         }
+        ,
+        // --- nav-dot на аватарке клиента ---
+        markClientNavDot() {
+            this.clientNavDot = true;
+        },
+        clearClientNavDot() {
+            this.clientNavDot = false;
+        },
     },
 });

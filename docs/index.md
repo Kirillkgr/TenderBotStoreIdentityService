@@ -19,6 +19,8 @@
 - Frontend → [Контекст на фронте](wiki/frontend-context)
 - Инвентарь → [Склады и ингредиенты](wiki/inventory)
 - Инвентарь → [Поставки и остатки](wiki/supplies-and-stock)
+- Админ → [Клиенты (мастер-область, бренд и дата последнего заказа)](wiki/admin-clients)
+- Frontend → [Страница остатков (Stock)](wiki/frontend-inventory-stock)
 
 ### Сервисы (стабильные)
 

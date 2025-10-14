@@ -172,6 +172,11 @@ async function loadHistory() {
     // После первичной загрузки — очищаем индикатор по этому заказу
     try {
       nStore.clearOrder(props.order?.id);
+      // Если больше нет непрочитанных по другим заказам — убираем точку у аватарки
+      try {
+        if (!nStore.hasAnyUnread) nStore.clearClientNavDot();
+      } catch (_) {
+      }
     } catch (_) {
     }
   } catch (e) {
@@ -266,6 +271,11 @@ onMounted(() => {
       if (e && e.isIntersecting && e.intersectionRatio >= 0.1) {
         try {
           nStore.clearOrder(props.order?.id);
+          // При видимости истории чата почистим nav-dot, если больше нет непрочитанных
+          try {
+            if (!nStore.hasAnyUnread) nStore.clearClientNavDot();
+          } catch (_) {
+          }
         } catch (_) {
         }
       }
@@ -279,6 +289,11 @@ onBeforeUnmount(() => {
   if (typeof unsubscribe === 'function') unsubscribe();
   try {
     nStore.clearActive();
+  } catch (_) {
+  }
+  try {
+    // При закрытии модалки: если непрочитанных не осталось, уберём nav-dot
+    if (!nStore.hasAnyUnread) nStore.clearClientNavDot();
   } catch (_) {
   }
   try {

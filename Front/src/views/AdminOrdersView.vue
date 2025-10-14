@@ -217,11 +217,8 @@ onMounted(() => {
   unsubscribe = client.subscribe((evt) => {
     try {
       if (evt?.type === 'CLIENT_MESSAGE' && evt.orderId) {
-        const order = (orders.value || []).find(o => o.id === evt.orderId);
-        if (order) {
-          // Простая реакция: автооткрываем модалку отправки сообщения
-          openMessage(order);
-        }
+        // Не открываем модалку автоматически, чтобы индикатор успел отобразиться
+        if (!nStore.isActive(evt.orderId)) nStore.markUnread(evt.orderId, 1);
       } else if (evt?.type === 'ORDER_STATUS_CHANGED' && evt.orderId) {
         // Обновим строку заказа или перезагрузим страницу
         const idx = (orders.value || []).findIndex(o => o.id === evt.orderId);

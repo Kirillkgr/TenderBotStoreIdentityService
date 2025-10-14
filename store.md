@@ -1,279 +1,200 @@
-# Warehouse Page: Required API (Spec)
+# Инвентарь (API справочник для прототипа страницы «Остатки»)
 
-This document summarizes the API required by the Warehouse page to render and manage warehouses together with their
-ingredients and related reference data.
+Этот файл агрегирует все ручки по складскому учёту для фронтенд‑дизайна и прототипирования. Основа: аутентификация
+обязательна (tenant в JWT). Чтение доступно любому аутентифицированному пользователю (в т.ч. COOK/CASHIER). Мутации —
+только OWNER/ADMIN.
 
-Notes:
+## Общие замечания
 
-- Warehouses backend is implemented already.
-- Units and Suppliers are implemented on the frontend and have corresponding backend.
-- Stock (ingredient quantities per warehouse) and Supplies (incoming deliveries) are outlined as a proposed contract for
-  the next tasks.
-
-## Auth and RBAC
-
-- All endpoints are under authenticated scope `/auth/v1/...`.
-- Context is scoped by current `masterId` (via cookies/JWT), so all list/search requests return only data for the
-  current master.
-- RBAC:
-    - Read: typically `OWNER`, `ADMIN`, `COOK`, `CASHIER` (where applicable).
-    - Mutations (create/update/delete): `OWNER`, `ADMIN`.
-- Common errors:
-    - 400 Bad Request: validation errors
-    - 401 Unauthorized: no auth
-    - 403 Forbidden: insufficient role
-    - 404 Not Found: resource not found or out of scope
-    - 409 Conflict: unique constraint (e.g., duplicate name per master)
+- **Base path**: `/auth/v1/inventory`
+- **RBAC**:
+  - Чтение: AUTH (OWNER/ADMIN/COOK/CASHIER)
+  - Мутации: OWNER/ADMIN
+- **Типовые ошибки**: 400 (валидация/бизнес‑правила), 401 (нет аутентификации), 403 (нет прав), 404 (не найдено/другая
+  аренда)
+- **Даты**: в ответах даты в ISO; отображать как YYYY‑MM‑DD
 
 ---
 
-## 1) Warehouses
+## Units (Единицы измерения)
 
-Path: `/auth/v1/inventory/warehouses`
+- GET `/auth/v1/inventory/units`
+  - Описание: список units активного master
+  - RBAC: AUTH
+  - Ответ: `UnitDto[]`
+  - Пример:
+    ```bash
+    curl -H "Authorization: Bearer <token>" \
+      http://localhost:8081/auth/v1/inventory/units
+    ```
 
-- GET List Warehouses
-    - Roles: OWNER/ADMIN/COOK/CASHIER
-    - Query: none (client-side search on name)
-    - Response: `200 OK`
-      ```json
-      [
-        { "id": 1, "name": "Main" },
-        { "id": 2, "name": "Bar" }
-      ]
-      ```
+- POST `/auth/v1/inventory/units`
+  - Описание: создать unit
+  - RBAC: OWNER/ADMIN
+  - Тело: `UnitDto { name, shortName? }`
+  - Ответ: 201 `UnitDto`
 
-- POST Create Warehouse
-    - Roles: OWNER/ADMIN
-    - Body:
-      ```json
-      { "name": "New Warehouse" }
-      ```
-    - Responses:
-        - `201 Created`: `{ "id": 3, "name": "New Warehouse" }`
-        - `400` if name blank/too long
-        - `409` if name already exists for current master (case-insensitive)
-
-- PUT Update Warehouse
-    - Roles: OWNER/ADMIN
-    - Path: `/{id}`
-    - Body:
-      ```json
-      { "name": "Renamed" }
-      ```
-    - Responses:
-        - `200 OK`: `{ "id": 3, "name": "Renamed" }`
-        - `404` if not found (other master or missing)
-        - `400` validation
-        - `409` duplicate name
-
-- DELETE Warehouse
-    - Roles: OWNER/ADMIN
-    - Path: `/{id}`
-    - Responses: `204 No Content` or `404`
-
-Uniqueness: unique `(master_id, name)` enforced (DB + service).
+- PUT `/auth/v1/inventory/units/{id}` → 200 `UnitDto`
+- DELETE `/auth/v1/inventory/units/{id}` → 204
 
 ---
 
-## 2) Units (reference)
+## Warehouses (Склады)
 
-Path: `/auth/v1/inventory/units`
+- GET `/auth/v1/inventory/warehouses`
+  - Описание: список складов master
+  - RBAC: AUTH
+  - Ответ: `WarehouseDto[]`
 
-- GET List Units
-    - Roles: OWNER/ADMIN/COOK/CASHIER
-    - Response: `200 OK`
-      ```json
-      [
-        { "id": 1, "name": "Килограмм", "shortName": "кг" },
-        { "id": 2, "name": "Литр", "shortName": "л" }
-      ]
-      ```
+- POST `/auth/v1/inventory/warehouses`
+  - RBAC: OWNER/ADMIN
+  - Тело: `CreateWarehouseRequest { name }`
+  - Ответ: 201 `WarehouseDto`
 
-- PUT/POST/DELETE (if used in UI) — Roles: OWNER/ADMIN, standard 400/404/409 handling.
+- PUT `/auth/v1/inventory/warehouses/{id}`
+  - RBAC: OWNER/ADMIN
+  - Тело: `UpdateWarehouseRequest { name }`
+  - Ответ: 200 `WarehouseDto`
 
----
-
-## 3) Ingredients
-
-Path: `/auth/v1/inventory/ingredients`
-
-- GET List Ingredients
-    - Roles: OWNER/ADMIN/COOK/CASHIER
-    - Query (optional): `q` (search by name), paging later
-    - Response: `200 OK`
-      ```json
-      [
-        { "id": 10, "name": "Сахар", "unitId": 1, "packageSize": 1.0, "notes": "Белый" },
-        { "id": 11, "name": "Молоко", "unitId": 2, "packageSize": 1.0 }
-      ]
-      ```
-
-- POST/PUT/DELETE (owner/admin) — standard validation and errors.
+- DELETE `/auth/v1/inventory/warehouses/{id}` → 204
 
 ---
 
-## 4) Stock (Ingredients per Warehouse)
+## Ingredients (Ингредиенты)
 
-Purpose: quantities of ingredients per warehouse.
-Path (proposed): `/auth/v1/inventory/stock`
+- GET `/auth/v1/inventory/ingredients`
+  - Описание: список ингредиентов
+  - RBAC: AUTH
+  - Ответ: `IngredientDto[]`
 
-- GET Stock by Warehouse
-    - Roles: OWNER/ADMIN/COOK/CASHIER
-    - Query: `warehouseId` (required), optional `q` (ingredient name contains), paging later
-    - Response: `200 OK`
-      ```json
-      [
-        {
-          "ingredientId": 10,
-          "ingredientName": "Сахар",
-          "unitId": 1,
-          "unitName": "Килограмм",
-          "qty": 42.500
-        },
-        {
-          "ingredientId": 11,
-          "ingredientName": "Молоко",
-          "unitId": 2,
-          "unitName": "Литр",
-          "qty": 18.000
-        }
+- POST `/auth/v1/inventory/ingredients`
+  - RBAC: OWNER/ADMIN
+  - Тело: `CreateIngredientRequest { name, unitId, packageSize?, notes?, warehouseId?, initialQty? }`
+  - Особенности:
+    - Если заданы `warehouseId` и `initialQty > 0` — создаётся и проводится поставка (Variant A), что увеличивает
+      `stock`
+  - Ответ: 201 `IngredientDto`
+
+- PUT `/auth/v1/inventory/ingredients/{id}` → 200 `IngredientDto`
+- DELETE `/auth/v1/inventory/ingredients/{id}` → 204
+
+---
+
+## Packagings (Фасовки)
+
+- GET `/auth/v1/inventory/packagings` → `PackagingDto[]` (RBAC: AUTH)
+- POST `/auth/v1/inventory/packagings` (RBAC: OWNER/ADMIN)
+  - Тело: `PackagingDto { name, unitId, size, ... }`
+  - Ответ: 201 `PackagingDto`
+- PUT `/auth/v1/inventory/packagings/{id}` → 200 `PackagingDto`
+- DELETE `/auth/v1/inventory/packagings/{id}` → 204
+
+---
+
+## Suppliers (Поставщики)
+
+- GET `/auth/v1/inventory/suppliers` → `SupplierDto[]` (RBAC: AUTH)
+- POST `/auth/v1/inventory/suppliers` (RBAC: OWNER/ADMIN)
+  - Тело: `SupplierDto { name, contacts?... }`
+  - Ответ: 201 `SupplierDto`
+- PUT `/auth/v1/inventory/suppliers/{id}` → 200 `SupplierDto`
+- DELETE `/auth/v1/inventory/suppliers/{id}` → 204
+
+---
+
+## Supplies (Поставки)
+
+- POST `/auth/v1/inventory/supplies`
+  - Описание: создать поставку (DRAFT)
+  - RBAC: OWNER/ADMIN
+  - Тело: `CreateSupplyRequest`
+    ```json
+    {
+      "warehouseId": 5,
+      "date": "2025-10-11T10:00:00Z",
+      "notes": "поставка X",
+      "items": [
+        { "ingredientId": 101, "qty": 2.5, "expiresAt": "2025-12-31" },
+        { "ingredientId": 102, "qty": 1.0 }
       ]
-      ```
+    }
+    ```
+  - Ответ: 201 `{ id, status: "DRAFT" }`
 
-- POST Adjust/Upsert (optional, if needed before supplies)
-    - Roles: OWNER/ADMIN
-    - Body (proposed):
-      ```json
+- POST `/auth/v1/inventory/supplies/{id}/post`
+  - Описание: провести поставку (POSTED)
+  - Эффект: увеличить `stock.quantity` по позициям, обновить агрегаты:
+    - `earliestExpiry = min(expiresAt)` среди партий
+    - `lastSupplyDate = supply.date`
+  - RBAC: OWNER/ADMIN
+  - Ответ: 200 `{ id, status: "POSTED" }`
+
+---
+
+## Stock (Остатки)
+
+- GET `/auth/v1/inventory/stock?ingredientId?&warehouseId?`
+  - Описание: список строк остатков по фильтрам (нужен хотя бы один параметр)
+  - Параметры:
+    - `warehouseId: Long`
+    - `ingredientId: Long`
+  - RBAC: AUTH
+  - Ответ: `StockRowDto[]`:
+    ```json
+    [
       {
-        "warehouseId": 1,
-        "ingredientId": 10,
-        "qty": 5.000
+        "ingredientId": 101,
+        "name": "Сахар",
+        "unitId": 10,
+        "unitName": "кг",
+        "packageSize": 1.0,
+        "quantity": 2.5,
+        "earliestExpiry": "2025-12-31",
+        "lastSupplyDate": "2025-10-11",
+        "lastUseDate": null,
+        "supplierName": null,
+        "categoryName": null
       }
-      ```
-    - Responses: `200 OK` or `201 Created`; errors: 400/404
+    ]
+    ```
+  - Ошибки: 400 если не переданы оба фильтра
 
-Notes: In future, direct stock adjustments may be replaced by documented movements (supplies/transfer/write-off).
+- POST `/auth/v1/inventory/stock/increase`
+  - Описание: ручной приход (upsert, если записи не было)
+  - RBAC: OWNER/ADMIN
+  - Тело: `StockAdjustRequest { ingredientId, warehouseId, qty>=0 }`
+  - Ответ: 200 `StockRowDto`
+  - Ошибки: 400 (qty < 0 / неизвестные сущности), 403, 401
+  - Пример:
+    ```bash
+    curl -X POST \
+      -H "Authorization: Bearer <token>" \
+      -H "Content-Type: application/json" \
+      -d '{"ingredientId":101, "warehouseId":5, "qty":2.5}' \
+      http://localhost:8081/auth/v1/inventory/stock/increase
+    ```
 
----
-
-## 5) Suppliers (reference for supplies)
-
-Path: `/auth/v1/inventory/suppliers`
-
-- GET List Suppliers
-    - Roles: OWNER/ADMIN/COOK/CASHIER (read-only is fine)
-    - Response: `200 OK`
-      ```json
-      [
-        { "id": 1, "name": "ООО Поставки", "phone": "+7...", "email": "...", "address": "..." }
-      ]
-      ```
-
-- POST/PUT/DELETE (owner/admin) — standard validation and errors.
-
----
-
-## 6) Supplies (Incoming Deliveries) — Proposed Contract
-
-Purpose: document-based inventory increase, linked to a supplier and warehouse.
-Base Path: `/auth/v1/inventory/supplies`
-
-- GET List Supplies
-    - Roles: OWNER/ADMIN/COOK/CASHIER (read)
-    - Query: `warehouseId?`, `supplierId?`, `from?`, `to?`, `q?` (doc number/notes), paging later
-    - Response (example):
-      ```json
-      [
-        {
-          "id": 100,
-          "docNo": "IN-2025-0001",
-          "date": "2025-10-12T10:00:00",
-          "warehouseId": 1,
-          "warehouseName": "Main",
-          "supplierId": 1,
-          "supplierName": "ООО Поставки",
-          "status": "POSTED",
-          "lines": 3,
-          "totalItems": 14.00
-        }
-      ]
-      ```
-
-- GET Supply by Id: `/{id}`
-    - Roles: OWNER/ADMIN/COOK/CASHIER (read)
-    - Response (example):
-      ```json
-      {
-        "id": 100,
-        "docNo": "IN-2025-0001",
-        "date": "2025-10-12T10:00:00",
-        "warehouseId": 1,
-        "supplierId": 1,
-        "status": "DRAFT",
-        "notes": "",
-        "items": [
-          { "ingredientId": 10, "qty": 10.000 },
-          { "ingredientId": 11, "qty": 4.000 }
-        ]
-      }
-      ```
-
-- POST Create Draft Supply
-    - Roles: OWNER/ADMIN
-    - Body:
-      ```json
-      {
-        "warehouseId": 1,
-        "supplierId": 1,
-        "date": "2025-10-12T10:00:00",
-        "notes": "",
-        "items": [ { "ingredientId": 10, "qty": 10.000 } ]
-      }
-      ```
-    - Response: `201 Created` with created entity
-
-- PUT Update Draft Supply: `/{id}` (items and header)
-    - Roles: OWNER/ADMIN
-    - Response: `200 OK`, errors: 400/404
-
-- POST Post Supply (apply to stock): `/{id}/post`
-    - Roles: OWNER/ADMIN
-    - Effect: increases stock quantities per (warehouseId, ingredientId)
-    - Responses: `200 OK`, errors: 400 if not DRAFT, 404 if scope mismatch
-
-- POST Cancel Supply: `/{id}/cancel`
-    - Roles: OWNER/ADMIN
-    - Effect: revert posting (if posted), or cancel draft
-    - Responses: `200 OK`, errors: 400/404
-
-- DELETE Draft Supply: `/{id}`
-    - Roles: OWNER/ADMIN
-    - Response: `204 No Content`, errors: 400 if posted, 404
-
-Validation examples:
-
-- Ingredient and Unit must belong to current master.
-- Quantities must be positive decimals (`DECIMAL(18,6)`).
-- Warehouse must be accessible (current master).
+- POST `/auth/v1/inventory/stock/decrease`
+  - Описание: ручное списание (запрет на отрицательный остаток)
+  - RBAC: OWNER/ADMIN
+  - Тело: `StockAdjustRequest`
+  - Ответ: 200 `StockRowDto`
+  - Ошибки: 400 при попытке уйти в минус, 403, 401
+  - Пример:
+    ```bash
+    curl -X POST \
+      -H "Authorization: Bearer <token)" \
+      -H "Content-Type: application/json" \
+      -d '{"ingredientId":101, "warehouseId":5, "qty":1.0}' \
+      http://localhost:8081/auth/v1/inventory/stock/decrease
+    ```
 
 ---
 
-## Client Flow for Warehouse Page
+## UX подсказки для страницы «Остатки»
 
-1. Load base data (parallel):
-    - GET `/auth/v1/inventory/warehouses`
-    - GET `/auth/v1/inventory/units`
-2. When a warehouse is selected:
-    - GET `/auth/v1/inventory/stock?warehouseId={id}` (with optional `q` for ingredient name)
-3. CRUD operations (OWNER/ADMIN):
-    - Create/Update/Delete warehouse via respective endpoints.
-    - For inventory operations, use Supplies (document-based flow) when implemented.
-4. Show API error messages from `{ message }` field to user (409/400/403/404).
-
----
-
-## Open Points / Next Steps
-
-- Define and implement backend controllers/services for Ingredients and Stock (read first, then mutations via Supplies).
-- Implement Supplies domain (entities, service, controller, integration tests).
-- Add pagination/filtering for list endpoints as data grows.
+- **Фильтры**: селекты склада и ингредиента. Не слать запрос без фильтров (бэкенд вернёт 400)
+- **Таблица**: `name`, `unitName`, `packageSize`, `quantity`, `earliestExpiry`, `lastSupplyDate`
+- **Кнопки «Приход»/«Списание»**: показывать только OWNER/ADMIN
+- **После успешного POST**: закрывать модалку и обновлять список текущими фильтрами
+- **Ошибки**: показывать текст 400/403; при 401 — стандартный флоу авторизации
