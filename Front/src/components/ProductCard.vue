@@ -62,6 +62,7 @@ import {useRouter} from 'vue-router';
 import {useCartStore} from '@/store/cart';
 import {useAuthStore} from '@/store/auth';
 import {useToast} from 'vue-toastification';
+import {useNotificationsStore} from '@/store/notifications';
 import {formatLocalDateTime, timeAgo} from '@/utils/datetime';
 
 const props = defineProps({
@@ -81,6 +82,7 @@ const router = useRouter();
 const cartStore = useCartStore();
 const authStore = useAuthStore();
 const toast = useToast();
+const nStore = useNotificationsStore();
 
 function handleClick() {
   if (props.openInModal) {
@@ -111,8 +113,10 @@ async function addToCart() {
     if (result?.cleared) {
       toast.info('Корзина была очищена из-за смены бренда. Продолжайте с товарами выбранного бренда.');
     }
-    toast.success(`'${props.product.name}' добавлен в корзину!`);
-    if (!authStore.isAuthenticated) {
+    if (nStore.shouldShowAddedProductToast(props.product.id)) {
+      toast.success(`'${props.product.name}' добавлен в корзину!`);
+    }
+    if (!authStore.isAuthenticated && nStore.shouldShowAnonCartPrompt()) {
       // Предложим зарегистрироваться с привязкой к бренду корзины
       toast.info('Зарегистрируйтесь, чтобы оформить заказ для выбранного бренда.', {timeout: 4000});
     }

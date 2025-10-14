@@ -5,7 +5,6 @@
 
     <div class="toolbar">
       <input v-model="search" class="input" placeholder="Поиск (имя, email, телефон)"/>
-      <input v-model.number="masterId" class="input" min="0" placeholder="Master ID" type="number"/>
       <button :disabled="loading" class="btn btn-sm" @click="reload">
         <i class="bi bi-arrow-repeat"></i> Обновить
       </button>
@@ -18,22 +17,26 @@
       <thead>
       <tr>
         <th>ID</th>
-        <th>Имя</th>
+        <th>ФИО</th>
+        <th>Дата рождения</th>
         <th>Email</th>
         <th>Телефон</th>
-        <th>Мастер</th>
+        <th>Бренд</th>
+        <th>Последний заказ</th>
       </tr>
       </thead>
       <tbody>
       <tr v-for="c in paged" :key="c.id">
         <td>{{ c.id }}</td>
-        <td>{{ c.fullName || [c.lastName, c.firstName, c.patronymic].filter(Boolean).join(' ') }}</td>
+        <td>{{ fullName(c) }}</td>
+        <td>{{ formatDob(c.dateOfBirth) }}</td>
         <td>{{ c.email || '—' }}</td>
         <td>{{ c.phone || '—' }}</td>
-        <td>{{ c.masterName || c.masterId || '—' }}</td>
+        <td>{{ c.lastOrderBrand || '—' }}</td>
+        <td>{{ formatDateTime(c.lastOrderAt) }}</td>
       </tr>
       <tr v-if="filtered.length === 0">
-        <td class="text-muted" colspan="5">Нет данных</td>
+        <td class="text-muted" colspan="7">Нет данных</td>
       </tr>
       </tbody>
     </table>
@@ -59,7 +62,6 @@ const clients = ref([]);
 const loading = ref(false);
 const error = ref('');
 const search = ref('');
-const masterId = ref();
 const page = ref(1); // UI starts at 1
 const pageSize = ref(10);
 const totalPages = ref(1);
@@ -72,7 +74,6 @@ async function reload() {
       page: Math.max(0, (page.value || 1) - 1),
       size: pageSize.value || 10,
       search: (search.value || '').trim() || undefined,
-      masterId: masterId.value || undefined,
     };
     const res = await clientService.getAdminClients(params);
     const body = res?.data ?? {};
@@ -92,31 +93,67 @@ async function reload() {
       totalPages.value = 1;
     }
   } catch (e) {
-    error.value = 'API для клиентов будет подключено позже';
+    error.value = 'Не удалось загрузить клиентов';
     clients.value = [];
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(reload);
+onMounted(() => {
+  reload();
+});
+
+function fullName(c) {
+  try {
+    return c?.fullName || [c?.lastName, c?.firstName, c?.patronymic].filter(Boolean).join(' ') || '—';
+  } catch {
+    return '—';
+  }
+}
+
+function formatDob(d) {
+  try {
+    if (!d) return '—';
+    // d может быть строкой 'YYYY-MM-DD'
+    const s = String(d);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, day] = s.split('-');
+      return `${day}.${m}.${y}`;
+    }
+    return s;
+  } catch {
+    return '—';
+  }
+}
+
+function formatDateTime(dt) {
+  try {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return String(dt);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return '—';
+  }
+}
 
 const filtered = computed(() => {
   let arr = clients.value || [];
   if (search.value) {
     const s = search.value.toLowerCase();
-    arr = arr.filter(c => String(c.fullName || [c.lastName, c.firstName, c.patronymic].filter(Boolean).join(' ')).toLowerCase().includes(s)
+    arr = arr.filter(c =>
+        String(c.fullName || [c.lastName, c.firstName, c.patronymic].filter(Boolean).join(' ')).toLowerCase().includes(s)
         || String(c.email || '').toLowerCase().includes(s)
-        || String(c.phone || '').toLowerCase().includes(s));
-  }
-  if (masterId.value != null && masterId.value !== '') {
-    arr = arr.filter(c => Number(c.masterId) === Number(masterId.value));
+        || String(c.phone || '').toLowerCase().includes(s)
+    );
   }
   return arr;
 });
 
 const paged = computed(() => {
-  // если сервер вернул уже страницу — показываем её
+  // если сервер вернул уже страницу — показываем как есть
   if (totalPages.value >= 1) {
     return filtered.value.length === clients.value.length ? clients.value : filtered.value;
   }

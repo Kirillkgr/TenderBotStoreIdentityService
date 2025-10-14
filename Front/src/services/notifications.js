@@ -72,28 +72,53 @@ class NotificationsClient {
                 }
 
                 if (events.length > 0) {
-                    // Отметим по заказам непрочитанные для клиентской стороны (сообщения от админа)
+                    // Отметим по заказам непрочитанные
                     try {
                         const nStore = useNotificationsStore();
                         const authStore = useAuthStore();
                         const roles = Array.isArray(authStore?.roles) ? authStore.roles : [];
                         const isStaff = roles.includes('ADMIN') || roles.includes('OWNER');
                         for (const e of events) {
-                            if (e && e.type === 'COURIER_MESSAGE' && e.orderId) {
+                            const t = String(e?.type || '').toUpperCase();
+                            const isMessage = /MESSAGE/.test(t);
+                            const isClientMsg = t.includes('CLIENT');
+                            const isStaffMsg = t.includes('ADMIN') || t.includes('STAFF') || t.includes('COURIER');
+
+                            if (e && isMessage && e.orderId) {
                                 // если чат по заказу открыт — не увеличиваем непрочитанные
                                 if (!nStore.isActive(e.orderId)) {
-                                    nStore.markUnread(e.orderId, 1);
+                                    // Для персонала считаем непрочитанными только сообщения клиента
+                                    if (isStaff && isClientMsg) {
+                                        nStore.markUnread(e.orderId, 1);
+                                    }
+                                    // Для клиента считаем непрочитанными ЛЮБОЕ сообщение (сервер может не указывать роль отправителя)
+                                    if (!isStaff) {
+                                        nStore.markUnread(e.orderId, 1);
+                                    }
                                 }
-                            } else if (e && e.type === 'CLIENT_MESSAGE' && e.orderId && isStaff) {
-                                if (!nStore.isActive(e.orderId)) {
-                                    nStore.markUnread(e.orderId, 1);
+                                // Нав-дот на аватарке при ЛЮБОМ входящем сообщении, если чат не активен
+                                try {
+                                    if (!nStore.isActive(e.orderId)) nStore.markClientNavDot();
+                                } catch (_) {
                                 }
-                            } else if (e && e.type === 'NEW_ORDER' && e.orderId && isStaff) {
-                                // новый заказ: пометим как QUEUED индикатор (визуально)
+                            } else if (e && t === 'NEW_ORDER' && e.orderId && isStaff) {
+                                // новый заказ: перезагружаем список и проигрываем короткий звук
                                 nStore.markQueued(e.orderId);
-                            } else if (e && e.type === 'ORDER_STATUS_CHANGED' && e.orderId && isStaff) {
+                            } else if (e && e.type === 'ORDER_STATUS_CHANGED' && e.orderId) {
                                 const ns = String(e.newStatus || '').toUpperCase();
-                                if (ns === 'QUEUED') nStore.markQueued(e.orderId); else nStore.clearQueued(e.orderId);
+                                if (isStaff) {
+                                    if (ns === 'QUEUED') nStore.markQueued(e.orderId); else nStore.clearQueued(e.orderId);
+                                } else {
+                                    // Клиенту: показать nav-dot на аватарке при смене статуса
+                                    try {
+                                        nStore.markClientNavDot();
+                                    } catch (_) {
+                                    }
+                                }
+                            }
+                            try {
+                                if (typeof console !== 'undefined') console.debug('[LP] event', t, e.orderId);
+                            } catch (_) {
                             }
                         }
                     } catch (_) {

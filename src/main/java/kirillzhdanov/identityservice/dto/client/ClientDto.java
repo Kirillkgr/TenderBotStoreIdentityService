@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,6 +19,8 @@ public class ClientDto {
     private String patronymic;
     private String email;
     private String phone;
-    private Long masterId;
-    private String masterName;
+    private LocalDate dateOfBirth;
+    private LocalDateTime lastOrderAt;
+    private Long lastOrderBrandId;
+    private String lastOrderBrand;
 }

@@ -88,6 +88,7 @@ import OrderListItem from '../components/OrderListItem.vue';
 import ProfileEditModal from '../components/modals/ProfileEditModal.vue';
 import orderClientService from '@/services/orderClientService';
 import {getNotificationsClient} from '@/services/notifications';
+import {useNotificationsStore} from '@/store/notifications';
 import ChatModal from '@/components/ChatModal.vue';
 import ReviewModal from '@/components/ReviewModal.vue';
 import ReviewTextModal from '@/components/ReviewTextModal.vue';
@@ -96,6 +97,7 @@ import {formatLocalDateTime} from '@/utils/datetime';
 const authStore = useAuthStore();
 const orderStore = useOrderStore();
 const showEdit = ref(false);
+const nStore = useNotificationsStore();
 
 // Модалка чата по выбранному заказу (общий ChatModal)
 const messageModal = ref({visible: false, order: null});
@@ -152,11 +154,26 @@ function isActive(status) {
 }
 
 function openMessage(order) {
+  try {
+    // Помечаем активный заказ, чтобы во время чтения не копить непрочитанные
+    nStore.setActive(order?.id);
+    // Сбрасываем непрочитанные по конкретному заказу
+    nStore.clearOrder(order?.id);
+    // Если больше нет непрочитанных — убираем nav-dot под аватаркой
+    if (!nStore.hasAnyUnread) {
+      nStore.clearClientNavDot();
+    }
+  } catch (_) {
+  }
   messageModal.value = {visible: true, order, text: '', error: ''};
 }
 
 function closeMessage() {
   messageModal.value.visible = false;
+  try {
+    nStore.clearActive();
+  } catch (_) {
+  }
 }
 
 function openReview(order) {
