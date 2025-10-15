@@ -1,6 +1,9 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {fireEvent} from '@testing-library/vue';
 import {mockVueRouterForPush, pushMock, renderWithAcl, replaceMock, setupPiniaAuth} from './utils/aclTestUtils';
 import AppHeader from '@/components/AppHeader.vue';
+import Sidebar from '@/components/Sidebar.vue';
+import {useUiStore} from '@/store/ui';
 
 function click(el) {
     el?.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
@@ -44,7 +47,7 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
         expect(auth.brandId).toBe(11);
     });
 
-    it('ensureRoleAndGo waits roles then navigates (CASHIER present only in memberships)', async () => {
+    it('ensureRoleAndGo waits roles then navigates (CASHIER present only in memberships) via Sidebar link', async () => {
         const memberships = [{id: 3, role: 'CASHIER', brandId: 1}];
         setupPiniaAuth({
             roles: [], memberships, extras: {
@@ -58,15 +61,21 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
                 }
             }
         });
-        renderWithAcl(AppHeader, {props: {isModalVisible: false}});
-
+        // header is not used for links anymore; render sidebar and expand Marketing
+        const ui = useUiStore();
+        ui.isDesktop = true;
+        ui.sidebarOpen = true;
+        ui.sidebarCollapsed = false;
+        renderWithAcl(Sidebar, {});
+        const marketingBtn = Array.from(document.querySelectorAll('button.group-btn')).find(b => b.textContent?.includes('Маркетинг'));
+        if (marketingBtn) await fireEvent.click(marketingBtn);
         const ordersLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Заказы'));
         click(ordersLink);
         await new Promise(r => setTimeout(r, 50));
         expect(pushMock).toHaveBeenCalled();
     });
 
-    it('ensureRoleAndGo times out still tries to navigate, guards may block later', async () => {
+    it('ensureRoleAndGo times out still tries to navigate, guards may block later (via Sidebar)', async () => {
         // roles list contains no target, and selectMembership does not patch roles
         const memberships = [{id: 5, role: 'CASHIER', brandId: 1}];
         const auth = setupPiniaAuth({
@@ -75,8 +84,13 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
                 }
             }
         });
-        renderWithAcl(AppHeader, {props: {isModalVisible: false}});
-
+        const ui = useUiStore();
+        ui.isDesktop = true;
+        ui.sidebarOpen = true;
+        ui.sidebarCollapsed = false;
+        renderWithAcl(Sidebar, {});
+        const marketingBtn2 = Array.from(document.querySelectorAll('button.group-btn')).find(b => b.textContent?.includes('Маркетинг'));
+        if (marketingBtn2) await fireEvent.click(marketingBtn2);
         const ordersLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Заказы'));
         click(ordersLink);
         await new Promise(r => setTimeout(r, 1700)); // > timeout inside ensureRoleAndGo
