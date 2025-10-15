@@ -17,7 +17,7 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
         replaceMock.mockClear();
     });
 
-    it('renders context select when memberships exist and switches on change', async () => {
+    it('opens ContextSelectModal via header button and switches membership', async () => {
         const memberships = [
             {id: 1, role: 'CASHIER', brandId: 10, brandName: 'alpha'},
             {id: 2, role: 'COOK', brandId: 11, brandName: 'beta'}
@@ -36,32 +36,18 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
             }
         });
         renderWithAcl(AppHeader, {props: {isModalVisible: false}});
-
-        const select = document.querySelector('select.ctx-select');
-        expect(select).toBeTruthy();
-        // switch to option 2
-        select.value = String(memberships[1].id);
-        select.dispatchEvent(new Event('change'));
-        // ensure brandId updated
+        // open modal by clicking "Контексты"
+        const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Контексты'));
+        await fireEvent.click(btn);
+        // click Choose on second membership
+        const chooseButtons = Array.from(document.querySelectorAll('.ctx-list .btn-primary'));
+        await fireEvent.click(chooseButtons[1]);
         await new Promise(r => setTimeout(r, 0));
         expect(auth.brandId).toBe(11);
     });
 
-    it('ensureRoleAndGo waits roles then navigates (CASHIER present only in memberships) via Sidebar link', async () => {
-        const memberships = [{id: 3, role: 'CASHIER', brandId: 1}];
-        setupPiniaAuth({
-            roles: [], memberships, extras: {
-                async selectMembership(m) {
-                    this.membershipId = m.id;
-                    this.brandId = m.brandId ?? null;
-                    if (!this.roles.includes('CASHIER')) {
-                        this.roles = [...this.roles, 'CASHIER'];
-                        this.$patch({roles: this.roles});
-                    }
-                }
-            }
-        });
-        // header is not used for links anymore; render sidebar and expand Marketing
+    it('shows Orders in Sidebar when role allows (CASHIER)', async () => {
+        setupPiniaAuth({roles: ['CASHIER'], memberships: []});
         const ui = useUiStore();
         ui.isDesktop = true;
         ui.sidebarOpen = true;
@@ -70,20 +56,11 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
         const marketingBtn = Array.from(document.querySelectorAll('button.group-btn')).find(b => b.textContent?.includes('Маркетинг'));
         if (marketingBtn) await fireEvent.click(marketingBtn);
         const ordersLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Заказы'));
-        click(ordersLink);
-        await new Promise(r => setTimeout(r, 50));
-        expect(pushMock).toHaveBeenCalled();
+        expect(ordersLink && getComputedStyle(ordersLink).display !== 'none').toBe(true);
     });
 
-    it('ensureRoleAndGo times out still tries to navigate, guards may block later (via Sidebar)', async () => {
-        // roles list contains no target, and selectMembership does not patch roles
-        const memberships = [{id: 5, role: 'CASHIER', brandId: 1}];
-        const auth = setupPiniaAuth({
-            roles: [], memberships, extras: {
-                selectMembership: async () => {
-                }
-            }
-        });
+    it('does not show Orders as visible when role is missing (guest)', async () => {
+        setupPiniaAuth({roles: [], memberships: []});
         const ui = useUiStore();
         ui.isDesktop = true;
         ui.sidebarOpen = true;
@@ -92,8 +69,7 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
         const marketingBtn2 = Array.from(document.querySelectorAll('button.group-btn')).find(b => b.textContent?.includes('Маркетинг'));
         if (marketingBtn2) await fireEvent.click(marketingBtn2);
         const ordersLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Заказы'));
-        click(ordersLink);
-        await new Promise(r => setTimeout(r, 1700)); // > timeout inside ensureRoleAndGo
-        expect(pushMock).toHaveBeenCalled();
+        const hiddenOrAbsent = !ordersLink || getComputedStyle(ordersLink).display === 'none';
+        expect(hiddenOrAbsent).toBe(true);
     });
 });

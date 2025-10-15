@@ -53,7 +53,7 @@ describe('Context selector in AppHeader.vue', () => {
         vi.clearAllMocks();
     });
 
-    it('renders select with membership options and switches on change', async () => {
+    it('opens context modal and switches membership on Choose', async () => {
         const memberships = [
             {membershipId: 101, masterName: 'M1', brandName: 'B1', locationName: 'P1'},
             {membershipId: 202, masterName: 'M2', brandName: 'B2', locationName: 'P2'},
@@ -66,11 +66,14 @@ describe('Context selector in AppHeader.vue', () => {
         await wrapper.vm.$nextTick();
         await wrapper.vm.$nextTick();
 
-        const select = document.body.querySelector('select.ctx-select');
-        expect(select).toBeTruthy();
-        // Change to second membership
-        select.value = String(202);
-        select.dispatchEvent(new Event('change'));
+        // open modal via button "Контексты"
+        const openBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Контексты'));
+        openBtn && openBtn.click();
+        await wrapper.vm.$nextTick();
+
+        // click Choose on second item
+        const chooseButtons = Array.from(document.querySelectorAll('.ctx-list .btn-primary'));
+        chooseButtons[1].dispatchEvent(new MouseEvent('click', {bubbles: true}));
         await wrapper.vm.$nextTick();
 
         expect(auth.selectMembership).toHaveBeenCalled();

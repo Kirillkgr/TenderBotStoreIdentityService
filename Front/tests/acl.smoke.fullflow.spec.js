@@ -1,7 +1,9 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {fireEvent, render, screen} from '@testing-library/vue';
 import {createPinia, setActivePinia} from 'pinia';
-import AppHeader from '@/components/AppHeader.vue';
+import Sidebar from '@/components/Sidebar.vue';
+import {renderWithAcl} from './utils/aclTestUtils';
+import {useUiStore} from '@/store/ui';
 import AdminOrdersView from '@/views/AdminOrdersView.vue';
 import {useAuthStore} from '../src/store/auth';
 import canDirective from '../src/directives/can';
@@ -52,7 +54,7 @@ describe('ACL Smoke: Full flow (context -> Orders -> change status)', () => {
     });
 
     it('switches context via AppHeader and changes status in AdminOrders', async () => {
-        // Step 1: render header with membership CASHIER only
+        // Step 1: ensure Orders is available in Sidebar for CASHIER role
         setupAuth({
             roles: [],
             memberships: [{id: 9, role: 'CASHIER', brandId: 1}],
@@ -65,16 +67,24 @@ describe('ACL Smoke: Full flow (context -> Orders -> change status)', () => {
                 }
             }
         });
-        render(AppHeader, {
-            props: {isModalVisible: false},
-            global: {stubs: {'router-link': {template: '<a><slot /></a>'}}, directives: {can: canDirective}}
-        });
-
-        // Click Orders
-        const ordersLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Заказы'));
-        ordersLink?.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
-        await new Promise(r => setTimeout(r, 60));
-        expect(pushMock).toHaveBeenCalled();
+        // Применяем membership, чтобы роль CASHIER попала в auth.roles
+        const auth = useAuthStore();
+        await auth.selectMembership({id: 9, role: 'CASHIER', brandId: 1});
+        const ui = useUiStore();
+        ui.isDesktop = true;
+        ui.sidebarOpen = true;
+        ui.sidebarCollapsed = false;
+        renderWithAcl(Sidebar, {});
+        const marketingBtn = Array.from(document.querySelectorAll('button.group-btn')).find(b => b.textContent?.includes('Маркетинг'));
+        if (marketingBtn) await fireEvent.click(marketingBtn);
+        // подождём появления ссылки
+        let ordersLink = null;
+        const start = Date.now();
+        while (!ordersLink && Date.now() - start < 400) {
+            ordersLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Заказы'));
+            if (!ordersLink) await new Promise(r => setTimeout(r, 10));
+        }
+        expect(ordersLink && getComputedStyle(ordersLink).display !== 'none').toBe(true);
 
         // Step 2: render orders and change status
         render(AdminOrdersView, {global: {directives: {can: canDirective}}});

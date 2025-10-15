@@ -109,21 +109,12 @@ const ui = useUiStore();
 const qrDataUrl = computed(() =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
 );
-const cartSvgRef = ref(cartSvg);
+ref(cartSvg);
 const badgePulse = ref(false);
 
 function openContextModal() {
   showContext.value = true;
 }
-
-async function onSelectMembership(e) {
-  const val = e?.target?.value;
-  if (!val) return;
-  const m = (authStore.memberships || []).find(x => String(x.membershipId || x.id) === String(val));
-  if (!m) return;
-  await authStore.selectMembership(m);
-}
-
 // Бренд-класс на <html>: brand--{brandId|brandName}
 const prevBrandClass = ref('');
 
@@ -181,7 +172,7 @@ const brandChipTitle = computed(() => {
 });
 
 // Селектор контекста: список опций и выбранный id
-const membershipOptions = computed(() => {
+computed(() => {
   const list = authStore.memberships || [];
   return list.map(m => ({
     value: String(m.membershipId ?? m.id),
