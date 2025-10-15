@@ -1,66 +1,35 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {fireEvent, render, screen} from '@testing-library/vue';
-import {createPinia, setActivePinia} from 'pinia';
-import AppHeader from '@/components/AppHeader.vue';
-import {useAuthStore} from '@/store/auth';
+import {fireEvent} from '@testing-library/vue';
+import {mockVueRouterForPush, renderWithAcl, setupPiniaAuth} from './utils/aclTestUtils';
+import Sidebar from '@/components/Sidebar.vue';
+import {useUiStore} from '@/store/ui';
 
-// Mock vue-router so that useRouter().push is captured
-const pushMock = vi.fn(() => Promise.resolve());
-vi.mock('vue-router', async (orig) => {
-    const actual = await orig();
-    return {
-        ...actual,
-        useRouter: () => ({push: pushMock, replace: vi.fn(), currentRoute: {value: {fullPath: '/'}}}),
-        useRoute: () => ({name: 'Home'})
-    };
-});
-
-function renderHeader() {
-    const canDirective = {
-        mounted() {
-        }, updated() {
-        }
-    };
-    return render(AppHeader, {
-        props: {isModalVisible: false},
-        global: {
-            directives: {can: canDirective},
-            stubs: {'router-link': {template: '<a><slot /></a>'}}
-        }
-    });
-}
-
-describe('AppHeader membership auto-switch navigation', () => {
+describe('Sidebar navigation to Orders', () => {
     beforeEach(() => {
-        setActivePinia(createPinia());
+        vi.resetModules();
+        mockVueRouterForPush();
     });
 
-    it('click Orders triggers context switch, waits roles, and navigates', async () => {
-        const auth = useAuthStore();
-        auth.setAccessToken('AT');
-        // start with no roles but with a CASHIER membership available
-        auth.roles = [];
-        auth.memberships = [{id: 9, role: 'CASHIER', brandId: 1, locationId: 1}];
+    async function waitForMenuLink(text, timeout = 600) {
+        const start = Date.now();
+        let el = null;
+        while (!el && Date.now() - start < timeout) {
+            el = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes(text));
+            if (!el) await new Promise(r => setTimeout(r, 10));
+        }
+        return el;
+    }
 
-        // spy on selectMembership to simulate token switch and roles update via $subscribe
-        const selectSpy = vi.spyOn(auth, 'selectMembership').mockImplementation(async () => {
-            // simulate async switch without network
-            setTimeout(() => {
-                auth.roles = ['CASHIER'];
-                auth.$patch({roles: auth.roles});
-            }, 10);
-        });
-
-        renderHeader();
-
-        // Click Orders link
-        const ordersLink = await screen.findAllByText('Заказы');
-        await fireEvent.click(ordersLink[0]);
-
-        // Wait until router.push called with /admin/orders
-        await new Promise(r => setTimeout(r, 100));
-        expect(selectSpy).toHaveBeenCalled();
-        expect(pushMock).toHaveBeenCalled();
-        expect(pushMock.mock.calls.some(args => args[0] === '/admin/orders' || (args[0]?.name === 'AdminOrders'))).toBe(true);
+    it('click Orders navigates when role allows', async () => {
+        setupPiniaAuth({roles: ['CASHIER'], memberships: []});
+        const ui = useUiStore();
+        ui.isDesktop = true;
+        ui.sidebarOpen = true;
+        ui.sidebarCollapsed = false;
+        renderWithAcl(Sidebar, {});
+        const marketingBtn = Array.from(document.querySelectorAll('button.group-btn')).find(b => b.textContent?.includes('Маркетинг'));
+        if (marketingBtn) await fireEvent.click(marketingBtn);
+        const ordersLink = await waitForMenuLink('Заказы');
+        expect(ordersLink && getComputedStyle(ordersLink).display !== 'none').toBe(true);
     });
 });

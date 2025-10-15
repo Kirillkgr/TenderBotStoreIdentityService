@@ -110,6 +110,45 @@
             </li>
           </template>
 
+          <!-- Раздел: Другое -->
+          <li :class="{ hidden: ui.isDesktop && ui.sidebarCollapsed }" class="group">
+            <button class="group-btn" type="button" @click="toggleGroup('other')">
+              <span class="ico">📁</span>
+              <span class="txt strong">Другое</span>
+              <span :class="{ open: expanded.other }" class="chev">▸</span>
+            </button>
+          </li>
+          <template v-if="expanded.other">
+            <li class="subitem">
+              <router-link to="/my-orders" @click.native="onNavigate"><span class="txt">Мои заказы</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link to="/profile" @click.native="onNavigate"><span class="txt">Профиль</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link to="/profile/edit" @click.native="onNavigate"><span class="txt">Профиль (ред.)</span>
+              </router-link>
+            </li>
+            <li v-if="auth.brandId" class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" :to="`/brands/${auth.brandId}/tags`"
+                           @click.native="onNavigate"><span class="txt">Теги бренда</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/archive"
+                           @click.native="onNavigate"><span class="txt">Архив товаров</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link to="/staff" @click.native="onNavigate"><span class="txt">Сотрудники</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link to="/cart" @click.native="onNavigate"><span class="txt">Корзина</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link to="/checkout" @click.native="onNavigate"><span class="txt">Оформление заказа</span>
+              </router-link>
+            </li>
+          </template>
+
           <!-- Главный пункт: Админ -->
           <li class="main-item">
             <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin" @click.native="onNavigate"><span
@@ -144,7 +183,7 @@ const route = useRoute();
 const auth = useAuthStore();
 const isAuth = computed(() => auth.isAuthenticated);
 
-const expanded = reactive({sklad: false, marketing: false, ops: false});
+const expanded = reactive({sklad: false, marketing: false, ops: false, other: false});
 
 function toggleGroup(key) {
   if (ui.isDesktop && ui.sidebarCollapsed) {
@@ -172,6 +211,7 @@ function restoreExpanded() {
       expanded.sklad = !!obj.sklad;
       expanded.marketing = !!obj.marketing;
       expanded.ops = !!obj.ops;
+      expanded.other = !!obj.other;
     }
   } catch {
   }
@@ -185,6 +225,7 @@ function autoExpandByRoute(path) {
   }
   if (/^\/admin\/(clients|orders)/.test(path)) expanded.marketing = true;
   if (/^\/(kitchen|cashier)/.test(path)) expanded.ops = true;
+  if (/^\/(profile(\/edit)?|my-orders|cart|checkout|staff|admin\/archive|brands\/[^/]+\/tags)/.test(path)) expanded.other = true;
 }
 
 onMounted(() => {
@@ -252,39 +293,6 @@ function openLogin() {
   border-bottom: 1px solid rgba(255, 255, 255, .06);
 }
 
-.logo {
-  color: var(--text);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.collapse-btn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, .15);
-  color: #eaeaea;
-  border-radius: 8px;
-  padding: 2px 6px;
-  cursor: pointer;
-}
-
-.collapse-btn:hover {
-  background: rgba(255, 255, 255, .06);
-}
-
-.close {
-  background: transparent;
-  border: 0;
-  color: #fff;
-  font-size: 18px;
-  cursor: pointer;
-}
-
 .menu {
   padding: 8px 0;
   flex: 1;
@@ -310,10 +318,6 @@ function openLogin() {
   gap: 10px;
   padding: 8px 10px;
   border-radius: 8px;
-}
-
-.menu a.router-link-active {
-  background: var(--active-bg);
 }
 
 .group {
