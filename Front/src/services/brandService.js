@@ -20,8 +20,11 @@ export const getTagGroupsByBrandId = (brandId) => {
 };
 
 // Создание нового бренда с авто-переключением контекста на созданный бренд
-export const createBrand = async (brandName) => {
-    const resp = await apiClient.post('/auth/v1/brands', {name: brandName});
+export const createBrand = async (payloadOrName) => {
+    const payload = typeof payloadOrName === 'string'
+        ? {name: payloadOrName}
+        : (payloadOrName || {});
+    const resp = await apiClient.post('/auth/v1/brands', payload);
     try {
         const brandId = resp?.data?.id;
         if (brandId) {
@@ -43,4 +46,14 @@ export const createBrand = async (brandName) => {
 // Создание нового продукта
 export const createProduct = (productData) => {
     return apiClient.post('/menu/products', productData);
+};
+
+// Обновление бренда
+export const updateBrand = (brandId, payload) => {
+    return apiClient.put(`/auth/v1/brands/${brandId}`, payload);
+};
+
+// Архивирование/удаление бренда
+export const deleteBrand = (brandId) => {
+    return apiClient.delete(`/auth/v1/brands/${brandId}`);
 };

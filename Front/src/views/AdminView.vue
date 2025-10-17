@@ -33,6 +33,13 @@
       @saved="handleProductCreated"
   />
 
+  <EditBrandModal
+      v-if="showEditBrandModal && brandToEdit"
+      :brand="brandToEdit"
+      @close="() => { showEditBrandModal = false; brandToEdit = null; }"
+      @saved="handleBrandUpdated"
+  />
+
   <ProductPreviewModal
       v-if="showProductPreview"
       :product="previewProduct"
@@ -158,25 +165,40 @@
       </div>
 
       <div v-else class="brand-list-scroll">
-        <button
+        <div
             v-for="brand in brands"
             :key="brand.id"
-            :class="[
-            'brand-chip',
-            {
-              'active': selectedBrand === brand.id,
-              'owner': brand.role === 'OWNER' || brand.role === 'ROLE_OWNER'
-            }
-          ]"
-            @click="selectBrand(brand.id)"
-            :title="brand.description || brand.name"
+            class="brand-item"
         >
-          <span class="brand-name">{{ brand.name }}</span>
-          <span v-if="brand.role === 'OWNER' || brand.role === 'ROLE_OWNER'"
-                class="role-badge ms-2">
-            <i class="bi bi-shield-lock"></i>
-          </span>
-        </button>
+          <button
+              :class="[
+              'brand-chip',
+              {
+                'active': selectedBrand === brand.id,
+                'owner': brand.role === 'OWNER' || brand.role === 'ROLE_OWNER'
+              }
+            ]"
+              :title="brand.description || brand.name"
+              @click="selectBrand(brand.id)"
+          >
+            <span class="brand-name">{{ brand.name }}</span>
+            <span v-if="brand.role === 'OWNER' || brand.role === 'ROLE_OWNER'"
+                  class="role-badge ms-2">
+              <i class="bi bi-shield-lock"></i>
+            </span>
+          </button>
+
+          <!-- Плавающая кнопка редактирования бренда -->
+          <button
+              v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
+              :title="`Редактировать бренд ${brand.name}`"
+              aria-label="Редактировать бренд"
+              class="brand-edit-fab"
+              @click.stop="openEditBrand(brand)"
+          >
+            <img alt="Изменить" src="@/assets/pencil.svg" style="width: 16px; height: 16px;"/>
+          </button>
+        </div>
       </div>
 
       <!-- Текущий путь навигации по тегам (кликабельные крошки) -->
@@ -490,6 +512,7 @@ import {useTagStore} from '@/store/tag';
 import {useProductStore} from '@/store/product';
 import {createBrand, getBrands} from '../services/brandService';
 import CreateBrandModal from '../components/modals/CreateBrandModal.vue';
+import EditBrandModal from '../components/modals/EditBrandModal.vue';
 import CreateGroupModal from '../components/modals/CreateGroupModal.vue';
 import EditGroupModal from '../components/modals/EditGroupModal.vue';
 import CreateProductModal from '../components/modals/CreateProductModal.vue';
@@ -524,6 +547,10 @@ const showProductPreview = ref(false);
 const previewProduct = ref(null);
 const showEditProductModal = ref(false);
 const editProduct = ref(null);
+
+// Brand edit modal state
+const showEditBrandModal = ref(false);
+const brandToEdit = ref(null);
 
 // Store
 const tagStore = useTagStore();
@@ -727,6 +754,22 @@ const loadProductsForCurrentLevel = async () => {
     toast.error(e?.message || 'Не удалось загрузить товары');
   }
 };
+
+function openEditBrand(brand) {
+  brandToEdit.value = brand;
+  showEditBrandModal.value = true;
+}
+
+async function handleBrandUpdated(updated) {
+  showEditBrandModal.value = false;
+  brandToEdit.value = null;
+  try {
+    const resp = await getBrands();
+    brands.value = Array.isArray(resp?.data) ? resp.data : (resp?.data ?? []);
+  } catch (e) {
+    console.error('Не удалось обновить список брендов', e);
+  }
+}
 
 // Удаление (архивирование) товара из модалки
 const onProductDelete = async () => {

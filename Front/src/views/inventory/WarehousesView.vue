@@ -8,7 +8,12 @@
           <option v-for="w in items" :key="w.id" :value="w.id">{{ w.name }}</option>
         </select>
         <input v-model="dateFilter" type="date"/>
-        <button class="btn primary" @click="openIngredientCreate">Добавить ингредиент</button>
+        <button
+            v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+            class="btn primary"
+            @click="openIngredientCreate"
+        >Добавить ингредиент
+        </button>
       </div>
     </header>
 
@@ -94,7 +99,12 @@
                   <td>{{ row.supplierName || '—' }}</td>
                   <td>{{ row.categoryName || '—' }}</td>
                   <td class="actions">
-                    <button class="btn small" @click="editIngredient(row)">Изменить</button>
+                    <button
+                        v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+                        class="btn small"
+                        @click="editIngredient(row)"
+                    >Изменить
+                    </button>
                   </td>
                 </tr>
                 <tr v-if="(filteredRows.length || 0) === 0">
@@ -168,11 +178,11 @@
 
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue';
-import {useInventoryStore} from '../../store/inventoryStore';
+import {useInventoryStore} from "@/store/inventoryStore.js";
 import WarehouseForm from '../../components/inventory/WarehouseForm.vue';
 import IngredientForm from '../../components/inventory/IngredientForm.vue';
 import {useToast} from 'vue-toastification';
-import {createSupply, postSupply} from '../../services/inventory/suppliesService';
+import {createSupply, postSupply} from "@/services/inventory/suppliesService.js";
 import SupplyModal from '../../components/inventory/SupplyModal.vue';
 
 const suppliersLoading = computed(() => store.suppliersLoading);

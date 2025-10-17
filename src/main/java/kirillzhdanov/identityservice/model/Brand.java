@@ -30,6 +30,9 @@ public class Brand {
 	@EqualsAndHashCode.Include
 	private String organizationName;
 
+	@Column(name = "description", length = 2048)
+	private String description;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "master_id")
 	@JsonIgnore
@@ -41,4 +44,21 @@ public class Brand {
 	@Builder.Default
     @JsonIgnore
 	private Set<User> users = new HashSet<>();
+
+	@Column(name = "created_at", updatable = false)
+	private java.time.LocalDateTime createdAt;
+
+	@Column(name = "updated_at")
+	private java.time.LocalDateTime updatedAt;
+
+	@PrePersist
+	private void onCreate() {
+		if (createdAt == null) createdAt = java.time.LocalDateTime.now();
+		if (updatedAt == null) updatedAt = createdAt;
+	}
+
+	@PreUpdate
+	private void onUpdate() {
+		updatedAt = java.time.LocalDateTime.now();
+	}
 }

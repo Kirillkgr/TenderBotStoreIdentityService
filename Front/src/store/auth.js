@@ -158,6 +158,13 @@ export const useAuthStore = defineStore('auth', {
             // Маркер, чтобы на следующей загрузке и в перехватчике не делать refresh
             try { localStorage.setItem('skip_refresh_once', '1'); } catch(_) {}
 
+            // Явно очищаем серверный контекст (HttpOnly cookie ctx)
+            try {
+                // Удаляет ctx-cookie через Set-Cookie Max-Age=0 на бэкенде
+                await (await import('../services/api')).default.delete('/auth/v1/context');
+            } catch (_) {
+            }
+
             // Очистим корзину и локальные идентификаторы корзины, чтобы не таскать гостевую корзину между сессиями
             try {
                 const cart = useCartStore();
@@ -184,7 +191,38 @@ export const useAuthStore = defineStore('auth', {
             this.exp = null;
             this.unreadCount = 0;
             this.clearMembership();
-            try { localStorage.removeItem(USER_STORAGE_KEY); } catch(_) {}
+            try {
+                localStorage.removeItem(USER_STORAGE_KEY);
+                // Чистим дополнительные ключи контекста
+                localStorage.removeItem('selected_membership_id');
+                localStorage.removeItem('current_brand_id');
+                localStorage.removeItem('current_master_id');
+            } catch (_) {
+            }
+
+            // Удаляем заголовок авторизации по умолчанию у axios-клиента
+            try {
+                const api = (await import('../services/api')).default;
+                if (api?.defaults?.headers?.common) {
+                    delete api.defaults.headers.common['Authorization'];
+                }
+            } catch (_) {
+            }
+
+            // Чистим sessionStorage целиком (анти-шторм метки и пр.)
+            try {
+                sessionStorage.clear();
+            } catch (_) {
+            }
+
+            // Чистим Cache Storage (если есть PWA/кеши запросов)
+            try {
+                if (typeof caches !== 'undefined' && caches?.keys) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                }
+            } catch (_) {
+            }
 
             await router.push('/');
             this.isLoggingOut = false;

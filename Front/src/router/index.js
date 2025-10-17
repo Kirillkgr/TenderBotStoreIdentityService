@@ -23,6 +23,7 @@ import IngredientsView from '../views/inventory/IngredientsView.vue';
 import StockView from '../views/inventory/StockView.vue';
 import ArchiveProductsView from '../views/ArchiveProductsView.vue';
 import MyOrdersView from '../views/MyOrdersView.vue';
+import BrandsView from '../views/BrandsView.vue';
 
 const routes = [
     {
@@ -84,6 +85,12 @@ const routes = [
         name: 'MyOrders',
         meta: {title: 'Мои заказы', requiresAuth: true},
         component: MyOrdersView,
+    },
+    {
+        path: '/admin/brands',
+        name: 'Brands',
+        meta: {title: 'Бренд', requiresAuth: true, roles: ['ADMIN', 'OWNER']},
+        component: BrandsView,
     },
     {
         path: '/admin',

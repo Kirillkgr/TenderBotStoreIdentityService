@@ -22,7 +22,7 @@ public class UnitController {
     @GetMapping
     @Operation(summary = "Список единиц измерения", description = "AUTH. Возвращает units текущего master контекста.")
     public ResponseEntity<List<UnitDto>> list() {
-        rbacGuard.requireAuthenticated();
+        rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(unitService.list());
     }
 

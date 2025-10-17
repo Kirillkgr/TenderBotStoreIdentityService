@@ -4,7 +4,12 @@
       <h1>Поставщики</h1>
       <div class="page-controls">
         <input v-model="q" class="search" placeholder="Поиск (название, телефон, email, адрес)"/>
-        <button class="btn primary" @click="onCreate">Добавить поставщика</button>
+        <button
+            v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+            class="btn primary"
+            @click="onCreate"
+        >Добавить поставщика
+        </button>
       </div>
     </header>
 
@@ -46,8 +51,18 @@
           <td>{{ s.email || '—' }}</td>
           <td>{{ s.address || '—' }}</td>
           <td class="actions">
-            <button class="btn small" @click="onEdit(s)">✏️</button>
-            <button class="btn small outline" @click="onDelete(s)">🗑️</button>
+            <button
+                v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+                class="btn small"
+                @click="onEdit(s)"
+            >✏️
+            </button>
+            <button
+                v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+                class="btn small outline"
+                @click="onDelete(s)"
+            >🗑️
+            </button>
           </td>
         </tr>
         <tr v-if="!loading && filtered.length === 0">

@@ -9,10 +9,15 @@ import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
+import kirillzhdanov.identityservice.model.master.RoleMembership;
+import kirillzhdanov.identityservice.model.master.UserMembership;
+import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.StorageFileRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
+import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
+import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +33,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -53,6 +59,8 @@ public class AuthService {
     private final StorageFileRepository storageFileRepository;
     private final S3StorageService s3StorageService;
     private final MasterAccountRepository masterAccountRepository;
+    private final UserMembershipRepository userMembershipRepository;
+    private final PickupPointRepository pickupPointRepository;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -114,12 +122,76 @@ public class AuthService {
         User savedUser = userRepository.save(user);
 
         // Гарантируем наличие MasterAccount для пользователя (по умолчанию имя = username)
+        MasterAccount ensuredMaster;
         try {
-            masterAccountRepository.findByName(savedUser.getUsername())
+            User refUser = savedUser;
+            ensuredMaster = masterAccountRepository.findByName(savedUser.getUsername())
                     .orElseGet(() -> masterAccountRepository.save(MasterAccount.builder()
-                            .name(savedUser.getUsername())
+                            .name(refUser.getUsername())
                             .status("ACTIVE")
                             .build()));
+        } catch (Exception e) {
+            ensuredMaster = masterAccountRepository.findByName(savedUser.getUsername())
+                    .orElseThrow(() -> new BadRequestException("Unable to ensure master account"));
+        }
+
+        // Создаём дефолтное членство пользователя в своём мастере, если отсутствует
+        try {
+            final Long ensuredMasterId = ensuredMaster != null ? ensuredMaster.getId() : null;
+            boolean hasMembership = userMembershipRepository.findByUserId(savedUser.getId())
+                    .stream()
+                    .anyMatch(m -> m.getMaster() != null && Objects.equals(m.getMaster().getId(), ensuredMasterId));
+            if (!hasMembership) {
+                UserMembership um = UserMembership.builder()
+                        .user(savedUser)
+                        .master(ensuredMaster)
+                        .role(RoleMembership.OWNER)
+                        .status("ACTIVE")
+                        .build();
+                userMembershipRepository.save(um);
+            }
+        } catch (Exception ignored) {
+        }
+
+        // После гарантии MasterAccount создаём дефолтный бренд и точку выдачи для владельца
+        try {
+            // 1) Сгенерировать уникальное имя бренда (6 русских букв) в пределах мастера
+            String defaultBrandName = generateRuName(6);
+            if (ensuredMaster != null) {
+                while (brandRepository.existsByNameAndMaster_Id(defaultBrandName, ensuredMaster.getId())) {
+                    defaultBrandName = generateRuName(6);
+                }
+            }
+
+            // 2) Создать бренд и сохранить
+            Brand defaultBrand = Brand.builder()
+                    .name(defaultBrandName)
+                    .organizationName(defaultBrandName)
+                    .master(ensuredMaster)
+                    .build();
+            defaultBrand = brandRepository.save(defaultBrand);
+
+            // 3) Создать дефолтную точку выдачи
+            PickupPoint defaultPickup = PickupPoint.builder()
+                    .brand(defaultBrand)
+                    .name("Основная точка")
+                    .active(true)
+                    .build();
+            defaultPickup = pickupPointRepository.save(defaultPickup);
+
+            // 4) Привязать бренд к пользователю и сохранить
+            savedUser.getBrands().add(defaultBrand);
+            savedUser = userRepository.save(savedUser);
+
+            // 5) Создать членство уровня бренда (OWNER)
+            UserMembership brandMembership = UserMembership.builder()
+                    .user(savedUser)
+                    .master(ensuredMaster)
+                    .brand(defaultBrand)
+                    .role(RoleMembership.OWNER)
+                    .status("ACTIVE")
+                    .build();
+            userMembershipRepository.save(brandMembership);
         } catch (Exception ignored) {
         }
 
@@ -275,5 +347,16 @@ public class AuthService {
     private String generateEmailCode() {
         int code = 100000 + random.nextInt(900000); // диапазон 100000-999999
         return String.valueOf(code);
+    }
+
+    // Генерация имени на кириллице (строчные буквы) указанной длины
+    private String generateRuName(int len) {
+        final String alphabet = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+        StringBuilder sb = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            int idx = random.nextInt(alphabet.length());
+            sb.append(alphabet.charAt(idx));
+        }
+        return sb.toString();
     }
 }

@@ -33,7 +33,7 @@ public class StockController {
     public ResponseEntity<List<StockRowDto>> list(
             @RequestParam(value = "ingredientId", required = false) Long ingredientId,
             @RequestParam(value = "warehouseId", required = false) Long warehouseId) {
-        rbacGuard.requireAuthenticated(); // чтение разрешено аутентифицированным (COOK/CASHIER в том числе)
+        rbacGuard.requireStaffOrHigher(); // чтение разрешено персоналу (COOK/CASHIER/ADMIN/OWNER)
         if (ingredientId == null && warehouseId != null) {
             return ResponseEntity.ok(stockService.listByWarehouse(warehouseId));
         }

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.CreateIngredientRequest;
 import kirillzhdanov.identityservice.dto.inventory.IngredientDto;
+import kirillzhdanov.identityservice.dto.inventory.IngredientWithStockDto;
 import kirillzhdanov.identityservice.dto.inventory.UpdateIngredientRequest;
 import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.IngredientService;
@@ -22,12 +23,28 @@ public class IngredientController {
     private final IngredientService ingredientService;
     private final RbacGuard rbacGuard;
 
+    @GetMapping(params = "allWarehouses")
+    @Operation(summary = "Ингредиенты с остатками по всем складам", description = "AUTH. Отдаёт строки остатков по всем складам текущего master: по одной записи на склад.")
+    public ResponseEntity<List<IngredientWithStockDto>> listWithStockAll(@RequestParam("allWarehouses") boolean all) {
+        rbacGuard.requireStaffOrHigher();
+        if (!all) {
+            return ResponseEntity.ok(java.util.List.of());
+        }
+        return ResponseEntity.ok(ingredientService.listWithStockAll());
+    }
+
+    @GetMapping(params = "warehouseId")
+    @Operation(summary = "Ингредиенты с остатками по складу", description = "AUTH. Возвращает ингредиенты с количеством по указанному складу в текущем master контексте.")
+    public ResponseEntity<List<IngredientWithStockDto>> listWithStock(@RequestParam("warehouseId") Long warehouseId) {
+        rbacGuard.requireStaffOrHigher();
+        return ResponseEntity.ok(ingredientService.listWithStock(warehouseId));
+    }
+
     @GetMapping
     @Operation(summary = "Список ингредиентов", description = "AUTH. Возвращает ингредиенты текущего master контекста.")
     public ResponseEntity<List<IngredientDto>> list() {
-        rbacGuard.requireAuthenticated();
+        rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(ingredientService.list());
-
     }
 
     @PostMapping

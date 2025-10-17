@@ -2,7 +2,13 @@
   <div class="page supplies">
     <div class="page__head">
       <h1 class="page-title">Поставки</h1>
-      <button class="btn btn-primary" type="button" @click="openCreate">Новая поставка</button>
+      <button
+          v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+          class="btn btn-primary"
+          type="button"
+          @click="openCreate"
+      >Новая поставка
+      </button>
     </div>
 
     <div class="card">
@@ -92,11 +98,11 @@
 
 <script setup>
 import {onMounted, ref, watch} from 'vue';
-import {fetchSuppliesSmart} from '../../services/inventory/suppliesService';
+import {fetchSuppliesSmart} from '@/services/inventory/suppliesService.js';
 import SuppliesCreateModal from '../../components/inventory/SuppliesCreateModal.vue';
 import SupplyDetailsModal from '../../components/inventory/SupplyDetailsModal.vue';
-import {useAuthStore} from '../../store/auth';
-import {getSuppliers} from '../../services/inventory/supplierService';
+import {useAuthStore} from '@/store/auth.js';
+import {getSuppliers} from '@/services/inventory/supplierService.js';
 
 const supplies = ref([]);
 const loading = ref(false);

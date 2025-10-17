@@ -9,10 +9,10 @@ import {
     updateIngredient
 } from '../services/inventory/ingredientService';
 import {
+    decreaseStock as apiDecreaseStock,
     getWarehouseStock,
-    listStock,
     increaseStock as apiIncreaseStock,
-    decreaseStock as apiDecreaseStock
+    listStock
 } from '../services/inventory/stockService';
 import {createPackaging, deletePackaging, getPackagings, updatePackaging} from '../services/inventory/packagingService';
 
@@ -116,11 +116,11 @@ export const useInventoryStore = defineStore('inventory', {
         },
 
         // Ingredients
-        async fetchIngredients() {
+        async fetchIngredients(params = {}) {
             this.ingredientsLoading = true;
             this.ingredientsError = null;
             try {
-                const {data} = await getIngredients();
+                const {data} = await getIngredients(params);
                 this.ingredients = Array.isArray(data) ? data : [];
             } catch (e) {
                 this.ingredientsError = e?.response?.data?.message || e?.message || 'Ошибка загрузки ингредиентов';
@@ -215,11 +215,17 @@ export const useInventoryStore = defineStore('inventory', {
         },
         async increaseStock(payload) {
             await apiIncreaseStock(payload);
-            await this.fetchStock(this.stockFilters);
+            const {warehouseId, ingredientId} = this.stockFilters || {};
+            if (warehouseId || ingredientId) {
+                await this.fetchStock(this.stockFilters);
+            }
         },
         async decreaseStock(payload) {
             await apiDecreaseStock(payload);
-            await this.fetchStock(this.stockFilters);
+            const {warehouseId, ingredientId} = this.stockFilters || {};
+            if (warehouseId || ingredientId) {
+                await this.fetchStock(this.stockFilters);
+            }
         },
     },
 });

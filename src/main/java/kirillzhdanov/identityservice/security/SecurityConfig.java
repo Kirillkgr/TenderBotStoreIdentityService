@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.security;
 import kirillzhdanov.identityservice.googleOAuth2.CustomOidcUserService;
 import kirillzhdanov.identityservice.tenant.ContextEnforcementFilter;
 import kirillzhdanov.identityservice.tenant.CtxCookieFilter;
+import kirillzhdanov.identityservice.tenant.TenantContextCleanupFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -40,16 +41,19 @@ public class SecurityConfig {
     private final kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
     private final CtxCookieFilter ctxCookieFilter;
+    private final TenantContextCleanupFilter tenantContextCleanupFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginSuccessHandler successHandler,
                           kirillzhdanov.identityservice.googleOAuth2.OAuth2LoginFailureHandler failureHandler,
-                          CtxCookieFilter ctxCookieFilter) {
+                          CtxCookieFilter ctxCookieFilter,
+                          TenantContextCleanupFilter tenantContextCleanupFilter) {
 
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.oAuth2LoginSuccessHandler = successHandler;
         this.oAuth2LoginFailureHandler = failureHandler;
         this.ctxCookieFilter = ctxCookieFilter;
+        this.tenantContextCleanupFilter = tenantContextCleanupFilter;
     }
 
     @Bean
@@ -100,7 +104,9 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, accessDeniedException) -> response.sendError(403))
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // ctx cookie filter must be early to populate request-scoped context
+                // Очистка legacy TenantContext — строго первой
+                .addFilterBefore(tenantContextCleanupFilter, UsernamePasswordAuthenticationFilter.class)
+                // ctx cookie filter должен идти до JWT, чтобы заполнить контекст запроса
                 .addFilterBefore(ctxCookieFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -23,7 +23,7 @@ public class PackagingController {
     @GetMapping
     @Operation(summary = "Список фасовок")
     public ResponseEntity<List<PackagingDto>> list() {
-        rbacGuard.requireAuthenticated();
+        rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(packagingService.list());
     }
 
