@@ -44,6 +44,7 @@ class SupplyControllerIT extends IntegrationTestBase {
         var res = mvc.perform(post("/auth/v1/inventory/supplies")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -56,6 +57,7 @@ class SupplyControllerIT extends IntegrationTestBase {
         long supplyId = supplyIdNumber.longValue();
 
         mvc.perform(post("/auth/v1/inventory/supplies/{id}/post", supplyId)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -65,6 +67,7 @@ class SupplyControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.status").value("POSTED"));
 
         mvc.perform(get("/auth/v1/inventory/stock").param("warehouseId", String.valueOf(w))
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -94,6 +97,7 @@ class SupplyControllerIT extends IntegrationTestBase {
         mvc.perform(post("/auth/v1/inventory/supplies")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);

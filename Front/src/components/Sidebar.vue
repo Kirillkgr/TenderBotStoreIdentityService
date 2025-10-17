@@ -22,10 +22,38 @@
             <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin" @click.native="onNavigate"><span
                 class="ico">💰</span><span class="txt">Финансы</span></router-link>
           </li>
-          <li class="main-item">
-            <router-link to="/" @click.native="onNavigate"><span class="ico">📋</span><span class="txt">Меню</span>
-            </router-link>
+          <li :class="{ hidden: ui.isDesktop && ui.sidebarCollapsed }" class="group">
+            <button class="group-btn" type="button" @click="toggleGroup('menu')">
+              <span class="ico">📋</span>
+              <span class="txt strong">Меню</span>
+              <span :class="{ open: expanded.menu }" class="chev">▸</span>
+            </button>
           </li>
+          <template v-if="expanded.menu">
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/brands"
+                           @click.native="onNavigate"><span class="txt">Бренд</span></router-link>
+            </li>
+            <li v-if="auth.brandId" class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" :to="`/brands/${auth.brandId}/tags`"
+                           @click.native="onNavigate"><span class="txt">Теги бренда</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
+                           :to="{ path: '/admin', query: { create: 'tag' } }" @click.native="onNavigate"><span
+                  class="txt">Создать тег</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
+                           :to="{ path: '/admin', query: { create: 'product' } }" @click.native="onNavigate"><span
+                  class="txt">Создать товар</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER','COOK','CASHIER'], mode: 'hide' }"
+                           to="/admin/inventory/ingredients" @click.native="onNavigate"><span
+                  class="txt">Ингредиенты</span></router-link>
+            </li>
+          </template>
 
           <!-- Раздел: Склад -->
           <li :class="{ hidden: ui.isDesktop && ui.sidebarCollapsed }" class="group">

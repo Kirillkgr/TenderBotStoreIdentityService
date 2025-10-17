@@ -3,7 +3,12 @@
     <header class="page-header">
       <h1>Единицы измерения</h1>
       <div class="actions">
-        <button class="btn primary" @click="onCreate">Добавить</button>
+        <button
+            v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+            class="btn primary"
+            @click="onCreate"
+        >Добавить
+        </button>
         <input v-model="q" placeholder="Поиск по названию" type="text"/>
       </div>
     </header>
@@ -25,8 +30,18 @@
           <td>{{ u.name }}</td>
           <td>{{ u.shortName || '—' }}</td>
           <td class="row-actions">
-            <button class="btn" @click="onEdit(u)">✏️</button>
-            <button class="btn danger" @click="onDelete(u)">🗑️</button>
+            <button
+                v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+                class="btn"
+                @click="onEdit(u)"
+            >✏️
+            </button>
+            <button
+                v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+                class="btn danger"
+                @click="onDelete(u)"
+            >🗑️
+            </button>
           </td>
         </tr>
         <tr v-if="filtered.length === 0">
@@ -47,7 +62,7 @@
 
 <script setup>
 import {computed, onMounted, ref} from 'vue';
-import {useInventoryStore} from '../../store/inventoryStore';
+import {useInventoryStore} from '@/store/inventoryStore.js';
 import UnitForm from '../../components/inventory/UnitForm.vue';
 
 const store = useInventoryStore();

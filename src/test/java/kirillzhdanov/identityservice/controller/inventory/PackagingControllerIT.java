@@ -35,6 +35,7 @@ class PackagingControllerIT extends IntegrationTestBase {
         var res = mvc.perform(post("/auth/v1/inventory/packagings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -48,6 +49,7 @@ class PackagingControllerIT extends IntegrationTestBase {
 
         // list
         mvc.perform(get("/auth/v1/inventory/packagings")
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -61,6 +63,7 @@ class PackagingControllerIT extends IntegrationTestBase {
         mvc.perform(put("/auth/v1/inventory/packagings/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateBody)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -71,6 +74,7 @@ class PackagingControllerIT extends IntegrationTestBase {
 
         // delete
         mvc.perform(delete("/auth/v1/inventory/packagings/{id}", id)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -82,6 +86,7 @@ class PackagingControllerIT extends IntegrationTestBase {
         mvc.perform(put("/auth/v1/inventory/packagings/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateBody)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);

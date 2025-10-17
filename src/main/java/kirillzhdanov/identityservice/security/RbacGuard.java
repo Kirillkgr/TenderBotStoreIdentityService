@@ -18,6 +18,18 @@ public class RbacGuard {
     private RoleMembership roleOrThrow() {
         RoleMembership role = TenantContext.getRole();
         if (role == null) {
+            // Fallback: попробуем взять роль из GrantedAuthorities (ROLE_*)
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && auth.getAuthorities() != null) {
+                for (GrantedAuthority ga : auth.getAuthorities()) {
+                    String a = ga.getAuthority();
+                    if ("ROLE_OWNER".equals(a)) return RoleMembership.OWNER;
+                    if ("ROLE_ADMIN".equals(a)) return RoleMembership.ADMIN;
+                    if ("ROLE_COOK".equals(a)) return RoleMembership.COOK;
+                    if ("ROLE_CASHIER".equals(a)) return RoleMembership.CASHIER;
+                    if ("ROLE_USER".equals(a) || "ROLE_CLIENT".equals(a)) return RoleMembership.CLIENT;
+                }
+            }
             // Вместо IllegalStateException кидаем AccessDenied -> 403, а не 500
             throw new AccessDeniedException("Контекст роли не установлен");
         }
@@ -35,6 +47,17 @@ public class RbacGuard {
         RoleMembership r = roleOrThrow();
         if (!(r == RoleMembership.OWNER || r == RoleMembership.ADMIN)) {
             throw new AccessDeniedException("Недостаточно прав: требуется OWNER или ADMIN");
+        }
+    }
+
+    /**
+     * Разрешает доступ персоналу: OWNER, ADMIN, COOK, CASHIER.
+     * Клиентам (CLIENT) и при отсутствии роли — отказ.
+     */
+    public void requireStaffOrHigher() {
+        RoleMembership r = roleOrThrow();
+        if (!(r == RoleMembership.OWNER || r == RoleMembership.ADMIN || r == RoleMembership.COOK || r == RoleMembership.CASHIER)) {
+            throw new AccessDeniedException("Недостаточно прав: требуется персонал (OWNER/ADMIN/COOK/CASHIER)");
         }
     }
 

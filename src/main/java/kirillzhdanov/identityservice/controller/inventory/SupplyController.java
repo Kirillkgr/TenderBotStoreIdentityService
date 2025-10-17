@@ -3,16 +3,16 @@ package kirillzhdanov.identityservice.controller.inventory;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.supply.CreateSupplyRequest;
-import kirillzhdanov.identityservice.dto.inventory.supply.UpdateSupplyRequest;
 import kirillzhdanov.identityservice.dto.inventory.supply.SupplyDto;
+import kirillzhdanov.identityservice.dto.inventory.supply.UpdateSupplyRequest;
 import kirillzhdanov.identityservice.model.inventory.Supply;
 import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.SupplyService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 
@@ -39,7 +39,7 @@ public class SupplyController {
                                                   @RequestParam(required = false) String status,
                                                   @RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "20") int size) {
-        rbacGuard.requireOwnerOrAdmin();
+        rbacGuard.requireStaffOrHigher();
         Page<SupplyDto> res = supplyService.search(warehouseId, status, PageRequest.of(Math.max(0, page), Math.max(1, size)));
         return ResponseEntity.ok(res);
     }
@@ -47,7 +47,7 @@ public class SupplyController {
     @GetMapping("/{id}")
     @Operation(summary = "Получить поставку по id")
     public ResponseEntity<SupplyDto> get(@PathVariable Long id) {
-        rbacGuard.requireOwnerOrAdmin();
+        rbacGuard.requireStaffOrHigher();
         Supply s = supplyService.get(id);
         return ResponseEntity.ok(supplyService.toDto(s));
     }

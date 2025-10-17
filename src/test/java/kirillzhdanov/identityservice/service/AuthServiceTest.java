@@ -9,7 +9,10 @@ import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.repository.BrandRepository;
+import kirillzhdanov.identityservice.repository.StorageFileRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
+import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
+import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
 import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +58,18 @@ public class AuthServiceTest {
 
 	@Mock
 	private TokenService tokenService;
+
+	@Mock
+	private MasterAccountRepository masterAccountRepository;
+
+	@Mock
+	private UserMembershipRepository userMembershipRepository;
+
+	@Mock
+	private StorageFileRepository storageFileRepository;
+
+	@Mock
+	private S3StorageService s3StorageService;
 
 	@InjectMocks
 	private AuthService authService;
@@ -121,6 +136,21 @@ public class AuthServiceTest {
 	@DisplayName("Регистрация пользователя - успешно")
 	void registerUser_Success() {
 		// Подготовка
+		// ensure master + default membership + empty avatar list
+		when(masterAccountRepository.findByName(anyString())).thenReturn(Optional.empty());
+		when(masterAccountRepository.save(any())).thenAnswer(inv -> {
+			var m = (kirillzhdanov.identityservice.model.master.MasterAccount) inv.getArgument(0);
+			try {
+				var f = m.getClass().getDeclaredField("id");
+				f.setAccessible(true);
+				f.set(m, 1L);
+			} catch (Exception ignored) {
+			}
+			return m;
+		});
+		when(userMembershipRepository.findByUserId(any())).thenReturn(Collections.emptyList());
+		when(userMembershipRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+		when(storageFileRepository.findByOwnerTypeAndOwnerId(anyString(), anyLong())).thenReturn(Collections.emptyList());
 		when(userRepository.existsByUsername(anyString())).thenReturn(false);
 		when(roleService.getUserRole()).thenReturn(userRole);
 		when(roleService.findByName(Role.RoleName.USER)).thenReturn(Optional.of(userRole));
@@ -164,18 +194,27 @@ public class AuthServiceTest {
 		verify(userRepository).existsByUsername(registrationRequest.getUsername());
 		verify(userRepository, never()).save(any(User.class));
 	}
-
-	@Test
 	@DisplayName("Регистрация пользователя с дополнительными ролями - успешно")
 	void registerUser_WithAdditionalRoles_Success() {
 		// Подготовка
 		registrationRequest.getRoleNames()
-						   .add(Role.RoleName.ADMIN);
+				.add(Role.RoleName.ADMIN);
 
-		when(userRepository.existsByUsername(anyString())).thenReturn(false);
-		when(roleService.getUserRole()).thenReturn(userRole);
-		when(roleService.findByName(Role.RoleName.ADMIN)).thenReturn(Optional.of(adminRole));
-		when(roleService.findByName(Role.RoleName.USER)).thenReturn(Optional.of(userRole));
+		// ensure master + default membership + empty avatar list
+		when(masterAccountRepository.findByName(anyString())).thenReturn(Optional.empty());
+		when(masterAccountRepository.save(any())).thenAnswer(inv -> {
+			var m = (kirillzhdanov.identityservice.model.master.MasterAccount) inv.getArgument(0);
+			try {
+				var f = m.getClass().getDeclaredField("id");
+				f.setAccessible(true);
+				f.set(m, 1L);
+			} catch (Exception ignored) {
+			}
+			return m;
+		});
+		when(userMembershipRepository.findByUserId(any())).thenReturn(Collections.emptyList());
+		when(userMembershipRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+		when(storageFileRepository.findByOwnerTypeAndOwnerId(anyString(), anyLong())).thenReturn(Collections.emptyList());
 		when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
 
 		User userWithAdminRole = User.builder()

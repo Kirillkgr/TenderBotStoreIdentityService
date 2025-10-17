@@ -1,8 +1,14 @@
 <template>
-  <div class="modal-backdrop">
-    <div class="modal">
-      <header class="modal-header">
+  <div class="modal-backdrop" @click.stop>
+    <div
+        ref="modalRef"
+        :style="{ left: left + 'px', top: top + 'px' }"
+        class="modal"
+        @click.stop
+    >
+      <header class="modal-header" @mousedown="onDragStart">
         <h3>{{ ingredient?.id ? 'Редактировать ингредиент' : 'Новый ингредиент' }}</h3>
+        <button class="close" type="button" @click="$emit('cancel')">✕</button>
       </header>
       <section class="modal-body">
         <form @submit.prevent="submit">
@@ -73,9 +79,15 @@
           </div>
 
           <div class="form-row two">
-            <div>
+            <div v-if="!model.id">
               <label>Начальное количество</label>
               <input v-model.number="model.initialQty" min="0" placeholder="0" step="0.001" type="number"/>
+            </div>
+            <div v-else>
+              <label>Изменить количество (±)</label>
+              <input v-model.number="model.adjustQty" placeholder="0" step="0.001" type="number"/>
+              <small class="hint">Положительное значение — приход, отрицательное — списание для выбранного
+                склада</small>
             </div>
           </div>
           <div class="form-row grid-4">
@@ -114,10 +126,10 @@
 </template>
 
 <script setup>
-import {reactive, ref, watch} from 'vue';
+import {onMounted, reactive, ref, watch} from 'vue';
 import {useToast} from 'vue-toastification';
-import {createUnit} from '../../services/inventory/unitService';
-import {useInventoryStore} from '../../store/inventoryStore';
+import {createUnit} from '@/services/inventory/unitService.js';
+import {useInventoryStore} from '@/store/inventoryStore.js';
 
 const props = defineProps({
   ingredient: {type: Object, default: null},
@@ -138,6 +150,7 @@ const model = reactive({
   packageSize: null,
   packagingId: 0,
   initialQty: 0,
+  adjustQty: 0,
   calories: null,
   protein: null,
   fat: null,
@@ -145,6 +158,65 @@ const model = reactive({
   notes: '',
 });
 const saving = ref(false);
+
+// --- Draggable modal state ---
+const modalRef = ref(null);
+const left = ref(0);
+const top = ref(0);
+let drag = {active: false, startX: 0, startY: 0, baseLeft: 0, baseTop: 0};
+
+function centerModal() {
+  try {
+    const el = modalRef.value;
+    const w = el?.offsetWidth || 480;
+    const h = el?.offsetHeight || 360;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    left.value = Math.max(8, Math.round((vw - w) / 2));
+    top.value = Math.max(8, Math.round((vh - h) / 2));
+  } catch (_) {
+  }
+}
+
+function onDragStart(e) {
+  // allow dragging only with primary button
+  if (e?.button !== 0) return;
+  drag.active = true;
+  drag.startX = e.clientX;
+  drag.startY = e.clientY;
+  drag.baseLeft = left.value;
+  drag.baseTop = top.value;
+  window.addEventListener('mousemove', onDragMove);
+  window.addEventListener('mouseup', onDragEnd, {once: true});
+}
+
+function onDragMove(e) {
+  if (!drag.active) return;
+  const dx = e.clientX - drag.startX;
+  const dy = e.clientY - drag.startY;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const el = modalRef.value;
+  const w = el?.offsetWidth || 480;
+  const h = el?.offsetHeight || 360;
+  // clamp inside viewport with 8px margin
+  const minL = 8;
+  const minT = 8;
+  const maxL = Math.max(8, vw - w - 8);
+  const maxT = Math.max(8, vh - h - 8);
+  left.value = Math.min(maxL, Math.max(minL, drag.baseLeft + dx));
+  top.value = Math.min(maxT, Math.max(minT, drag.baseTop + dy));
+}
+
+function onDragEnd() {
+  drag.active = false;
+  window.removeEventListener('mousemove', onDragMove);
+}
+
+onMounted(() => {
+  centerModal();
+  window.addEventListener('resize', centerModal);
+});
 
 const creatingUnit = ref(false);
 const newUnit = reactive({name: '', shortName: ''});
@@ -154,10 +226,12 @@ const newPackaging = reactive({name: '', unitId: 0, size: null});
 watch(() => props.ingredient, (val) => {
   model.id = val?.id || null;
   model.name = val?.name || '';
-  model.warehouseId = props.selectedWarehouseId || 0;
+  // если редактируем и есть warehouseId у ингредиента — используем его, иначе дефолт из пропсов
+  model.warehouseId = (val?.warehouseId ?? 0) || (props.selectedWarehouseId || 0);
   model.unitId = val?.unitId || 0;
   model.packageSize = val?.packageSize ?? null;
   model.notes = val?.notes || '';
+  model.adjustQty = 0;
 }, {immediate: true});
 
 function toggleCreateUnit() {
@@ -220,25 +294,42 @@ async function submit() {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: transparent; /* без затемнения фона */
 }
 
 .modal {
+  position: fixed; /* чтобы можно было свободно перемещать */
   background: #ffffff;
   color: #111827;
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 12px 16px 16px;
   min-width: 380px;
   max-width: 640px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  width: 640px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); /* тень самого окна */
 }
 
 .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
+  cursor: move; /* визуальный намёк, что можно двигать */
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.modal-header .close {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
 }
 
 .modal-body {
@@ -335,6 +426,13 @@ input, select, textarea {
 }
 
 @media (max-width: 640px) {
+  .modal {
+    width: calc(100vw - 24px); /* узкая модалка на смартфонах */
+    min-width: 300px;
+    left: 12px !important;
+    right: 12px;
+  }
+
   .form-row.two {
     grid-template-columns: 1fr;
   }

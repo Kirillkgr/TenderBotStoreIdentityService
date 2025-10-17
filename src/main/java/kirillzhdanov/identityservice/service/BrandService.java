@@ -161,6 +161,8 @@ public class BrandService {
         Brand brand = Brand.builder()
                 .name(brandDto.getName())
                 .organizationName(brandDto.getOrganizationName())
+                .description(brandDto.getDescription())
+                .telegramBotToken(brandDto.getTelegramBotToken())
                 .build();
         MasterAccount masterRef = new MasterAccount();
         masterRef.setId(masterId);
@@ -226,6 +228,9 @@ public class BrandService {
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id in current master: " + id));
 
         brand.setName(brandDto.getName());
+        brand.setOrganizationName(brandDto.getOrganizationName());
+        brand.setTelegramBotToken(brandDto.getTelegramBotToken());
+        brand.setDescription(brandDto.getDescription());
         Brand updatedBrand = brandRepository.save(brand);
         return convertToDto(updatedBrand);
     }
@@ -284,6 +289,10 @@ public class BrandService {
                 .id(brand.getId())
                 .name(brand.getName())
                 .organizationName(brand.getOrganizationName())
+                .telegramBotToken(brand.getTelegramBotToken())
+                .description(brand.getDescription())
+                .createdAt(brand.getCreatedAt())
+                .updatedAt(brand.getUpdatedAt())
                 .build();
     }
 

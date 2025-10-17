@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import kirillzhdanov.identityservice.dto.inventory.CreateIngredientRequest;
 import kirillzhdanov.identityservice.dto.inventory.IngredientDto;
+import kirillzhdanov.identityservice.dto.inventory.IngredientWithStockDto;
 import kirillzhdanov.identityservice.dto.inventory.UpdateIngredientRequest;
 import kirillzhdanov.identityservice.dto.inventory.supply.CreateSupplyRequest;
 import kirillzhdanov.identityservice.exception.BadRequestException;
@@ -15,6 +16,7 @@ import kirillzhdanov.identityservice.model.inventory.Unit;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.repository.inventory.IngredientRepository;
 import kirillzhdanov.identityservice.repository.inventory.UnitRepository;
+import kirillzhdanov.identityservice.repository.inventory.WarehouseRepository;
 import kirillzhdanov.identityservice.tenant.ContextAccess;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class IngredientService {
 
     private final IngredientRepository ingredientRepository;
     private final UnitRepository unitRepository;
+    private final WarehouseRepository warehouseRepository;
     private final SupplyService supplyService;
 
     @PersistenceContext
@@ -40,6 +43,100 @@ public class IngredientService {
         return ingredientRepository.findAllByMaster_Id(masterId)
                 .stream().map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public List<IngredientWithStockDto> listWithStockAll() {
+        Long masterId = ContextAccess.getMasterIdOrThrow();
+        String ql = "select i.id, i.name, u.id, u.name, i.packageSize, i.notes, " +
+                " s.warehouse.id, s.qty, s.warehouse.name, " +
+                " (select max(su.date) from SupplyItem si join si.supply su " +
+                "   where si.ingredient = i and su.master.id = :masterId and su.warehouse = s.warehouse) " +
+                " from Stock s " +
+                " join s.ingredient i " +
+                " join i.unit u " +
+                " where s.master.id = :masterId";
+        var rows = em.createQuery(ql, Object[].class)
+                .setParameter("masterId", masterId)
+                .getResultList();
+        return rows.stream().map(r -> {
+            Long id = (Long) r[0];
+            String name = (String) r[1];
+            Long unitId = (Long) r[2];
+            String unitName = (String) r[3];
+            java.math.BigDecimal packageSize = (java.math.BigDecimal) r[4];
+            String notes = (String) r[5];
+            Long warehouseId = (Long) r[6];
+            java.math.BigDecimal qty = (java.math.BigDecimal) r[7];
+            String warehouseName = (String) r[8];
+            java.time.OffsetDateTime lastDate = (java.time.OffsetDateTime) r[9];
+            String lastIso = lastDate != null ? lastDate.toString() : null;
+
+            var dto = new IngredientWithStockDto();
+            dto.setId(id);
+            dto.setName(name);
+            dto.setUnitId(unitId);
+            dto.setUnitName(unitName);
+            dto.setPackageSize(packageSize);
+            dto.setNotes(notes);
+            dto.setWarehouseId(warehouseId);
+            dto.setQuantity(qty != null ? qty : java.math.BigDecimal.ZERO);
+            dto.setWarehouseName(warehouseName);
+            dto.setLastSupplyDate(lastIso);
+            return dto;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional
+    public List<IngredientWithStockDto> listWithStock(Long warehouseId) {
+        if (warehouseId == null) {
+            throw new BadRequestException("warehouseId is required");
+        }
+        Long masterId = ContextAccess.getMasterIdOrThrow();
+        // Validate warehouse belongs to current master and get its name
+        var warehouse = warehouseRepository.findByIdAndMaster_Id(warehouseId, masterId)
+                .orElseThrow(() -> new BadRequestException("Warehouse does not exist in current master"));
+
+        // Select only existing stock rows for this warehouse (same behavior as listWithStockAll)
+        String ql = "select i.id, i.name, u.id, u.name, i.packageSize, i.notes, " +
+                " s.qty, suMax.date " +
+                " from Stock s " +
+                " join s.ingredient i " +
+                " join i.unit u " +
+                " left join (select si2.ingredient id2, max(su2.date) date from SupplyItem si2 join si2.supply su2 " +
+                "            where su2.master.id = :masterId and su2.warehouse.id = :warehouseId group by si2.ingredient) suMax " +
+                "        on suMax.id2 = i " +
+                " where s.master.id = :masterId and s.warehouse.id = :warehouseId";
+
+        var rows = em.createQuery(ql, Object[].class)
+                .setParameter("warehouseId", warehouseId)
+                .setParameter("masterId", masterId)
+                .getResultList();
+
+        String warehouseName = warehouse.getName();
+        return rows.stream().map(r -> {
+            Long id = (Long) r[0];
+            String name = (String) r[1];
+            Long unitId = (Long) r[2];
+            String unitName = (String) r[3];
+            java.math.BigDecimal packageSize = (java.math.BigDecimal) r[4];
+            String notes = (String) r[5];
+            java.math.BigDecimal qty = (java.math.BigDecimal) r[6];
+            java.time.OffsetDateTime lastDate = (java.time.OffsetDateTime) r[7];
+            String lastIso = lastDate != null ? lastDate.toString() : null;
+            var dto = new IngredientWithStockDto();
+            dto.setId(id);
+            dto.setName(name);
+            dto.setUnitId(unitId);
+            dto.setUnitName(unitName);
+            dto.setPackageSize(packageSize);
+            dto.setNotes(notes);
+            dto.setWarehouseId(warehouseId);
+            dto.setQuantity(qty != null ? qty : java.math.BigDecimal.ZERO);
+            dto.setWarehouseName(warehouseName);
+            dto.setLastSupplyDate(lastIso);
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     @Transactional

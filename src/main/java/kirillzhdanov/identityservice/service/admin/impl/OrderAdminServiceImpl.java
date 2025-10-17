@@ -122,6 +122,9 @@ public class OrderAdminServiceImpl implements OrderAdminService {
         Long currentMasterId = TenantContext.getMasterId();
         if (currentMasterId != null) {
             spec = spec.and((root, q, cb2) -> cb2.equal(root.get("brand").get("master").get("id"), currentMasterId));
+        } else {
+            // Без явно установленного master-контекста НЕ возвращаем заказы (во избежание утечки между тенантами)
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
         Page<Order> page = orderRepository.findAll(spec, pageable);

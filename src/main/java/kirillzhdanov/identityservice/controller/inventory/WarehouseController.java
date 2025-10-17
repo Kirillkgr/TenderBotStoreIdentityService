@@ -25,7 +25,7 @@ public class WarehouseController {
     @GetMapping
     @Operation(summary = "Список складов", description = "Требуется аутентификация. Возвращает склады текущего master контекста.")
     public ResponseEntity<List<WarehouseDto>> list() {
-        rbacGuard.requireAuthenticated();
+        rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(warehouseService.list());
     }
 

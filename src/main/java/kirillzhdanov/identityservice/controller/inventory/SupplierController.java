@@ -22,7 +22,7 @@ public class SupplierController {
     @GetMapping
     @Operation(summary = "Список поставщиков", description = "AUTH. Возвращает поставщиков текущего master контекста.")
     public ResponseEntity<List<SupplierDto>> list() {
-        rbacGuard.requireAuthenticated();
+        rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(supplierService.list());
     }
 

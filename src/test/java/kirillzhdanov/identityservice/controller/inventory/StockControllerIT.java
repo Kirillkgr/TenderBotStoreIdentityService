@@ -39,6 +39,7 @@ class StockControllerIT extends IntegrationTestBase {
         mvc.perform(post("/auth/v1/inventory/stock/increase")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(incBody)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -51,6 +52,7 @@ class StockControllerIT extends IntegrationTestBase {
         mvc.perform(get("/auth/v1/inventory/stock")
                         .param("ingredientId", String.valueOf(ing))
                         .param("warehouseId", String.valueOf(w))
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -66,6 +68,7 @@ class StockControllerIT extends IntegrationTestBase {
         mvc.perform(post("/auth/v1/inventory/stock/decrease")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(decBody)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
@@ -81,6 +84,7 @@ class StockControllerIT extends IntegrationTestBase {
         mvc.perform(post("/auth/v1/inventory/stock/decrease")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(badDecBody)
+                        .cookie(kirillzhdanov.identityservice.testutil.CtxTestCookies.createCtx(masterId, null, null, "change-me"))
                         .with(req -> {
                             TenantContext.setMasterId(masterId);
                             TenantContext.setRole(RoleMembership.OWNER);
