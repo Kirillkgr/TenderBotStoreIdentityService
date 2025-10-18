@@ -1,6 +1,8 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.CreateIngredientRequest;
 import kirillzhdanov.identityservice.dto.inventory.IngredientDto;
@@ -25,6 +27,11 @@ public class IngredientController {
 
     @GetMapping(params = "allWarehouses")
     @Operation(summary = "Ингредиенты с остатками по всем складам", description = "AUTH. Отдаёт строки остатков по всем складам текущего master: по одной записи на склад.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Успешно"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Нет доступа")
+    })
     public ResponseEntity<List<IngredientWithStockDto>> listWithStockAll(@RequestParam("allWarehouses") boolean all) {
         rbacGuard.requireStaffOrHigher();
         if (!all) {
@@ -35,6 +42,11 @@ public class IngredientController {
 
     @GetMapping(params = "warehouseId")
     @Operation(summary = "Ингредиенты с остатками по складу", description = "AUTH. Возвращает ингредиенты с количеством по указанному складу в текущем master контексте.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Успешно"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Нет доступа")
+    })
     public ResponseEntity<List<IngredientWithStockDto>> listWithStock(@RequestParam("warehouseId") Long warehouseId) {
         rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(ingredientService.listWithStock(warehouseId));
@@ -42,6 +54,11 @@ public class IngredientController {
 
     @GetMapping
     @Operation(summary = "Список ингредиентов", description = "AUTH. Возвращает ингредиенты текущего master контекста.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Успешно"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Нет доступа")
+    })
     public ResponseEntity<List<IngredientDto>> list() {
         rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(ingredientService.list());
@@ -49,6 +66,12 @@ public class IngredientController {
 
     @PostMapping
     @Operation(summary = "Создать ингредиент", description = "OWNER/ADMIN")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Создано"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав")
+    })
     public ResponseEntity<IngredientDto> create(@RequestBody @Valid CreateIngredientRequest req) {
         rbacGuard.requireOwnerOrAdmin();
         return new ResponseEntity<>(ingredientService.create(req), HttpStatus.CREATED);
@@ -56,6 +79,13 @@ public class IngredientController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Обновить ингредиент", description = "OWNER/ADMIN")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Обновлено"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Не найдено")
+    })
     public ResponseEntity<IngredientDto> update(@PathVariable Long id, @RequestBody @Valid UpdateIngredientRequest req) {
         rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(ingredientService.update(id, req));
@@ -63,6 +93,12 @@ public class IngredientController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Удалить ингредиент", description = "OWNER/ADMIN")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Удалено"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Не найдено")
+    })
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         rbacGuard.requireOwnerOrAdmin();
         ingredientService.delete(id);

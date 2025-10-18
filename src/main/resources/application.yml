@@ -63,6 +63,9 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
 
 app:
+  seed:
+    demoData: false
+
   front:
     success-redirect: "https://kirillkgr.ru"
     failure-redirect: "https://kirillkgr.ru"
@@ -87,7 +90,6 @@ address:
         - "http://localhost:8080"
         - "http://localhost:5173/"
 
-
 s3:
   endpoint: https://storage.yandexcloud.net
   region: ru-central1
@@ -97,3 +99,15 @@ s3:
   publicBaseUrl: https://storage.yandexcloud.net/kirillkgr.ru
   cache:
     maxAgeSeconds: 2592000
+
+
+springdoc:
+  api-docs:
+    path: /auth/api-docs
+  swagger-ui:
+    path: /auth/swagger
+    url: /auth/api-docs
+    disable-swagger-default-url: true
+    display-request-duration: true
+    operationsSorter: alpha
+    tagsSorter: alpha

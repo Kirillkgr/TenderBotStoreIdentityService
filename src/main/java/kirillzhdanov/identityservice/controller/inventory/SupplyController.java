@@ -1,6 +1,8 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.supply.CreateSupplyRequest;
 import kirillzhdanov.identityservice.dto.inventory.supply.SupplyDto;
@@ -26,6 +28,12 @@ public class SupplyController {
 
     @PostMapping
     @Operation(summary = "Создать черновик поставки")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Создано"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав")
+    })
     public ResponseEntity<?> create(@Valid @RequestBody CreateSupplyRequest req) {
         rbacGuard.requireOwnerOrAdmin();
         Supply s = supplyService.create(req);
@@ -35,6 +43,11 @@ public class SupplyController {
 
     @PostMapping("/search")
     @Operation(summary = "Поиск/листинг поставок (POST for filters/pagination)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Успешно"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Нет доступа")
+    })
     public ResponseEntity<Page<SupplyDto>> search(@RequestParam(required = false) Long warehouseId,
                                                   @RequestParam(required = false) String status,
                                                   @RequestParam(defaultValue = "0") int page,
@@ -46,6 +59,12 @@ public class SupplyController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Получить поставку по id")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Успешно"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Нет доступа"),
+            @ApiResponse(responseCode = "404", description = "Не найдено")
+    })
     public ResponseEntity<SupplyDto> get(@PathVariable Long id) {
         rbacGuard.requireStaffOrHigher();
         Supply s = supplyService.get(id);
@@ -54,6 +73,13 @@ public class SupplyController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Обновить поставку (только DRAFT)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Обновлено"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Не найдено")
+    })
     public ResponseEntity<SupplyDto> update(@PathVariable Long id, @Valid @RequestBody UpdateSupplyRequest req) {
         rbacGuard.requireOwnerOrAdmin();
         Supply s = supplyService.update(id, req);
@@ -62,6 +88,13 @@ public class SupplyController {
 
     @PostMapping("/{id}/post")
     @Operation(summary = "Провести поставку")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Проведено"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Не найдено")
+    })
     public ResponseEntity<?> post(@PathVariable Long id) {
         rbacGuard.requireOwnerOrAdmin();
         Supply s = supplyService.post(id);

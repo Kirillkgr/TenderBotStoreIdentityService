@@ -1,6 +1,8 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import kirillzhdanov.identityservice.dto.inventory.SupplierDto;
 import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.SupplierService;
@@ -21,6 +23,11 @@ public class SupplierController {
 
     @GetMapping
     @Operation(summary = "Список поставщиков", description = "AUTH. Возвращает поставщиков текущего master контекста.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Успешно"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Нет доступа")
+    })
     public ResponseEntity<List<SupplierDto>> list() {
         rbacGuard.requireStaffOrHigher();
         return ResponseEntity.ok(supplierService.list());
@@ -28,6 +35,12 @@ public class SupplierController {
 
     @PostMapping
     @Operation(summary = "Создать поставщика", description = "OWNER/ADMIN")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Создано"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав")
+    })
     public ResponseEntity<SupplierDto> create(@RequestBody SupplierDto dto) {
         rbacGuard.requireOwnerOrAdmin();
         return new ResponseEntity<>(supplierService.create(dto), HttpStatus.CREATED);
@@ -35,6 +48,13 @@ public class SupplierController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Обновить поставщика", description = "OWNER/ADMIN")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Обновлено"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Не найдено")
+    })
     public ResponseEntity<SupplierDto> update(@PathVariable Long id, @RequestBody SupplierDto dto) {
         rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(supplierService.update(id, dto));
@@ -42,6 +62,12 @@ public class SupplierController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Удалить поставщика", description = "OWNER/ADMIN")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Удалено"),
+            @ApiResponse(responseCode = "401", description = "Неавторизован"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Не найдено")
+    })
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         rbacGuard.requireOwnerOrAdmin();
         supplierService.delete(id);
