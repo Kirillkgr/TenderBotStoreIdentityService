@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.controller.inventory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.CreateIngredientRequest;
 import kirillzhdanov.identityservice.dto.inventory.IngredientDto;
@@ -20,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auth/v1/inventory/ingredients")
 @RequiredArgsConstructor
+@Tag(name = "Inventory: Ingredients")
 public class IngredientController {
 
     private final IngredientService ingredientService;

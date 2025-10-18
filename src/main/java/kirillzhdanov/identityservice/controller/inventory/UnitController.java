@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.controller.inventory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import kirillzhdanov.identityservice.dto.inventory.UnitDto;
 import kirillzhdanov.identityservice.security.RbacGuard;
 import kirillzhdanov.identityservice.service.UnitService;
@@ -16,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auth/v1/inventory/units")
 @RequiredArgsConstructor
+@Tag(name = "Inventory: Units")
 public class UnitController {
 
     private final UnitService unitService;

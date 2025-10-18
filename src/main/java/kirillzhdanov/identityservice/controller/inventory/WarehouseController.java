@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.controller.inventory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.CreateWarehouseRequest;
 import kirillzhdanov.identityservice.dto.inventory.UpdateWarehouseRequest;
@@ -19,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auth/v1/inventory/warehouses")
 @RequiredArgsConstructor
+@Tag(name = "Inventory: Warehouses")
 public class WarehouseController {
 
     private final WarehouseService warehouseService;

@@ -103,10 +103,10 @@ s3:
 
 springdoc:
   api-docs:
-    path: /auth/api-docs
+    path: /doc/api-docs
   swagger-ui:
-    path: /auth/swagger
-    url: /auth/api-docs
+    path: /doc/swagger
+    url: /doc/api-docs
     disable-swagger-default-url: true
     display-request-duration: true
     operationsSorter: alpha

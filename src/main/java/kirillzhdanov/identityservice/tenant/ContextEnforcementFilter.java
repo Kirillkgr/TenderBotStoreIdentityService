@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpMethod;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,7 +16,7 @@ import java.util.Set;
 
 /**
  * Фильтр-предохранитель: убеждается, что для защищённых запросов установлен контекст (brand/master/pickup).
- *
+ * <p>
  * Простыми словами: если пользователь авторизован и обращается к закрытой части API,
  * у запроса должен быть "рабочий контекст" (каким брендом и точкой он сейчас пользуется).
  * Публичные пути пропускаются без проверки.
@@ -46,6 +45,13 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
             "/login/oauth2/code",
             "/notifications/longpoll",
             "/menu/",
+            "/doc/swagger-ui",
+            "/doc/swagger",
+            "/doc/api-docs",
+            "/public/",
+            "/swagger-ui",
+            "/api-docs",
+            "/v3/api-docs",
             // Информация о пользователе
             "/auth/v1/whoami",
             "/order/v1/my",
@@ -53,25 +59,15 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
             "/cart",
             // Список заказов доступен без tenant-контекста (возвращает пусто без членства)
             "/order/v1",
-            "/public/",
-            "/swagger-ui",
-            "/api-docs",
-            "/v3/api-docs",
+            // кастомные пути springdoc
             "/status"
     );
 
-    /**
-     * Определяет, является ли запрос публичным (не требует контекста).
-     * Возвращает true для OPTIONS (CORS), публичных страниц меню/корзины,
-     * документации и ряда auth-ручек.
-     */
     private boolean isPublic(HttpServletRequest request) {
         String uri = request.getRequestURI();
-        if (HttpMethod.OPTIONS.matches(request.getMethod())) return true;
+
         // Allow first-time brand creation without tenant context
-        if (HttpMethod.POST.matches(request.getMethod()) && "/auth/v1/brands".equals(uri)) return true;
         // Allow listing brands for authenticated users without tenant context (fallback master will be derived)
-        if (HttpMethod.GET.matches(request.getMethod()) && "/auth/v1/brands".equals(uri)) return true;
         for (String p : PUBLIC_PREFIXES) {
             if (uri.startsWith(p)) return true;
         }

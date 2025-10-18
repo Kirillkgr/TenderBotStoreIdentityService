@@ -3,6 +3,7 @@ package kirillzhdanov.identityservice.controller.inventory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.StockAdjustRequest;
 import kirillzhdanov.identityservice.dto.inventory.StockRowDto;
@@ -17,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auth/v1/inventory/stock")
 @RequiredArgsConstructor
+@Tag(name = "Inventory: Stock")
 public class StockController {
 
     private final StockService stockService;
