@@ -7,6 +7,7 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'README.md'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -42,12 +43,73 @@ jobs:
           if [ -f wiki/architecture/er-schema.md ]; then
             cp wiki/architecture/er-schema.md wiki/er-schema.md
           fi
+          # Architecture Multitenancy
+          if [ -f wiki/architecture/multitenancy.md ]; then
+            cp wiki/architecture/multitenancy.md wiki/multitenancy.md
+          fi
           # Inventory and Supplies pages
           if [ -f wiki/services/inventory.md ]; then
             cp wiki/services/inventory.md wiki/inventory.md
           fi
           if [ -f wiki/services/supplies-and-stock.md ]; then
             cp wiki/services/supplies-and-stock.md wiki/supplies-and-stock.md
+          fi
+          # Backend supplements aliases
+          if [ -f wiki/backend/swagger.md ]; then
+            cp wiki/backend/swagger.md wiki/swagger.md
+          fi
+          if [ -f wiki/backend/cookies-and-cors.md ]; then
+            cp wiki/backend/cookies-and-cors.md wiki/cookies-and-cors.md
+          fi
+          if [ -f wiki/backend/tenant-context.md ]; then
+            cp wiki/backend/tenant-context.md wiki/tenant-context.md
+          fi
+          if [ -f wiki/backend/order-acl.md ]; then
+            cp wiki/backend/order-acl.md wiki/order-acl.md
+          fi
+          if [ -f wiki/backend/migrations.md ]; then
+            cp wiki/backend/migrations.md wiki/migrations.md
+          fi
+          # Frontend aliases
+          if [ -f wiki/frontend/frontindex.md ]; then
+            cp wiki/frontend/frontindex.md wiki/frontindex.md
+          fi
+          if [ -f wiki/frontend/auth.md ]; then
+            cp wiki/frontend/auth.md wiki/frontend-auth.md
+          fi
+          if [ -f wiki/frontend/context.md ]; then
+            cp wiki/frontend/context.md wiki/frontend-context.md
+          fi
+          if [ -f wiki/frontend/inventory-stock.md ]; then
+            cp wiki/frontend/inventory-stock.md wiki/frontend-inventory-stock.md
+          fi
+          if [ -f wiki/frontend/notifications-longpoll.md ]; then
+            cp wiki/frontend/notifications-longpoll.md wiki/frontend-notifications-longpoll.md
+          fi
+          if [ -f wiki/frontend/inventory-crud.md ]; then
+            cp wiki/frontend/inventory-crud.md wiki/frontend-inventory-crud.md
+          fi
+          # Services aliases (stable)
+          if [ -f wiki/services/auth.md ]; then
+            cp wiki/services/auth.md wiki/auth.md
+          fi
+          if [ -f wiki/services/context.md ]; then
+            cp wiki/services/context.md wiki/context.md
+          fi
+          if [ -f wiki/services/rbac.md ]; then
+            cp wiki/services/rbac.md wiki/rbac.md
+          fi
+          if [ -f wiki/services/menu.md ]; then
+            cp wiki/services/menu.md wiki/menu.md
+          fi
+          if [ -f wiki/services/health.md ]; then
+            cp wiki/services/health.md wiki/health.md
+          fi
+          if [ -f wiki/services/errors.md ]; then
+            cp wiki/services/errors.md wiki/errors.md
+          fi
+          if [ -f wiki/services/admin-clients.md ]; then
+            cp wiki/services/admin-clients.md wiki/admin-clients.md
           fi
           # Generate wiki-friendly Home.md (links without .md extensions)
           printf '%s\n' \

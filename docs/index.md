@@ -35,7 +35,7 @@
 
 ## Frontend
 
-- [Оглавление и практики фронтенда](wiki/frontend)
+- [Оглавление и практики фронтенда](wiki/frontindex)
 - [Аутентификация и обновление токена](wiki/frontend-auth)
 - [Контекст на фронте](wiki/frontend-context)
 - [Страница остатков (Stock)](wiki/frontend-inventory-stock)
@@ -44,7 +44,7 @@
 
 ## Backend (дополнения)
 
-- [Swagger / OpenAPI (группы и аннотации)](wiki/backend-swagger)
-- [Cookies и CORS](wiki/backend-cookies-and-cors)
-- [TenantContext и публичные пути](wiki/backend-tenant-context)
-- [ACL заказов](wiki/backend-order-acl)
+- [Swagger / OpenAPI (группы и аннотации)](wiki/swagger)
+- [Cookies и CORS](wiki/cookies-and-cors)
+- [TenantContext и публичные пути](wiki/tenant-context)
+- [ACL заказов](wiki/order-acl)
