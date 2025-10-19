@@ -4,9 +4,10 @@ on:
   push:
     branches-ignore:
       - master
-#  pull_request:
-#    branches-ignore:
-#      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
 
 jobs:
   changes:
@@ -79,8 +80,8 @@ jobs:
       - name: Grant execute permission for mvnw
         run: chmod +x ./mvnw
 
-      - name: Build & test with Maven
-        run: ./mvnw -B clean install
+      - name: Build & test with Maven (unit + integration)
+        run: ./mvnw -B -ntp clean verify
 
       - name: Upload JUnit reports (Surefire/Failsafe)
         if: always()
