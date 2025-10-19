@@ -35,8 +35,17 @@ nav:
       - Многотенантность и контекст: architecture/multitenancy.md
   - Backend:
       - Гайд по миграциям (Liquibase): backend/migrations.md
+      - Swagger / OpenAPI (группы и аннотации): backend/swagger.md
+      - Cookies и CORS: backend/cookies-and-cors.md
+      - TenantContext и публичные пути: backend/tenant-context.md
+      - ACL заказов: backend/order-acl.md
   - Frontend:
+      - Оглавление и практики: frontend/frontindex.md
+      - Аутентификация и обновление токена: frontend/auth.md
       - Контекст на фронте: frontend/context.md
+      - Страница остатков (Stock): frontend/inventory-stock.md
+      - Уведомления и long‑poll: frontend/notifications-longpoll.md
+      - CRUD по инвентарю: frontend/inventory-crud.md
   - Сервисы (стабильные API):
       - Auth: services/auth.md
       - Context: services/context.md
@@ -46,3 +55,4 @@ nav:
       - Public Menu: services/menu.md
       - Health: services/health.md
       - Ошибки и коды: services/errors.md
+      - Inventory: services/inventory.md
