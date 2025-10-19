@@ -16,10 +16,14 @@ public class CookieService {
     @Value("${jwt.refresh.expiration:2592000000}")
     private long refreshExpirationMs;
 
+    // Allow disabling Secure in dev environments where backend runs over HTTP
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
+
     public ResponseCookie buildRefreshCookie(String refreshToken) {
         ResponseCookie.ResponseCookieBuilder rcb = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .sameSite("None");
         if (refreshExpirationMs > 0) {
@@ -35,7 +39,7 @@ public class CookieService {
     public List<ResponseCookie> buildClearRefreshCookies() {
         ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .sameSite("None");
@@ -45,7 +49,7 @@ public class CookieService {
         // Host-only variant without Domain
         ResponseCookie noDomain = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .sameSite("None")
@@ -56,7 +60,7 @@ public class CookieService {
     public List<ResponseCookie> buildClearSessionCookies() {
         ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("JSESSIONID", "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .sameSite("None");
@@ -65,7 +69,7 @@ public class CookieService {
                 : builder.build();
         ResponseCookie noDomain = ResponseCookie.from("JSESSIONID", "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .sameSite("None")

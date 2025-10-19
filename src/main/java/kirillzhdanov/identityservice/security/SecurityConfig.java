@@ -71,6 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/notifications/longpoll").permitAll()
                         // ACK и unreadCount доступны только авторизованным
                         .requestMatchers("/notifications/longpoll/ack", "/notifications/longpoll/unreadCount").authenticated()
+
                         .requestMatchers("/auth/v1/login")
                         .permitAll()
                         .requestMatchers("/auth/v1/register")
@@ -79,26 +80,30 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/auth/v1/refresh")
                         .permitAll()
-                        .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
+
+                        .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll() // public endpoint
                         .requestMatchers("/menu/v1/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/menu/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/orders").permitAll()
                         .requestMatchers(HttpMethod.GET, "/public/v1/**").permitAll()
                         .requestMatchers("/cart/**").permitAll()
 
-                        .requestMatchers("/swagger-ui/**")
+                        .requestMatchers("/swagger-ui/**") // swager
                         .permitAll()
                         .requestMatchers("/swagger-ui.html")
                         .permitAll()
-                        .requestMatchers("/auth/swagger")
+                        .requestMatchers("/doc/swagger")
                         .permitAll()
-                        .requestMatchers("/auth/api-docs/**")
+                        .requestMatchers("/doc/swagger-ui/**")
+                        .permitAll()
+                        .requestMatchers("/doc/api-docs/**")
                         .permitAll()
                         .requestMatchers("/api-docs/**")
                         .permitAll()
                         .requestMatchers("/v3/api-docs/**")
                         .permitAll()
-                        .requestMatchers("/status")
+
+                        .requestMatchers("/status") // health
                         .permitAll()
                         .anyRequest()
                         .authenticated())

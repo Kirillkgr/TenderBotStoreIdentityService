@@ -1,8 +1,12 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kirillzhdanov.identityservice.dto.inventory.CreateWarehouseRequest;
 import kirillzhdanov.identityservice.dto.inventory.UpdateWarehouseRequest;
@@ -19,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auth/v1/inventory/warehouses")
 @RequiredArgsConstructor
+@Tag(name = "Inventory: Warehouses")
 public class WarehouseController {
 
     private final WarehouseService warehouseService;
@@ -28,8 +33,8 @@ public class WarehouseController {
     @Operation(summary = "Список складов", description = "Требуется аутентификация. Возвращает склады текущего master контекста.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Успешно"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Нет доступа")
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Нет доступа", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<List<WarehouseDto>> list() {
         rbacGuard.requireStaffOrHigher();
@@ -40,10 +45,10 @@ public class WarehouseController {
     @Operation(summary = "Создать склад", description = "Требуется роль OWNER или ADMIN.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Создано"),
-            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
-            @ApiResponse(responseCode = "409", description = "Конфликт (дубликат)")
+            @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "409", description = "Конфликт (дубликат)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<WarehouseDto> create(@Valid @RequestBody CreateWarehouseRequest req) {
         rbacGuard.requireOwnerOrAdmin();
@@ -55,12 +60,12 @@ public class WarehouseController {
     @Operation(summary = "Обновить склад", description = "Требуется роль OWNER или ADMIN. Доступ только к своему master.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Обновлено"),
-            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
-            @ApiResponse(responseCode = "404", description = "Не найдено")
+            @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
-    public ResponseEntity<WarehouseDto> update(@PathVariable Long id, @Valid @RequestBody UpdateWarehouseRequest req) {
+    public ResponseEntity<WarehouseDto> update(@Parameter(description = "ID склада") @PathVariable Long id, @Valid @RequestBody UpdateWarehouseRequest req) {
         rbacGuard.requireOwnerOrAdmin();
         WarehouseDto dto = new WarehouseDto(id, req.getName());
         return ResponseEntity.ok(warehouseService.update(id, dto));
@@ -70,11 +75,11 @@ public class WarehouseController {
     @Operation(summary = "Удалить склад", description = "Требуется роль OWNER или ADMIN. Доступ только к своему master.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Удалено"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
-            @ApiResponse(responseCode = "404", description = "Не найдено")
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@Parameter(description = "ID склада") @PathVariable Long id) {
         rbacGuard.requireOwnerOrAdmin();
         warehouseService.delete(id);
         return ResponseEntity.noContent().build();

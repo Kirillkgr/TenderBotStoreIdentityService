@@ -10,6 +10,7 @@ import kirillzhdanov.identityservice.model.order.Order;
 import kirillzhdanov.identityservice.model.order.OrderItem;
 import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.model.userbrand.DeliveryAddress;
+import kirillzhdanov.identityservice.model.userbrand.UserBrandMembership;
 import kirillzhdanov.identityservice.notification.longpoll.LongPollService;
 import kirillzhdanov.identityservice.repository.cart.CartItemRepository;
 import kirillzhdanov.identityservice.repository.order.OrderItemRepository;
@@ -124,6 +125,20 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
         order.setTotal(total);
         order = orderRepository.save(order);
+
+        // Ensure client gets membership in the brand upon first order
+        try {
+            if (brandId != null) {
+                boolean hasMembership = membershipRepository.findByUser_IdAndBrand_Id(user.getId(), brandId).isPresent();
+                if (!hasMembership) {
+                    membershipRepository.save(UserBrandMembership.builder()
+                            .user(user)
+                            .brand(brand)
+                            .build());
+                }
+            }
+        } catch (Exception ignored) {
+        }
 
         // Очистим корзину
         cartRepo.deleteByUser_Id(user.getId());
