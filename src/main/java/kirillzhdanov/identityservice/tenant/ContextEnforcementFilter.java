@@ -38,6 +38,8 @@ public class ContextEnforcementFilter extends OncePerRequestFilter {
             "/auth/v1/revoke-all",
             "/auth/v1/logout",
             "/auth/v1/logout/all",
+            // Разрешаем создание и листинг брендов без tenant-контекста (первичный сценарий)
+            "/auth/v1/brands",
             // User-пути не завязаны на tenant-контекст
             "/user/v1/",
             // Публичные/документация
