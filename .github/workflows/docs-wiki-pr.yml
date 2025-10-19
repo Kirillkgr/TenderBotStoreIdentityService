@@ -28,6 +28,7 @@ jobs:
       - name: Sync Markdown docs to Wiki (set Home.md)
         run: |
           set -e
+          set -x
           # Clean wiki directory except .git
           find wiki -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           # Copy markdown sources
@@ -36,6 +37,8 @@ jobs:
           # This replaces occurrences of ](path.md) with ](path)
           if command -v sed >/dev/null 2>&1; then
             find wiki -type f -name "*.md" -print0 | xargs -0 sed -i "s/](\([^)#?]*\)\.md)/](\1)/g"
+            # Also handle anchors: ](path.md#anchor) -> ](path#anchor)
+            find wiki -type f -name "*.md" -print0 | xargs -0 sed -i -E 's/\]\(([^)#?]+)\.md#/\]\(\1#/'
           fi
 
           # Create root-level slug files to match (wiki/<slug>) links used in repo
@@ -111,28 +114,38 @@ jobs:
           if [ -f wiki/services/admin-clients.md ]; then
             cp wiki/services/admin-clients.md wiki/admin-clients.md
           fi
-          # Generate wiki-friendly Home.md (links without .md extensions)
-          printf '%s\n' \
-            '# TenderBotStore — Документация' \
-            '' \
-            'Добро пожаловать! Здесь описаны основы платформы и сервисов.' \
-            '' \
-            '## Быстрые ссылки' \
-            '' \
-            '- Архитектура → [ER‑схема](architecture/er-schema)' \
-            '- Архитектура → [Многотенантность и контекст](architecture/multitenancy)' \
-            '- Backend → [Гайд по миграциям (Liquibase)](backend/migrations)' \
-            '- Frontend → [Контекст на фронте](frontend/context)' \
-            '' \
-            '### Сервисы (стабильные)' \
-            '' \
-            '- [Auth](services/auth)' \
-            '- [Context](services/context)' \
-            '- [RBAC](services/rbac)' \
-            '- [Public Menu](services/menu)' \
-            '- [Health](services/health)' \
-            '- [Ошибки и коды](services/errors)' \
-            > wiki/Home.md
+          # Force refresh Home.md and generate from docs/index.md (links already normalized above)
+          rm -f wiki/Home.md || true
+          echo "--- DEBUG: HEAD of wiki/index.md (source) ---" || true
+          head -n 20 wiki/index.md || true
+          echo "--- DEBUG: md5 of wiki/index.md ---" || true
+          (command -v md5sum >/dev/null 2>&1 && md5sum wiki/index.md) || true
+          if [ -f wiki/index.md ]; then
+            cp wiki/index.md wiki/Home.md
+          else
+            # Fallback: minimal template
+            printf '%s\n' \
+              '# TenderBotStore — Документация' \
+              '' \
+              'Добро пожаловать! Здесь описаны основы платформы и сервисов.' \
+              '' \
+              '## Быстрые ссылки' \
+              '' \
+              '- Архитектура → [ER‑схема](architecture/er-schema)' \
+              '- Архитектура → [Многотенантность и контекст](architecture/multitenancy)' \
+              '- Backend → [Гайд по миграциям (Liquibase)](backend/migrations)' \
+              '- Frontend → [Контекст на фронте](frontend/context)' \
+              '' \
+              '### Сервисы (стабильные)' \
+              '' \
+              '- [Auth](services/auth)' \
+              '- [Context](services/context)' \
+              '- [RBAC](services/rbac)' \
+              '- [Public Menu](services/menu)' \
+              '- [Health](services/health)' \
+              '- [Ошибки и коды](services/errors)' \
+              > wiki/Home.md
+          fi
           # Ensure sidebar exists (links without .md extensions)
           if [ ! -f wiki/_Sidebar.md ]; then
             printf '%s\n' \
