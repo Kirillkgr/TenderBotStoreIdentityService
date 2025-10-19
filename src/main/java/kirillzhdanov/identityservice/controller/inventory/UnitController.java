@@ -1,6 +1,9 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,8 +30,8 @@ public class UnitController {
     @Operation(summary = "Список единиц измерения", description = "AUTH. Возвращает units текущего master контекста.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Успешно"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Нет доступа")
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Нет доступа", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<List<UnitDto>> list() {
         rbacGuard.requireStaffOrHigher();
@@ -39,9 +42,10 @@ public class UnitController {
     @Operation(summary = "Создать unit", description = "OWNER/ADMIN")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Создано"),
-            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав")
+            @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "409", description = "Конфликт (дубликат)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<UnitDto> create(@RequestBody UnitDto dto) {
         rbacGuard.requireOwnerOrAdmin();
@@ -52,12 +56,13 @@ public class UnitController {
     @Operation(summary = "Обновить unit", description = "OWNER/ADMIN")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Обновлено"),
-            @ApiResponse(responseCode = "400", description = "Неверный запрос"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
-            @ApiResponse(responseCode = "404", description = "Не найдено")
+            @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "409", description = "Конфликт", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
-    public ResponseEntity<UnitDto> update(@PathVariable Long id, @RequestBody UnitDto dto) {
+    public ResponseEntity<UnitDto> update(@Parameter(description = "ID unit") @PathVariable Long id, @RequestBody UnitDto dto) {
         rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(unitService.update(id, dto));
     }
@@ -66,11 +71,11 @@ public class UnitController {
     @Operation(summary = "Удалить unit", description = "OWNER/ADMIN")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Удалено"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
-            @ApiResponse(responseCode = "404", description = "Не найдено")
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@Parameter(description = "ID unit") @PathVariable Long id) {
         rbacGuard.requireOwnerOrAdmin();
         unitService.delete(id);
         return ResponseEntity.noContent().build();

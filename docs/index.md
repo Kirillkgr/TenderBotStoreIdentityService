@@ -30,3 +30,21 @@
 - [Public Menu](wiki/menu)
 - [Health](wiki/health)
 - [Ошибки и коды](wiki/errors)
+
+---
+
+## Frontend
+
+- [Оглавление и практики фронтенда](wiki/frontend)
+- [Аутентификация и обновление токена](wiki/frontend-auth)
+- [Контекст на фронте](wiki/frontend-context)
+- [Страница остатков (Stock)](wiki/frontend-inventory-stock)
+- [Уведомления и long‑poll](wiki/frontend-notifications-longpoll)
+- [CRUD по инвентарю](wiki/frontend-inventory-crud)
+
+## Backend (дополнения)
+
+- [Swagger / OpenAPI (группы и аннотации)](wiki/backend-swagger)
+- [Cookies и CORS](wiki/backend-cookies-and-cors)
+- [TenantContext и публичные пути](wiki/backend-tenant-context)
+- [ACL заказов](wiki/backend-order-acl)

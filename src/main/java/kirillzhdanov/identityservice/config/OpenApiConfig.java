@@ -60,7 +60,6 @@ public class OpenApiConfig {
                         "/auth/v1/checkUsername",
                         "/status"
                 )
-                .addOpenApiCustomizer(removeSecurityCustomizer())
                 .build();
     }
 
@@ -71,21 +70,28 @@ public class OpenApiConfig {
                 .group("secure")
                 .pathsToMatch("/**")
                 .pathsToExclude(
-                        // swagger & api-docs
-                        "/auth/swagger",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/api-docs/**",
-                        "/auth/api-docs/**",
-                        // public endpoints
-                        "/public/**",
-                        "/menu/**",
-                        "/notifications/longpoll",
-                        "/auth/v1/login",
-                        "/auth/v1/register",
-                        "/auth/v1/refresh",
-                        "/auth/v1/checkUsername",
-                        "/status"
+                    // swagger & api-docs
+                    "/auth/swagger",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**",
+                    "/api-docs/**",
+                    "/auth/v1/inventory/**",
+                    "/auth/v1/login",
+                    "/auth/v1/register",
+                    "/auth/v1/refresh",
+                    "/auth/v1/checkUsername",
+                    "/status"
+                )
+                .build();
+    }
+
+    // Inventory group: separate view for inventory endpoints
+    @Bean
+    public GroupedOpenApi inventoryApi() {
+        return GroupedOpenApi.builder()
+                .group("inventory")
+                .pathsToMatch(
+                        "/auth/v1/inventory/**"
                 )
                 .build();
     }

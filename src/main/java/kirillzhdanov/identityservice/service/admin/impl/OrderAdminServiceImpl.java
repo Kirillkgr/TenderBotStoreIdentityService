@@ -175,6 +175,15 @@ public class OrderAdminServiceImpl implements OrderAdminService {
         if (from != null) spec = spec.and((root, q, cb) -> cb.greaterThanOrEqualTo(root.get("createdAt"), from));
         if (to != null) spec = spec.and((root, q, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), to));
 
+        // Ограничение выборки по текущему masterId из контекста (как в findOrders)
+        Long currentMasterId = TenantContext.getMasterId();
+        if (currentMasterId != null) {
+            spec = spec.and((root, q, cb2) -> cb2.equal(root.get("brand").get("master").get("id"), currentMasterId));
+        } else {
+            // Без явно установленного master-контекста НЕ возвращаем заказы
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
         Page<Order> page = orderRepository.findAll(spec, pageable);
         List<OrderDto> dtos = new ArrayList<>();
         for (Order o : page.getContent()) dtos.add(mapOrder(o));

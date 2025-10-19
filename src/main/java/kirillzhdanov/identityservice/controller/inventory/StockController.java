@@ -1,6 +1,9 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,13 +31,13 @@ public class StockController {
     @Operation(summary = "Список остатков (фильтры)", description = "Требуется аутентификация. Роли: ADMIN/OWNER/COOK/CASHIER")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Успешно"),
-            @ApiResponse(responseCode = "400", description = "Неверные параметры (нет фильтров)"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Нет доступа")
+            @ApiResponse(responseCode = "400", description = "Неверные параметры (нет фильтров)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Нет доступа", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<List<StockRowDto>> list(
-            @RequestParam(value = "ingredientId", required = false) Long ingredientId,
-            @RequestParam(value = "warehouseId", required = false) Long warehouseId) {
+            @Parameter(description = "ID ингредиента") @RequestParam(value = "ingredientId", required = false) Long ingredientId,
+            @Parameter(description = "ID склада") @RequestParam(value = "warehouseId", required = false) Long warehouseId) {
         rbacGuard.requireStaffOrHigher(); // чтение разрешено персоналу (COOK/CASHIER/ADMIN/OWNER)
         if (ingredientId == null && warehouseId != null) {
             return ResponseEntity.ok(stockService.listByWarehouse(warehouseId));
@@ -46,9 +49,9 @@ public class StockController {
     @Operation(summary = "Увеличить остаток (приход)", description = "RBAC: OWNER/ADMIN")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Остаток увеличен"),
-            @ApiResponse(responseCode = "400", description = "Неверный запрос (qty<0, несуществующие сущности)"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав")
+            @ApiResponse(responseCode = "400", description = "Неверный запрос (qty<0, несуществующие сущности)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<StockRowDto> increase(@Valid @RequestBody StockAdjustRequest request) {
         rbacGuard.requireOwnerOrAdmin();
@@ -59,9 +62,9 @@ public class StockController {
     @Operation(summary = "Уменьшить остаток (списание)", description = "RBAC: OWNER/ADMIN")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Остаток уменьшен"),
-            @ApiResponse(responseCode = "400", description = "Недостаточно остатка или неверный запрос"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав")
+            @ApiResponse(responseCode = "400", description = "Недостаточно остатка или неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<StockRowDto> decrease(@Valid @RequestBody StockAdjustRequest request) {
         rbacGuard.requireOwnerOrAdmin();

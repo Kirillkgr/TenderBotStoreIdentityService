@@ -1,6 +1,9 @@
 package kirillzhdanov.identityservice.controller.inventory;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,8 +31,8 @@ public class PackagingController {
     @Operation(summary = "Список фасовок")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Успешно"),
-            @ApiResponse(responseCode = "401", description = "Неавторизован"),
-            @ApiResponse(responseCode = "403", description = "Нет доступа")
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Нет доступа", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<List<PackagingDto>> list() {
         rbacGuard.requireStaffOrHigher();
@@ -40,9 +43,10 @@ public class PackagingController {
     @Operation(summary = "Создать фасовку")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Создано"),
-        @ApiResponse(responseCode = "400", description = "Неверный запрос"),
-        @ApiResponse(responseCode = "401", description = "Неавторизован"),
-        @ApiResponse(responseCode = "403", description = "Недостаточно прав")
+        @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "409", description = "Конфликт (дубликат)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
     public ResponseEntity<PackagingDto> create(@Valid @RequestBody PackagingDto req) {
         rbacGuard.requireOwnerOrAdmin();
@@ -54,12 +58,13 @@ public class PackagingController {
     @Operation(summary = "Обновить фасовку")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Обновлено"),
-        @ApiResponse(responseCode = "400", description = "Неверный запрос"),
-        @ApiResponse(responseCode = "401", description = "Неавторизован"),
-        @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
-        @ApiResponse(responseCode = "404", description = "Не найдено")
+        @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "409", description = "Конфликт", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
-    public ResponseEntity<PackagingDto> update(@PathVariable Long id, @Valid @RequestBody PackagingDto req) {
+    public ResponseEntity<PackagingDto> update(@Parameter(description = "ID фасовки") @PathVariable Long id, @Valid @RequestBody PackagingDto req) {
         rbacGuard.requireOwnerOrAdmin();
         return ResponseEntity.ok(packagingService.update(id, req));
     }
@@ -68,11 +73,11 @@ public class PackagingController {
     @Operation(summary = "Удалить фасовку")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Удалено"),
-        @ApiResponse(responseCode = "401", description = "Неавторизован"),
-        @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
-        @ApiResponse(responseCode = "404", description = "Не найдено")
+        @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+        @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
     })
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@Parameter(description = "ID фасовки") @PathVariable Long id) {
         rbacGuard.requireOwnerOrAdmin();
         packagingService.delete(id);
         return ResponseEntity.noContent().build();
