@@ -1,4 +1,5 @@
 # TenderBotStore — Multi‑tenant E‑commerce Platform (SaaS)
+[![CI](https://github.com/Kirillkgr/TenderBotStoreIdentityService/actions/workflows/test-backend-frontend-ci.yml/badge.svg)](https://github.com/Kirillkgr/TenderBotStoreIdentityService/actions/workflows/test-backend-frontend-ci.yml)
 
 ## Обзор
 
