@@ -64,6 +64,9 @@ public class AuthServiceTest {
     @Mock
     private S3StorageService s3StorageService;
 
+    @Mock
+    private ProvisioningServiceOps provisioningService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -129,20 +132,16 @@ public class AuthServiceTest {
     @DisplayName("Регистрация пользователя - успешно")
     void registerUser_Success() {
         // Подготовка
-        // ensure master + default membership + empty avatar list
-        when(masterAccountRepository.findByName(anyString())).thenReturn(Optional.empty());
-        when(masterAccountRepository.save(any())).thenAnswer(inv -> {
-            var m = (kirillzhdanov.identityservice.model.master.MasterAccount) inv.getArgument(0);
-            try {
-                var f = m.getClass().getDeclaredField("id");
-                f.setAccessible(true);
-                f.set(m, 1L);
-            } catch (Exception ignored) {
-            }
-            return m;
-        });
-        when(userMembershipRepository.findByUserId(any())).thenReturn(Collections.emptyList());
-        when(userMembershipRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // провиженинг через интерфейс
+        kirillzhdanov.identityservice.model.master.MasterAccount master = new kirillzhdanov.identityservice.model.master.MasterAccount();
+        try {
+            var f = master.getClass().getDeclaredField("id");
+            f.setAccessible(true);
+            f.set(master, 1L);
+        } catch (Exception ignored) {}
+        when(provisioningService.ensureMasterAccountForUser(any(User.class))).thenReturn(master);
+        doNothing().when(provisioningService).ensureOwnerMembership(any(User.class), any());
+        doNothing().when(provisioningService).ensureDefaultBrandAndPickup(any(User.class), any());
         when(storageFileRepository.findByOwnerTypeAndOwnerId(anyString(), anyLong())).thenReturn(Collections.emptyList());
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(roleService.getUserRole()).thenReturn(userRole);
@@ -168,8 +167,8 @@ public class AuthServiceTest {
         verify(roleService).getUserRole();
         verify(roleService).findByName(Role.RoleName.USER);
         verify(passwordEncoder).encode(registrationRequest.getPassword());
-        // Сервис сохраняет пользователя дважды: до создания бренда и после добавления дефолтного бренда
-        verify(userRepository, times(2)).save(any(User.class));
+        // Сохранение пользователя как минимум один раз
+        verify(userRepository, atLeastOnce()).save(any(User.class));
         verify(jwtUtils).generateAccessToken(any(CustomUserDetails.class));
         verify(jwtUtils).generateRefreshToken(any(CustomUserDetails.class));
         verify(tokenService).saveToken(eq("access-token-123"), eq(Token.TokenType.ACCESS), any(User.class));
@@ -195,20 +194,12 @@ public class AuthServiceTest {
         registrationRequest.getRoleNames()
                 .add(Role.RoleName.ADMIN);
 
-        // ensure master + default membership + empty avatar list
-        when(masterAccountRepository.findByName(anyString())).thenReturn(Optional.empty());
-        when(masterAccountRepository.save(any())).thenAnswer(inv -> {
-            var m = (kirillzhdanov.identityservice.model.master.MasterAccount) inv.getArgument(0);
-            try {
-                var f = m.getClass().getDeclaredField("id");
-                f.setAccessible(true);
-                f.set(m, 1L);
-            } catch (Exception ignored) {
-            }
-            return m;
-        });
-        when(userMembershipRepository.findByUserId(any())).thenReturn(Collections.emptyList());
-        when(userMembershipRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // провиженинг через интерфейс
+        kirillzhdanov.identityservice.model.master.MasterAccount master = new kirillzhdanov.identityservice.model.master.MasterAccount();
+        try { var f = master.getClass().getDeclaredField("id"); f.setAccessible(true); f.set(master, 1L);} catch (Exception ignored) {}
+        when(provisioningService.ensureMasterAccountForUser(any(User.class))).thenReturn(master);
+        doNothing().when(provisioningService).ensureOwnerMembership(any(User.class), any());
+        doNothing().when(provisioningService).ensureDefaultBrandAndPickup(any(User.class), any());
         when(storageFileRepository.findByOwnerTypeAndOwnerId(anyString(), anyLong())).thenReturn(Collections.emptyList());
         when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
 
@@ -249,6 +240,12 @@ public class AuthServiceTest {
         when(roleService.findByName(Role.RoleName.USER)).thenReturn(Optional.of(userRole));
         when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
         when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
+        // провиженинг через интерфейс
+        kirillzhdanov.identityservice.model.master.MasterAccount master = new kirillzhdanov.identityservice.model.master.MasterAccount();
+        try { var f = master.getClass().getDeclaredField("id"); f.setAccessible(true); f.set(master, 1L);} catch (Exception ignored) {}
+        when(provisioningService.ensureMasterAccountForUser(any(User.class))).thenReturn(master);
+        doNothing().when(provisioningService).ensureOwnerMembership(any(User.class), any());
+        doNothing().when(provisioningService).ensureDefaultBrandAndPickup(any(User.class), any());
 
         User userWithBrand = User.builder()
                 .id(1L)

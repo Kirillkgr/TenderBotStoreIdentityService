@@ -7,7 +7,9 @@ import kirillzhdanov.identityservice.model.UserProvider;
 import kirillzhdanov.identityservice.repository.UserProviderRepository;
 import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
+import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.security.JwtUtils;
+import kirillzhdanov.identityservice.service.ProvisioningServiceOps;
 import kirillzhdanov.identityservice.service.RoleService;
 import kirillzhdanov.identityservice.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,12 +25,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+
 public class GoogleOAuth2ServiceTest {
 
     private UserRepository userRepository;
     private TokenService tokenService;
     private UserProviderRepository userProviderRepository;
-
+    private ProvisioningServiceOps provisioningService;
     private GoogleOAuth2Service service;
 
     @BeforeEach
@@ -41,7 +44,9 @@ public class GoogleOAuth2ServiceTest {
         MasterAccountRepository masterAccountRepository = mock(MasterAccountRepository.class);
         // By default, pretend master already exists to avoid save path in unit tests
         when(masterAccountRepository.findByName(anyString())).thenReturn(java.util.Optional.of(new kirillzhdanov.identityservice.model.master.MasterAccount()));
-        service = new GoogleOAuth2Service(userRepository, roleService, jwtUtils, tokenService, userProviderRepository, masterAccountRepository);
+        provisioningService = mock(ProvisioningServiceOps.class);
+        when(provisioningService.ensureMasterAccountForUser(any(User.class))).thenReturn(new MasterAccount());
+        service = new GoogleOAuth2Service(userRepository, roleService, jwtUtils, tokenService, userProviderRepository, masterAccountRepository, provisioningService);
 
         Role userRole = new Role();
         userRole.setName(Role.RoleName.USER);
@@ -124,6 +129,39 @@ public class GoogleOAuth2ServiceTest {
 
         // Проверяем, что связь с провайдером создана
         verify(userProviderRepository).save(any(UserProvider.class));
+    }
+
+    @Test
+    @DisplayName("Первый вход через Google вызывает полное провиженинг-окружение (master, membership, brand/pickup)")
+    void firstGoogleLogin_invokesProvisioning() {
+        OidcUser oidcUser = mock(OidcUser.class);
+        when(oidcUser.getEmail()).thenReturn("provision@example.com");
+        when(oidcUser.getSubject()).thenReturn("google-sub-prov");
+        when(oidcUser.getGivenName()).thenReturn("John");
+        when(oidcUser.getFamilyName()).thenReturn("Doe");
+
+        when(userProviderRepository.findByProviderAndProviderUserId(eq(UserProvider.Provider.GOOGLE), anyString()))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail("provision@example.com")).thenReturn(Optional.empty());
+        when(userRepository.existsByUsername(anyString())).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(100L);
+            if (u.getRoles() == null) u.setRoles(new HashSet<>());
+            if (u.getBrands() == null) u.setBrands(new HashSet<>());
+            return u;
+        });
+
+        service.handleLoginOrRegister(oidcUser);
+
+        // Проверяем, что вызваны все ensure-методы провиженинга
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(provisioningService, atLeastOnce()).ensureMasterAccountForUser(userCaptor.capture());
+        MasterAccount fakeMaster = new MasterAccount();
+        fakeMaster.setId(1L);
+        // Для ensureOwnerMembership/ensureDefaultBrandAndPickup проверим вызовы с любым MasterAccount
+        verify(provisioningService, atLeastOnce()).ensureOwnerMembership(any(User.class), any(MasterAccount.class));
+        verify(provisioningService, atLeastOnce()).ensureDefaultBrandAndPickup(any(User.class), any(MasterAccount.class));
     }
 
     @Test

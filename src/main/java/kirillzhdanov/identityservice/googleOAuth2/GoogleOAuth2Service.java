@@ -10,6 +10,7 @@ import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
+import kirillzhdanov.identityservice.service.ProvisioningServiceOps;
 import kirillzhdanov.identityservice.service.RoleService;
 import kirillzhdanov.identityservice.service.TokenService;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -32,19 +33,22 @@ public class GoogleOAuth2Service {
     private final TokenService tokenService;
     private final UserProviderRepository userProviderRepository;
     private final MasterAccountRepository masterAccountRepository;
+    private final ProvisioningServiceOps provisioningService;
 
     public GoogleOAuth2Service(UserRepository userRepository,
                                RoleService roleService,
                                JwtUtils jwtUtils,
                                TokenService tokenService,
                                UserProviderRepository userProviderRepository,
-                               MasterAccountRepository masterAccountRepository) {
+                               MasterAccountRepository masterAccountRepository,
+                               ProvisioningServiceOps provisioningService) {
         this.userRepository = userRepository;
         this.roleService = roleService;
         this.jwtUtils = jwtUtils;
         this.tokenService = tokenService;
         this.userProviderRepository = userProviderRepository;
         this.masterAccountRepository = masterAccountRepository;
+        this.provisioningService = provisioningService;
     }
 
     /**
@@ -70,16 +74,10 @@ public class GoogleOAuth2Service {
 
         User user = findOrCreateAndLinkUser(email, sub, firstName, lastName, picture, emailVerified);
 
-        // Ensure MasterAccount exists for this user (same behavior as classic registration)
-        try {
-            String username = user.getUsername();
-            masterAccountRepository.findByName(username)
-                    .orElseGet(() -> masterAccountRepository.save(MasterAccount.builder()
-                            .name(username)
-                            .status("ACTIVE")
-                            .build()));
-        } catch (Exception ignored) {
-        }
+        // Ensure same provisioning as classic registration
+        MasterAccount master = provisioningService.ensureMasterAccountForUser(user);
+        provisioningService.ensureOwnerMembership(user, master);
+        provisioningService.ensureDefaultBrandAndPickup(user, master);
 
         // Revoke existing access tokens optionally, keep refresh strategy if needed
         // tokenService.revokeAllUserTokens(user);
