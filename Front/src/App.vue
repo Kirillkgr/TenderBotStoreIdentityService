@@ -2,16 +2,15 @@
   <div id="app" :class="appClass">
     <Sidebar/>
     <AppHeader
-      :is-modal-visible="isModalVisible"
-      @open-login-modal="openModal('LoginView')"
-      @open-register-modal="openModal('RegisterView')"
-      @open-mini-cart="showMiniCart = true"
+        :is-modal-visible="isModalVisible"
+        @open-login-modal="openModal('LoginView')"
+        @open-register-modal="openModal('RegisterView')"
+        @open-mini-cart="showMiniCart = true"
     />
     <main class="main-content">
-<!--      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>-->
-      <router-view />
+      <!--      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>-->
+      <router-view/>
     </main>
-
 
 
     <Modal :is-modal-visible="isModalVisible" @close="closeModal">
@@ -19,7 +18,7 @@
         <h3>{{ modalTitle }}</h3>
       </template>
       <template #content>
-        <component :is="modalContent" @success="handleSuccess" />
+        <component :is="modalContent" @success="handleSuccess"/>
       </template>
     </Modal>
 
@@ -28,7 +27,7 @@
 </template>
 
 <script setup>
-import {computed, ref, shallowRef, watch, onMounted, onBeforeUnmount} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref, shallowRef, watch} from 'vue';
 import {useRoute} from 'vue-router';
 import AppHeader from './components/AppHeader.vue';
 import Sidebar from './components/Sidebar.vue';
@@ -74,7 +73,7 @@ const modalTitle = ref('');
 function openModal(componentName) {
   console.log('App: openModal called with', componentName);
   console.log('App: modalContent before:', modalContent.value);
-  
+
   modalContent.value = components[componentName];
   if (componentName === 'LoginView') {
     modalTitle.value = 'Вход в аккаунт';
@@ -86,7 +85,7 @@ function openModal(componentName) {
     modalTitle.value = '';
   }
   isModalVisible.value = true;
-  
+
   console.log('App: modalContent after:', modalContent.value);
   console.log('App: isModalVisible:', isModalVisible.value);
 }
@@ -104,12 +103,13 @@ function openCheckout() {
   showMiniCart.value = false;
   openModal('CheckoutModal');
 }
+
 watch(
-  () => route.name,
-  () => {
-    document.title = `TenderBotStore - ${route.meta.title || 'Главная'}`;
-  },
-  { immediate: true }
+    () => route.name,
+    () => {
+      document.title = `TenderBotStore - ${route.meta.title || 'Главная'}`;
+    },
+    {immediate: true}
 );
 
 // Автозапуск long-poll уведомлений для авторизованных пользователей
@@ -127,13 +127,12 @@ watch(
     {immediate: true}
 );
 
-// Один раз пытаемся восстановить сессию при загрузке приложения,
-// чтобы accessToken появился до старта long-poll
+// Всегда пытаемся восстановить сессию при загрузке приложения.
+// Это необходимо для OAuth2-логина: backend устанавливает refresh cookie и редиректит на фронт,
+// где нужно явно запросить accessToken через /auth/v1/refresh и подтянуть memberships.
 onMounted(async () => {
   try {
-    if (authStore.isAuthenticated && !authStore.accessToken) {
-      await authStore.restoreSession();
-    }
+    await authStore.restoreSession();
   } catch (_) {
   }
   // Sidebar behavior: open on desktop, close on mobile
@@ -210,21 +209,12 @@ body {
   padding-top: 80px;
   text-align: center;
 }
-.page-title {
-  margin-bottom: 1.5rem;
-  font-weight: 400;
-}
-
 
 
 /* Стили для ссылок в футере или других местах, если они будут */
 nav a {
   font-weight: bold;
   color: #ecf0f1; /* Светлый текст для ссылок */
-}
-
-nav a.router-link-exact-active {
-  color: #4AAE9B; /* Акцентный цвет */
 }
 
 /* Global theme variables */
@@ -238,26 +228,6 @@ nav a.router-link-exact-active {
   --sidebar-border: rgba(255, 255, 255, .08);
   --sidebar-width: 320px;
   --sidebar-rail: 64px;
-}
-
-/* Dark theme */
-html.theme-dark {
-  --bg: #242424;
-  --text: #eaeaea;
-  --muted: #cfd8dc;
-  --active-bg: rgba(255, 255, 255, .08);
-  --sidebar-bg: #1f1f1f;
-  --sidebar-border: rgba(255, 255, 255, .08);
-}
-
-/* Light theme */
-html.theme-light {
-  --bg: #f7f8fa;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --active-bg: rgba(0, 0, 0, .06);
-  --sidebar-bg: #ffffff;
-  --sidebar-border: rgba(0, 0, 0, .08);
 }
 
 /* Layout adjustments for left sidebar */
