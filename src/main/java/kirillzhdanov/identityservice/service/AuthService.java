@@ -56,6 +56,7 @@ public class AuthService {
     private final MasterAccountRepository masterAccountRepository;
     private final UserMembershipRepository userMembershipRepository;
     private final PickupPointRepository pickupPointRepository;
+    private final ProvisioningServiceOps provisioningService;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -80,9 +81,9 @@ public class AuthService {
         }
         User savedUser = userService.save(user);
 
-        MasterAccount ensuredMaster = ensureMasterAccountForUser(savedUser);
-        ensureOwnerMembership(savedUser, ensuredMaster);
-        ensureDefaultBrandAndPickup(savedUser, ensuredMaster);
+        MasterAccount ensuredMaster = provisioningService.ensureMasterAccountForUser(savedUser);
+        provisioningService.ensureOwnerMembership(savedUser, ensuredMaster);
+        provisioningService.ensureDefaultBrandAndPickup(savedUser, ensuredMaster);
 
         // Перезагружаем пользователя, чтобы коллекции (бренды) были актуальны
         User reloaded = userService.findByUsername(savedUser.getUsername())
@@ -150,75 +151,6 @@ public class AuthService {
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
             user.setEmailVerificationCode(generateEmailCode());
             user.setEmailVerificationExpiresAt(LocalDateTime.now().plusMinutes(15));
-        }
-    }
-
-    private MasterAccount ensureMasterAccountForUser(User savedUser) {
-        try {
-            return masterAccountRepository.findByName(savedUser.getUsername()).orElseGet(() -> masterAccountRepository.save(MasterAccount.builder().name(savedUser.getUsername()).status("ACTIVE").build()));
-        } catch (Exception e) {
-            return masterAccountRepository.findByName(savedUser.getUsername()).orElseThrow(() -> new BadRequestException("Unable to ensure master account"));
-        }
-    }
-
-    private void ensureOwnerMembership(User savedUser, MasterAccount ensuredMaster) {
-        if (ensuredMaster == null) return;
-        final Long ensuredMasterId = ensuredMaster.getId();
-        boolean hasMembership = false;
-        for (UserMembership m : userMembershipRepository.findByUserId(savedUser.getId())) {
-            if (m.getMaster() != null && Objects.equals(m.getMaster().getId(), ensuredMasterId)) {
-                hasMembership = true;
-                break;
-            }
-        }
-        if (!hasMembership) {
-            UserMembership um = UserMembership.builder().user(savedUser).master(ensuredMaster).role(RoleMembership.OWNER).status("ACTIVE").build();
-            userMembershipRepository.save(um);
-        }
-    }
-
-    private void ensureDefaultBrandAndPickup(User savedUser, MasterAccount ensuredMaster) {
-        if (ensuredMaster == null) return;
-        // Generate an English, subdomain-safe brand name: e.g. "brand-abc123"
-        String defaultBrandName = generateSlugFromUUID();
-        while (brandRepository.existsByNameAndMaster_Id(defaultBrandName, ensuredMaster.getId())) {
-            defaultBrandName = generateSlugFromUUID();
-        }
-
-        Brand defaultBrand = Brand.builder().name(defaultBrandName).organizationName(defaultBrandName).master(ensuredMaster).build();
-        defaultBrand = brandRepository.saveAndFlush(defaultBrand);
-
-        PickupPoint defaultPickup = PickupPoint.builder().brand(defaultBrand).name("Основная точка").active(true).build();
-        pickupPointRepository.saveAndFlush(defaultPickup);
-
-        savedUser.getBrands().add(defaultBrand);
-        userService.save(savedUser);
-
-        // Если уже есть membership по этому мастеру без привязанного бренда — обновим его, а не создадим новый
-        UserMembership membershipWithoutBrand = null;
-        for (UserMembership m : userMembershipRepository.findByUserId(savedUser.getId())) {
-            if (m.getMaster() != null && Objects.equals(m.getMaster().getId(), ensuredMaster.getId()) && m.getBrand() == null) {
-                membershipWithoutBrand = m;
-                break;
-            }
-        }
-
-        if (membershipWithoutBrand != null) {
-            membershipWithoutBrand.setBrand(defaultBrand);
-            // статус и роль оставляем как есть (или гарантируем OWNER при первом бренде)
-            if (membershipWithoutBrand.getRole() == null) {
-                try {
-                    membershipWithoutBrand.setRole(RoleMembership.OWNER);
-                } catch (Exception ignored) {
-                }
-            }
-            if (membershipWithoutBrand.getStatus() == null) {
-                membershipWithoutBrand.setStatus("ACTIVE");
-            }
-            userMembershipRepository.save(membershipWithoutBrand);
-        } else {
-            UserMembership brandMembership = UserMembership.builder().user(savedUser).master(ensuredMaster).brand(defaultBrand).role(RoleMembership.OWNER).status("ACTIVE").build();
-            userMembershipRepository.save(brandMembership);
         }
     }
 
