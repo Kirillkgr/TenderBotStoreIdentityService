@@ -7,8 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PublicBrandResponse {
+public class PublicBrandMinResponse {
     private Long id;
-    private String name;
     private String domain;
 }

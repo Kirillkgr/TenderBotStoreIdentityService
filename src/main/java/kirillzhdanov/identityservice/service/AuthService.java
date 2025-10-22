@@ -14,7 +14,6 @@ import kirillzhdanov.identityservice.model.master.UserMembership;
 import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.StorageFileRepository;
-import kirillzhdanov.identityservice.repository.UserRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
 import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
@@ -32,21 +31,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-	private final UserRepository userRepository;
+    private final UserService userService;
 
-	private final BrandRepository brandRepository;
+    private final BrandRepository brandRepository;
 
-	private final RoleService roleService;
+    private final RoleService roleService;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -55,7 +51,6 @@ public class AuthService {
     private final JwtUtils jwtUtils;
 
     private final TokenService tokenService;
-
     private final StorageFileRepository storageFileRepository;
     private final S3StorageService s3StorageService;
     private final MasterAccountRepository masterAccountRepository;
@@ -67,158 +62,190 @@ public class AuthService {
 
     @Transactional
     public boolean checkUniqUsername(String username) {
-        return userRepository.existsByUsername(username);
+        return userService.existsByUsername(username);
     }
 
     @Transactional
     public UserResponse registerUser(UserRegistrationRequest request) {
-        // Проверяем, что пользователь с таким именем не существует
-        if (userRepository.existsByUsername(request.getUsername())) {
+        validateRegistrationRequest(request);
+
+        User user = buildUserFromRequest(request);
+        assignDefaultRoleAndExtras(user, request);
+        assignBrands(user, request);
+        applyEmailVerification(user);
+
+        // Шифруем пароль и сохраняем пользователя
+        if (user.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
+        User savedUser = userService.save(user);
+
+        MasterAccount ensuredMaster = ensureMasterAccountForUser(savedUser);
+        ensureOwnerMembership(savedUser, ensuredMaster);
+        ensureDefaultBrandAndPickup(savedUser, ensuredMaster);
+
+        // Перезагружаем пользователя, чтобы коллекции (бренды) были актуальны
+        User reloaded = userService.findByUsername(savedUser.getUsername())
+                .orElse(savedUser);
+
+        CustomUserDetails cud = new CustomUserDetails(reloaded);
+        String accessToken = jwtUtils.generateAccessToken(cud);
+        String refreshToken = jwtUtils.generateRefreshToken(cud);
+
+        // Сохраняем токены для актуального пользователя
+        tokenService.saveToken(accessToken, Token.TokenType.ACCESS, reloaded);
+        tokenService.saveToken(refreshToken, Token.TokenType.REFRESH, reloaded);
+
+        return buildUserResponse(reloaded, accessToken, refreshToken);
+    }
+
+    private void validateRegistrationRequest(UserRegistrationRequest request) {
+        if (request == null) {
+            throw new BadRequestException("Запрос регистрации пуст");
+        }
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
+            throw new BadRequestException("Имя пользователя обязательно");
+        }
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new BadRequestException("Пароль обязателен");
+        }
+        if (userService.existsByUsername(request.getUsername())) {
             throw new BadRequestException("Пользователь с таким именем уже существует");
         }
-
-        // Проверяем уникальность email, если он указан
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new BadRequestException("Пользователь с таким email уже существует");
-            }
+        if (request.getEmail() != null && !request.getEmail().isBlank() && userService.existsByEmail(request.getEmail())) {
+            throw new BadRequestException("Пользователь с таким email уже существует");
         }
+    }
 
-        // Создаем нового пользователя
-        User user = User.builder().username(request.getUsername()).password(passwordEncoder.encode(request.getPassword())).firstName(request.getFirstName()).lastName(request.getLastName()).patronymic(request.getPatronymic()).dateOfBirth(request.getDateOfBirth()).email(request.getEmail()).phone(request.getPhone()).emailVerified(false).brands(new HashSet<>()).roles(new HashSet<>()).build();
+    private User buildUserFromRequest(UserRegistrationRequest request) {
+        return User.builder().username(request.getUsername()).password(request.getPassword()).firstName(request.getFirstName()).lastName(request.getLastName()).patronymic(request.getPatronymic()).dateOfBirth(request.getDateOfBirth()).email(request.getEmail()).phone(request.getPhone()).emailVerified(false).brands(new HashSet<>()).roles(new HashSet<>()).build();
+    }
 
-        // Добавляем роль USER по умолчанию
+    private void assignDefaultRoleAndExtras(User user, UserRegistrationRequest request) {
         Role userRole = roleService.getUserRole();
         user.getRoles().add(userRole);
 
-        // Если указаны дополнительные роли, добавляем их
         if (request.getRoleNames() != null && !request.getRoleNames().isEmpty()) {
-            for (Role.RoleName roleName : request.getRoleNames()) {
-                roleService.findByName(roleName).ifPresent(role -> {
-                    if (!role.getName().equals(Role.RoleName.USER)) { // USER уже добавлен
+            for (Role.RoleName rn : request.getRoleNames()) {
+                roleService.findByName(rn).ifPresent(role -> {
+                    if (!role.getName().equals(Role.RoleName.USER)) {
                         user.getRoles().add(role);
                     }
                 });
             }
         }
+    }
 
-        // Добавляем бренды, если они указаны
-        if (request.getBrandIds() != null && !request.getBrandIds().isEmpty()) {
-            Set<Brand> brands = new HashSet<>();
-            for (Long brandId : request.getBrandIds()) {
-                Brand brand = brandRepository.findById(brandId).orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
-                brands.add(brand);
-            }
-            user.setBrands(brands);
+    private void assignBrands(User user, UserRegistrationRequest request) {
+        if (request.getBrandIds() == null || request.getBrandIds().isEmpty()) return;
+        Set<Brand> brands = new HashSet<>();
+        for (Long brandId : request.getBrandIds()) {
+            Brand brand = brandRepository.findById(brandId).orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
+            brands.add(brand);
         }
+        user.setBrands(brands);
+    }
 
-        // Генерируем код подтверждения email, если email указан
+    private void applyEmailVerification(User user) {
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
             user.setEmailVerificationCode(generateEmailCode());
             user.setEmailVerificationExpiresAt(LocalDateTime.now().plusMinutes(15));
         }
+    }
 
-        // Сохраняем пользователя
-        User savedUser = userRepository.save(user);
-
-        // Гарантируем наличие MasterAccount для пользователя (по умолчанию имя = username)
-        MasterAccount ensuredMaster;
+    private MasterAccount ensureMasterAccountForUser(User savedUser) {
         try {
-            User refUser = savedUser;
-            ensuredMaster = masterAccountRepository.findByName(savedUser.getUsername())
-                    .orElseGet(() -> masterAccountRepository.save(MasterAccount.builder()
-                            .name(refUser.getUsername())
-                            .status("ACTIVE")
-                            .build()));
+            return masterAccountRepository.findByName(savedUser.getUsername()).orElseGet(() -> masterAccountRepository.save(MasterAccount.builder().name(savedUser.getUsername()).status("ACTIVE").build()));
         } catch (Exception e) {
-            ensuredMaster = masterAccountRepository.findByName(savedUser.getUsername())
-                    .orElseThrow(() -> new BadRequestException("Unable to ensure master account"));
+            return masterAccountRepository.findByName(savedUser.getUsername()).orElseThrow(() -> new BadRequestException("Unable to ensure master account"));
         }
+    }
 
-        // Создаём дефолтное членство пользователя в своём мастере, если отсутствует
-        try {
-            final Long ensuredMasterId = ensuredMaster != null ? ensuredMaster.getId() : null;
-            boolean hasMembership = userMembershipRepository.findByUserId(savedUser.getId())
-                    .stream()
-                    .anyMatch(m -> m.getMaster() != null && Objects.equals(m.getMaster().getId(), ensuredMasterId));
-            if (!hasMembership) {
-                UserMembership um = UserMembership.builder()
-                        .user(savedUser)
-                        .master(ensuredMaster)
-                        .role(RoleMembership.OWNER)
-                        .status("ACTIVE")
-                        .build();
-                userMembershipRepository.save(um);
+    private void ensureOwnerMembership(User savedUser, MasterAccount ensuredMaster) {
+        if (ensuredMaster == null) return;
+        final Long ensuredMasterId = ensuredMaster.getId();
+        boolean hasMembership = false;
+        for (UserMembership m : userMembershipRepository.findByUserId(savedUser.getId())) {
+            if (m.getMaster() != null && Objects.equals(m.getMaster().getId(), ensuredMasterId)) {
+                hasMembership = true;
+                break;
             }
-        } catch (Exception ignored) {
+        }
+        if (!hasMembership) {
+            UserMembership um = UserMembership.builder().user(savedUser).master(ensuredMaster).role(RoleMembership.OWNER).status("ACTIVE").build();
+            userMembershipRepository.save(um);
+        }
+    }
+
+    private void ensureDefaultBrandAndPickup(User savedUser, MasterAccount ensuredMaster) {
+        if (ensuredMaster == null) return;
+        // Generate an English, subdomain-safe brand name: e.g. "brand-abc123"
+        String defaultBrandName = generateSlugFromUUID();
+        while (brandRepository.existsByNameAndMaster_Id(defaultBrandName, ensuredMaster.getId())) {
+            defaultBrandName = generateSlugFromUUID();
         }
 
-        // После гарантии MasterAccount создаём дефолтный бренд и точку выдачи для владельца
-        try {
-            // 1) Сгенерировать уникальное имя бренда (6 русских букв) в пределах мастера
-            String defaultBrandName = generateRuName(6);
-            if (ensuredMaster != null) {
-                while (brandRepository.existsByNameAndMaster_Id(defaultBrandName, ensuredMaster.getId())) {
-                    defaultBrandName = generateRuName(6);
+        Brand defaultBrand = Brand.builder().name(defaultBrandName).organizationName(defaultBrandName).master(ensuredMaster).build();
+        defaultBrand = brandRepository.saveAndFlush(defaultBrand);
+
+        PickupPoint defaultPickup = PickupPoint.builder().brand(defaultBrand).name("Основная точка").active(true).build();
+        pickupPointRepository.saveAndFlush(defaultPickup);
+
+        savedUser.getBrands().add(defaultBrand);
+        userService.save(savedUser);
+
+        // Если уже есть membership по этому мастеру без привязанного бренда — обновим его, а не создадим новый
+        UserMembership membershipWithoutBrand = null;
+        for (UserMembership m : userMembershipRepository.findByUserId(savedUser.getId())) {
+            if (m.getMaster() != null && Objects.equals(m.getMaster().getId(), ensuredMaster.getId()) && m.getBrand() == null) {
+                membershipWithoutBrand = m;
+                break;
+            }
+        }
+
+        if (membershipWithoutBrand != null) {
+            membershipWithoutBrand.setBrand(defaultBrand);
+            // статус и роль оставляем как есть (или гарантируем OWNER при первом бренде)
+            if (membershipWithoutBrand.getRole() == null) {
+                try {
+                    membershipWithoutBrand.setRole(RoleMembership.OWNER);
+                } catch (Exception ignored) {
                 }
             }
-
-            // 2) Создать бренд и сохранить
-            Brand defaultBrand = Brand.builder()
-                    .name(defaultBrandName)
-                    .organizationName(defaultBrandName)
-                    .master(ensuredMaster)
-                    .build();
-            defaultBrand = brandRepository.save(defaultBrand);
-
-            // 3) Создать дефолтную точку выдачи
-            PickupPoint defaultPickup = PickupPoint.builder()
-                    .brand(defaultBrand)
-                    .name("Основная точка")
-                    .active(true)
-                    .build();
-            defaultPickup = pickupPointRepository.save(defaultPickup);
-
-            // 4) Привязать бренд к пользователю и сохранить
-            savedUser.getBrands().add(defaultBrand);
-            savedUser = userRepository.save(savedUser);
-
-            // 5) Создать членство уровня бренда (OWNER)
-            UserMembership brandMembership = UserMembership.builder()
-                    .user(savedUser)
-                    .master(ensuredMaster)
-                    .brand(defaultBrand)
-                    .role(RoleMembership.OWNER)
-                    .status("ACTIVE")
-                    .build();
+            if (membershipWithoutBrand.getStatus() == null) {
+                membershipWithoutBrand.setStatus("ACTIVE");
+            }
+            userMembershipRepository.save(membershipWithoutBrand);
+        } else {
+            UserMembership brandMembership = UserMembership.builder().user(savedUser).master(ensuredMaster).brand(defaultBrand).role(RoleMembership.OWNER).status("ACTIVE").build();
             userMembershipRepository.save(brandMembership);
-        } catch (Exception ignored) {
         }
+    }
 
-        // Создаем CustomUserDetails для включения дополнительной информации в токен
-        CustomUserDetails customUserDetails = new CustomUserDetails(savedUser);
-
-        // Генерируем токены
-        String accessToken = jwtUtils.generateAccessToken(customUserDetails);
-        String refreshToken = jwtUtils.generateRefreshToken(customUserDetails);
-
-        // Сохраняем токены в базу данных
-        tokenService.saveToken(accessToken, Token.TokenType.ACCESS, user);
-        tokenService.saveToken(refreshToken, Token.TokenType.REFRESH, user);
-
-        // Возвращаем ответ
-        String avatarUrl = buildPresignedAvatarUrl(savedUser);
-        return UserResponse.builder().id(savedUser.getId()).username(savedUser.getUsername()).firstName(savedUser.getFirstName()).lastName(savedUser.getLastName()).patronymic(savedUser.getPatronymic()).dateOfBirth(savedUser.getDateOfBirth()).email(savedUser.getEmail()).phone(savedUser.getPhone()).avatarUrl(avatarUrl).emailVerified(savedUser.isEmailVerified()).roles(savedUser.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())).brands(savedUser.getBrands()
-                        .stream()
-                        .map(brand -> BrandDto.builder()
-                                .id(brand.getId())
-                                .name(brand.getName())
-                                .build())
-                        .collect(Collectors.toSet()))
+    private UserResponse buildUserResponse(User user, String accessToken, String refreshToken) {
+        String avatarUrl = buildPresignedAvatarUrl(user);
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .patronymic(user.getPatronymic())
+                .dateOfBirth(user.getDateOfBirth())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .avatarUrl(avatarUrl)
+                .emailVerified(user.isEmailVerified())
+                .roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet()))
+                .brands(
+                        user.getBrands().stream()
+                                .filter(Objects::nonNull)
+                                .map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build())
+                                .collect(Collectors.toSet())
+                )
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .createdAt(savedUser.getCreatedAt())
-                .updatedAt(savedUser.getUpdatedAt())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
                 .build();
     }
 
@@ -259,10 +286,7 @@ public class AuthService {
         tokenService.saveToken(newRefreshToken, Token.TokenType.REFRESH, user);
 
         // 4) Возвращаем новый access и новый refresh (refresh будет установлен в HttpOnly cookie на уровне контроллера)
-        return TokenRefreshResponse.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
-                .build();
+        return TokenRefreshResponse.builder().accessToken(newAccessToken).refreshToken(newRefreshToken).build();
     }
 
     @Transactional
@@ -273,8 +297,7 @@ public class AuthService {
     @Transactional
     public void revokeAllUserTokens(String username) {
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        User user = userService.findByUsername(username).orElseThrow(() -> new BadRequestException("Пользователь не найден"));
         tokenService.revokeAllUserTokens(user);
     }
 
@@ -285,7 +308,7 @@ public class AuthService {
 
         // Получаем данные пользователя
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        User user = userService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new BadRequestException("Пользователь не найден"));
 
         // Отзываем все существующие токены пользователя (опционально)
         tokenService.revokeAllUserTokens(user);
@@ -308,26 +331,10 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public UserResponse getUserProfile(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+        User user = userService.findByUsername(username).orElseThrow(() -> new BadRequestException("Пользователь не найден"));
 
         String avatarUrl = buildPresignedAvatarUrl(user);
-        return UserResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .patronymic(user.getPatronymic())
-                .dateOfBirth(user.getDateOfBirth())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .avatarUrl(avatarUrl)
-                .emailVerified(user.isEmailVerified())
-                .roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet()))
-                .brands(user.getBrands().stream().map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet()))
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .build();
+        return UserResponse.builder().id(user.getId()).username(user.getUsername()).firstName(user.getFirstName()).lastName(user.getLastName()).patronymic(user.getPatronymic()).dateOfBirth(user.getDateOfBirth()).email(user.getEmail()).phone(user.getPhone()).avatarUrl(avatarUrl).emailVerified(user.isEmailVerified()).roles(user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())).brands(user.getBrands().stream().map(brand -> BrandDto.builder().id(brand.getId()).name(brand.getName()).build()).collect(Collectors.toSet())).createdAt(user.getCreatedAt()).updatedAt(user.getUpdatedAt()).build();
     }
 
     private String buildPresignedAvatarUrl(User user) {
@@ -349,14 +356,8 @@ public class AuthService {
         return String.valueOf(code);
     }
 
-    // Генерация имени на кириллице (строчные буквы) указанной длины
-    private String generateRuName(int len) {
-        final String alphabet = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
-        StringBuilder sb = new StringBuilder(len);
-        for (int i = 0; i < len; i++) {
-            int idx = random.nextInt(alphabet.length());
-            sb.append(alphabet.charAt(idx));
-        }
-        return sb.toString();
+    // Generate an English lowercase slug suitable for subdomains
+    private String generateSlugFromUUID() {
+        return UUID.randomUUID().toString().replaceAll("-", "").substring(0, 8);
     }
 }

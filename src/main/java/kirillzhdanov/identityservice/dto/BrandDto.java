@@ -17,6 +17,7 @@ public class BrandDto {
     private String organizationName;
     private String telegramBotToken;
     private String description;
+    private String domain;
     private java.time.LocalDateTime createdAt;
     private java.time.LocalDateTime updatedAt;
 }

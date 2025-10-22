@@ -17,4 +17,9 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
 	boolean existsByNameAndMaster_Id(String name, Long masterId);
 
 	java.util.List<Brand> findByIdIn(java.util.Collection<Long> ids);
+
+	// Domain helpers
+	boolean existsByDomain(String domain);
+	java.util.Optional<Brand> findByDomain(String domain);
+	boolean existsByDomainAndIdNot(String domain, Long id);
 }

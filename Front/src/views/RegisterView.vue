@@ -63,6 +63,7 @@ import {useAuthStore} from '@/store/auth';
 import {useToast} from 'vue-toastification';
 
 const authStore = useAuthStore();
+const emit = defineEmits(['success']);
 const isSubmitting = ref(false);
 const usernameStatus = ref('idle'); // idle, checking, available, taken
 const toast = useToast();
@@ -87,6 +88,12 @@ const checkUsernameUnique = debounce(async (username) => {
     return true;
   }
 
+  // Проверяем уникальность только для логинов длиной >= 3 символов
+  if (String(username).length < 3) {
+    usernameStatus.value = 'idle';
+    return true;
+  }
+
   if (usernameValidationCache.has(username)) {
     const isAvailable = usernameValidationCache.get(username);
     usernameStatus.value = isAvailable ? 'available' : 'taken';
@@ -103,21 +110,26 @@ const checkUsernameUnique = debounce(async (username) => {
   } catch (error) {
     console.error("Username check failed:", error);
 
-    if (error.response?.status === 429) {
+    const status = error?.response?.status;
+    if (status === 429) {
       toast.error('Сервис временно недоступен, попробуйте позже.');
       usernameStatus.value = 'idle';
-      return true; // Не блокируем пользователя из-за перегрузки
+      return true; // не блокируем из-за перегрузки
     }
-
-    // Для всех других ошибок (включая 409 Conflict) считаем, что логин занят
-    usernameStatus.value = 'taken';
-    return false;
+    if (status === 409) {
+      usernameStatus.value = 'taken';
+      return false;
+    }
+    // Для всех прочих ошибок не блокируем форму
+    usernameStatus.value = 'idle';
+    return true;
   }
-}, 500);
+}, 300);
 
 const schema = Yup.object().shape({
   username: Yup.string()
     .required('Логин обязателен')
+    .matches(/^[A-Za-z0-9]+$/,'Только латиница и цифры')
     .test('is-unique', 'Этот логин уже занят', value => checkUsernameUnique(value)),
   password: Yup.string().required('Пароль обязателен').min(6, 'Пароль должен быть не менее 6 символов'),
   passwordConfirmation: Yup.string()
@@ -134,7 +146,15 @@ const [password] = defineField('password');
 const [passwordConfirmation] = defineField('passwordConfirmation');
 
 watch(username, (newValue) => {
-  if (!newValue) {
+  // Санитизация: оставляем только латиницу и цифры
+  if (typeof newValue === 'string') {
+    const cleaned = newValue.replace(/[^a-zA-Z0-9]/g, '');
+    if (cleaned !== newValue) {
+      username.value = cleaned;
+      return;
+    }
+  }
+  if (!username.value) {
     usernameStatus.value = 'idle';
   }
 });

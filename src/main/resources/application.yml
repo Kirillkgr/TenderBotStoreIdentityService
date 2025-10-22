@@ -62,9 +62,41 @@ spring:
             issuer-uri: https://accounts.google.com
             token-uri: https://oauth2.googleapis.com/token
 
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.web.reactive.WebFluxAutoConfiguration
+      - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
+      - org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
+      - org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.neo4j.Neo4jAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.neo4j.Neo4jDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.couchbase.CouchbaseAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.couchbase.CouchbaseDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.jms.activemq.ActiveMQAutoConfiguration
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+      - org.springframework.boot.autoconfigure.pulsar.PulsarAutoConfiguration
+      - org.springframework.boot.autoconfigure.graphql.GraphQlAutoConfiguration
+      - org.springframework.boot.autoconfigure.mustache.MustacheAutoConfiguration
+      - org.springframework.boot.autoconfigure.freemarker.FreeMarkerAutoConfiguration
+      - org.springframework.boot.autoconfigure.gson.GsonAutoConfiguration
+      - org.springframework.boot.autoconfigure.ldap.embedded.EmbeddedLdapAutoConfiguration
+      - org.springframework.boot.autoconfigure.h2.H2ConsoleAutoConfiguration
+      - org.springframework.boot.autoconfigure.jersey.JerseyAutoConfiguration
+
 app:
   seed:
     demoData: false
+  cookie:
+    secure: ${Cookie_Secure:true}
 
   front:
     success-redirect: "https://kirillkgr.ru"
@@ -89,6 +121,9 @@ address:
         - "http://localhost:5173"
         - "http://localhost:8080"
         - "http://localhost:5173/"
+        - "http://*.localhost:5173/"
+        - "http://amd:8080"
+        - "http://*.amd:8080"
 
 s3:
   endpoint: https://storage.yandexcloud.net

@@ -3,11 +3,11 @@
     <!-- Бренды (чипы) -->
     <div class="brand-chips">
       <button
-        v-for="brand in brands"
-        :key="brand.id"
-        class="brand-chip"
-        :class="{ active: selectedBrandId === brand.id, owner: brand.role === 'OWNER' || brand.role === 'ROLE_OWNER' }"
-        @click="selectBrand(brand.id)"
+          v-for="brand in brands"
+          :key="brand.id"
+          class="brand-chip"
+          :class="{ active: selectedBrandId === brand.id, owner: brand.role === 'OWNER' || brand.role === 'ROLE_OWNER' }"
+          @click="selectBrand(brand.id)"
       >
         {{ brand.name }}
       </button>
@@ -29,10 +29,10 @@
     <div v-if="tagLoading" class="info-text">Загрузка групп...</div>
     <div v-else class="group-grid">
       <GroupCard
-        v-for="group in groups"
-        :key="group.id"
-        :group="group"
-        @open="openGroup"
+          v-for="group in groups"
+          :key="group.id"
+          :group="group"
+          @open="openGroup"
       />
       <div v-if="!tagLoading && selectedBrandId && groups.length === 0" class="info-text">
         В этом бренде пока нет групп
@@ -44,11 +44,11 @@
     <div v-else-if="productStore.products.length === 0" class="info-text">Товары не найдены.</div>
     <div v-else class="product-grid">
       <ProductCard
-        v-for="product in productStore.products"
-        :key="product.id"
-        :product="product"
-        :openInModal="true"
-        @preview="openProductPreview"
+          v-for="product in productStore.products"
+          :key="product.id"
+          :product="product"
+          :openInModal="true"
+          @preview="openProductPreview"
       />
     </div>
 
@@ -68,7 +68,7 @@
     />
 
   </div>
-  
+
 </template>
 
 <script setup>
@@ -78,10 +78,10 @@ import {useProductStore} from '../store/product';
 import ProductCard from '../components/ProductCard.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import GroupCard from '../components/cards/GroupCard.vue';
-import {getPublicBrands} from '../services/brandService';
+import {getPublicBrands, getPublicBrandsMin} from '../services/brandService';
 import tagService from '../services/tagService';
 import {useTagStore} from '@/store/tag';
-import {getBrandHint} from '@/utils/brandHint';
+import {getBrandHint, toSlug} from '@/utils/brandHint';
 
 const productStore = useProductStore();
 const tagStore = useTagStore();
@@ -146,6 +146,38 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 
 // Товары как было
 onMounted(async () => {
+  // Быстрая проверка сабдомена: если зашли на субдомен, сначала проверим, что он существует в системе
+  try {
+    const host = window.location.hostname.toLowerCase();
+    const envRoot = (import.meta?.env?.VITE_MAIN_DOMAIN || '').toString().trim().toLowerCase();
+    const root = envRoot || 'kirillkgr.ru';
+    const isLocalSubdomain = host !== 'localhost' && host.includes('.localhost');
+    const isProdSubdomain = host.endsWith('.' + root) && host !== root;
+    if (isLocalSubdomain || isProdSubdomain) {
+      const hint = toSlug(getBrandHint() || '');
+      if (hint) {
+        try {
+          const res = await getPublicBrandsMin();
+          const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+          const found = list.find(x => toSlug(x.domain || '') === hint);
+          if (found && found.id) {
+            // Быстро выбрать бренд, далее догрузим бренды/данные обычным путём
+            await selectBrand(Number(found.id));
+          } else {
+            // Сабдомен неизвестен — редирект на корневой сайт
+            const protocol = window.location.protocol || 'http:';
+            const port = window.location.port ? `:${window.location.port}` : '';
+            const rootUrl = isLocalSubdomain ? `${protocol}//localhost${port}/` : `${protocol}//${root}/`;
+            window.location.replace(rootUrl);
+            return;
+          }
+        } catch (e) {
+          // В случае ошибки проверки продолжаем обычную загрузку
+        }
+      }
+    }
+  } catch (_) {}
+
   await loadBrands();
 
   // 1) Приоритет: параметр ?brand=ID
@@ -232,6 +264,31 @@ const selectBrand = async (brandId) => {
   const currentId = selectedBrandId.value == null ? null : Number(selectedBrandId.value);
   // Ранее для неадминов открывали новый бренд в новой вкладке.
   // Теперь всегда переключаем бренд in-place без открытия новой вкладки.
+  // Если пользователь уже находится на странице субдомена — делаем переход на субдомен выбранного бренда
+  try {
+    const host = window.location.hostname.toLowerCase();
+    const protocol = window.location.protocol || 'http:';
+    const port = window.location.port ? `:${window.location.port}` : '';
+    const envRoot = (import.meta?.env?.VITE_MAIN_DOMAIN || '').toString().trim().toLowerCase();
+    const root = envRoot || 'kirillkgr.ru';
+
+    const isLocalSubdomain = host !== 'localhost' && host.includes('.localhost');
+    const isProdSubdomain = host.endsWith('.' + root) && host !== root;
+    if (isLocalSubdomain || isProdSubdomain) {
+      const b = (brands.value || []).find(x => Number(x.id) === nextId);
+      if (b) {
+        const targetLabel = toSlug(b.domain || b.slug || b.code || b.subdomain || b.name || '');
+        const currentLabel = toSlug(getBrandHint() || '');
+        // Если уже на нужном сабдомене — не перенаправлять (избежать зацикливания)
+        if (targetLabel && targetLabel !== currentLabel) {
+          const targetHost = isLocalSubdomain ? `${targetLabel}.localhost${port}` : `${targetLabel}.${root}`;
+          const url = `${protocol}//${targetHost}/`;
+          window.location.href = url;
+          return;
+        }
+      }
+    }
+  } catch (_) {}
 
   selectedBrandId.value = nextId;
   try {

@@ -1,6 +1,7 @@
 package kirillzhdanov.identityservice.service;
 
 import kirillzhdanov.identityservice.dto.BrandDto;
+import kirillzhdanov.identityservice.dto.menu.PublicBrandMinResponse;
 import kirillzhdanov.identityservice.exception.ResourceAlreadyExistsException;
 import kirillzhdanov.identityservice.exception.ResourceNotFoundException;
 import kirillzhdanov.identityservice.model.Brand;
@@ -167,6 +168,18 @@ public class BrandService {
         MasterAccount masterRef = new MasterAccount();
         masterRef.setId(masterId);
         brand.setMaster(masterRef);
+        // Domain handling: use provided or generate from name; validate uniqueness
+        String domainCandidate = normalizeDomain(brandDto.getDomain() != null && !brandDto.getDomain().isBlank()
+                ? brandDto.getDomain()
+                : brandDto.getName());
+        if (domainCandidate == null || domainCandidate.isBlank()) {
+            throw new ResourceAlreadyExistsException("Invalid brand domain generated from name");
+        }
+        if (brandRepository.existsByDomain(domainCandidate)) {
+            throw new ResourceAlreadyExistsException("Brand domain already exists: " + domainCandidate);
+        }
+        brand.setDomain(domainCandidate);
+
         Brand savedBrand = brandRepository.save(brand);
 
         // 5) Создать дефолтную активную точку самовывоза
@@ -231,8 +244,48 @@ public class BrandService {
         brand.setOrganizationName(brandDto.getOrganizationName());
         brand.setTelegramBotToken(brandDto.getTelegramBotToken());
         brand.setDescription(brandDto.getDescription());
+        // Domain update if provided; if empty -> regenerate from name
+        String desired = brandDto.getDomain();
+        String nextDomain = normalizeDomain((desired != null && !desired.isBlank()) ? desired : brandDto.getName());
+        if (nextDomain == null || nextDomain.isBlank()) {
+            throw new ResourceAlreadyExistsException("Invalid brand domain");
+        }
+        if (!nextDomain.equals(brand.getDomain())) {
+            if (brandRepository.existsByDomainAndIdNot(nextDomain, brand.getId())) {
+                throw new ResourceAlreadyExistsException("Brand domain already exists: " + nextDomain);
+            }
+            brand.setDomain(nextDomain);
+        }
         Brand updatedBrand = brandRepository.save(brand);
         return convertToDto(updatedBrand);
+    }
+
+    /**
+     * Normalize a domain label: lowercase, keep letters/digits from any script and '-', collapse/trim '-'.
+     */
+    private String normalizeDomain(String raw) {
+        if (raw == null) return null;
+        String s = raw.toLowerCase().trim();
+        // forbid dots/spaces explicitly
+        s = s.replace('.', '-');
+        // Replace all non letters/digits/hyphen with '-'
+        s = s.replaceAll("[^\\p{L}\\p{Nd}-]+", "-");
+        // collapse dashes
+        s = s.replaceAll("-+", "-");
+        // trim dashes
+        s = s.replaceAll("(^-+)|(-+$)", "");
+        return s;
+    }
+
+    /**
+     * Minimal public list for fast subdomain check.
+     */
+    @Transactional(readOnly = true)
+    public List<PublicBrandMinResponse> getAllBrandsPublicMin() {
+        return brandRepository.findAll().stream()
+                .map(b -> new PublicBrandMinResponse(b.getId(),
+                        (b.getDomain() == null || b.getDomain().isBlank()) ? normalizeDomain(b.getName()) : b.getDomain()))
+                .collect(Collectors.toList());
     }
 
 
@@ -291,6 +344,7 @@ public class BrandService {
                 .organizationName(brand.getOrganizationName())
                 .telegramBotToken(brand.getTelegramBotToken())
                 .description(brand.getDescription())
+                .domain(brand.getDomain())
                 .createdAt(brand.getCreatedAt())
                 .updatedAt(brand.getUpdatedAt())
                 .build();
