@@ -15,7 +15,7 @@ import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
 import kirillzhdanov.identityservice.repository.master.UserMembershipRepository;
 import kirillzhdanov.identityservice.repository.pickup.PickupPointRepository;
 import kirillzhdanov.identityservice.service.RoleService;
-import kirillzhdanov.identityservice.service.UserService;
+import kirillzhdanov.identityservice.service.impl.newImpl.UserServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -34,7 +34,7 @@ public class DatabaseInitializer {
 
     private final RoleService roleService;
 
-    private final UserService userRepository;
+    private final UserServiceImpl userRepository;
 
     private final BrandRepository brandRepository;
     private final ProductRepository productRepository;
@@ -42,7 +42,7 @@ public class DatabaseInitializer {
     private final MasterAccountRepository masterAccountRepository;
     private final UserMembershipRepository userMembershipRepository;
 
-    public DatabaseInitializer(RoleService roleService, UserService userRepository, BrandRepository brandRepository,
+    public DatabaseInitializer(RoleService roleService, UserServiceImpl userRepository, BrandRepository brandRepository,
                                ProductRepository productRepository, PickupPointRepository pickupPointRepository,
                                MasterAccountRepository masterAccountRepository, UserMembershipRepository userMembershipRepository) {
 
@@ -197,7 +197,7 @@ public class DatabaseInitializer {
                         .toList(), userBrands.stream().map(Brand::getName).toList());
             } else {
                 // Пользователь уже есть — получим его и его бренды
-                user = userRepository.findByUsername(username);
+                user = userRepository.findByUsername(username).orElse(null);
                 try {
                     if (user.getBrands() != null) userBrands.addAll(user.getBrands());
                 } catch (Exception ignored) {
@@ -327,7 +327,7 @@ public class DatabaseInitializer {
                     .build());
             userRepository.save(u);
         } else {
-            u = userRepository.findByUsername(username);
+            u = userRepository.findByUsername(username).orElse(null);
         }
         // ensure at least one membership with the requested role
         if (brands.isEmpty()) return;

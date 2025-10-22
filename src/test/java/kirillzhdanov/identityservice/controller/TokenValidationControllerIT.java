@@ -6,7 +6,7 @@ import kirillzhdanov.identityservice.security.JwtAuthenticator;
 import kirillzhdanov.identityservice.security.JwtTokenExtractor;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import kirillzhdanov.identityservice.service.TokenService;
-import kirillzhdanov.identityservice.service.UserService;
+import kirillzhdanov.identityservice.service.impl.newImpl.UserServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -31,18 +31,18 @@ class TokenValidationControllerIT {
     @Autowired
     MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     TokenService tokenService;
-    @MockBean
+    @MockitoBean
     JwtUtils jwtUtils;
-    @MockBean
-    UserService userService;
+    @MockitoBean
+    UserServiceImpl userService;
 
-    @MockBean
+    @MockitoBean
     BrandContextInterceptor brandContextInterceptor;
-    @MockBean
+    @MockitoBean
     JwtTokenExtractor jwtTokenExtractor;
-    @MockBean
+    @MockitoBean
     JwtAuthenticator jwtAuthenticator;
 
     @Test

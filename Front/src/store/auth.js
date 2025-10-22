@@ -134,6 +134,25 @@ export const useAuthStore = defineStore('auth', {
             this.setAccessToken(accessToken);
             this.setUser(userData);
             // unreadCount обновляется через long-poll
+            // После регистрации сразу подтягиваем memberships и если он один — выбираем автоматически
+            try {
+                const res = await authService.getMemberships();
+                const list = Array.isArray(res?.data) ? res.data : [];
+                this.memberships = list;
+                if (list.length === 1) {
+                    await this.selectMembership(list[0]);
+                } else if (list.length > 1) {
+                    try {
+                        window.dispatchEvent(new CustomEvent('open-context-modal'));
+                    } catch (_) {}
+                }
+            } catch (_) {
+                // игнорируем: возможно, membership ещё не готов на бэкенде
+            }
+            // Подсказка UI: открыть сайдбар (если есть такой обработчик)
+            try { window.dispatchEvent(new Event('open-sidebar')); } catch (_) {}
+            // Закрыть модалку регистрации, если она управлялась событиями
+            try { window.dispatchEvent(new Event('close-register-modal')); } catch (_) {}
         },
 
         async checkUsername(username) {

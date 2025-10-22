@@ -12,6 +12,11 @@ export const getPublicBrands = () => {
     return apiClient.get('/menu/v1/brands');
 };
 
+// Минимальный список брендов: только id и domain (для быстрой проверки сабдомена)
+export const getPublicBrandsMin = () => {
+    return apiClient.get('/menu/v1/brands/min');
+};
+
 // Получение групп тегов для конкретного бренда
 export const getTagGroupsByBrandId = (brandId) => {
     return apiClient.post('/menu/brand/tag-groups/by-brand', {

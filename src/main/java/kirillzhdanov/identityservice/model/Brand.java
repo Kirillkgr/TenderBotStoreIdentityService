@@ -30,11 +30,14 @@ public class Brand {
 	@EqualsAndHashCode.Include
 	private String organizationName;
 
+	// Public-facing domain label for subdomain routing (Unicode allowed). Must be unique.
+	@Column(unique = true)
+	private String domain;
+
 	@Column(name = "description", length = 2048)
 	private String description;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "master_id")
 	@JsonIgnore
 	private MasterAccount master;
 

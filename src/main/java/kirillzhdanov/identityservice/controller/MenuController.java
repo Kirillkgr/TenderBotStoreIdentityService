@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import kirillzhdanov.identityservice.dto.BrandDto;
 import kirillzhdanov.identityservice.dto.group.GroupTagResponse;
 import kirillzhdanov.identityservice.dto.menu.PublicBrandResponse;
+import kirillzhdanov.identityservice.dto.menu.PublicBrandMinResponse;
 import kirillzhdanov.identityservice.dto.menu.PublicGroupTagResponse;
 import kirillzhdanov.identityservice.dto.menu.PublicProductResponse;
 import kirillzhdanov.identityservice.dto.product.ProductResponse;
@@ -32,9 +33,16 @@ public class MenuController {
     public ResponseEntity<List<PublicBrandResponse>> getBrands() {
         List<BrandDto> brands = brandService.getAllBrandsPublic();
         List<PublicBrandResponse> response = brands.stream()
-                .map(b -> new PublicBrandResponse(b.getId(), b.getName()))
+                .map(b -> new PublicBrandResponse(b.getId(), b.getName(), b.getDomain()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
+    }
+
+    // Минимальный список для быстрой проверки сабдомена: id + domain
+    @GetMapping("/brands/min")
+    @Operation(summary = "Публичные бренды (минимум)", description = "Публично. Быстрый список {id, domain} для проверки сабдомена на фронте.")
+    public ResponseEntity<List<PublicBrandMinResponse>> getBrandsMin() {
+        return ResponseEntity.ok(brandService.getAllBrandsPublicMin());
     }
 
     // 2) Публичная карточка бренда (минимум данных)
@@ -42,7 +50,7 @@ public class MenuController {
     @Operation(summary = "Публичная карточка бренда", description = "Публично. Минимальные поля.")
     public ResponseEntity<PublicBrandResponse> getBrand(@PathVariable Long brandId) {
         BrandDto b = brandService.getBrandByIdPublic(brandId);
-        return ResponseEntity.ok(new PublicBrandResponse(b.getId(), b.getName()));
+        return ResponseEntity.ok(new PublicBrandResponse(b.getId(), b.getName(), b.getDomain()));
     }
 
     // 3) Публичные теги бренда по родителю (parentId=0 -> корневые)
