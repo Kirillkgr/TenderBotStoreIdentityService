@@ -43,7 +43,7 @@ public class GoogleOAuth2Service {
         if (userRes.created()) {
             MasterAccount master = provisioningService.ensureMasterAccountForUser(user);
             provisioningService.ensureOwnerMembership(user, master);
-            provisioningService.ensureDefaultBrandAndPickup(user, master);
+            // Автоматическое создание бренда отключено: пользователь создаст бренд вручную позже
         }
 
         // Revoke existing access tokens optionally, keep refresh strategy if needed

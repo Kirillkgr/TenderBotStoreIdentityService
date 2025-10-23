@@ -76,10 +76,10 @@ public class GoogleOAuth2ServiceTest {
         verify(tokenService).saveToken(eq("access.jwt"), eq(Token.TokenType.ACCESS), any(User.class));
         verify(tokenService).saveToken(eq("refresh.jwt"), eq(Token.TokenType.REFRESH), any(User.class));
 
-        // Провиженинг вызван
+        // Провиженинг вызван (без автосоздания бренда)
         verify(provisioningService, atLeastOnce()).ensureMasterAccountForUser(any(User.class));
         verify(provisioningService, atLeastOnce()).ensureOwnerMembership(any(User.class), nullable(MasterAccount.class));
-        verify(provisioningService, atLeastOnce()).ensureDefaultBrandAndPickup(any(User.class), nullable(MasterAccount.class));
+        verify(provisioningService, never()).ensureDefaultBrandAndPickup(any(User.class), any(MasterAccount.class));
     }
 
     @Test
@@ -90,10 +90,10 @@ public class GoogleOAuth2ServiceTest {
 
         service.handleLoginOrRegister(oidcUser);
 
-        // Проверяем, что вызваны все ensure-методы провиженинга
+        // Проверяем, что вызваны ensureMaster/ensureOwner, но НЕ создаётся бренд
         verify(provisioningService, atLeastOnce()).ensureMasterAccountForUser(any(User.class));
         verify(provisioningService, atLeastOnce()).ensureOwnerMembership(any(User.class), any(MasterAccount.class));
-        verify(provisioningService, atLeastOnce()).ensureDefaultBrandAndPickup(any(User.class), any(MasterAccount.class));
+        verify(provisioningService, never()).ensureDefaultBrandAndPickup(any(User.class), any(MasterAccount.class));
     }
     // Avatar overwrite and email linking behavior now covered by DefaultOAuth2UserLinker tests.
 }

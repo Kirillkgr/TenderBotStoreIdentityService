@@ -9,9 +9,6 @@ import kirillzhdanov.identityservice.model.Role;
 import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
-import kirillzhdanov.identityservice.model.master.RoleMembership;
-import kirillzhdanov.identityservice.model.master.UserMembership;
-import kirillzhdanov.identityservice.model.pickup.PickupPoint;
 import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.StorageFileRepository;
 import kirillzhdanov.identityservice.repository.master.MasterAccountRepository;
@@ -83,7 +80,7 @@ public class AuthService {
 
         MasterAccount ensuredMaster = provisioningService.ensureMasterAccountForUser(savedUser);
         provisioningService.ensureOwnerMembership(savedUser, ensuredMaster);
-        provisioningService.ensureDefaultBrandAndPickup(savedUser, ensuredMaster);
+        // Автоматическое создание бренда отключено: пользователь создаст бренд вручную позже
 
         // Перезагружаем пользователя, чтобы коллекции (бренды) были актуальны
         User reloaded = userService.findByUsername(savedUser.getUsername())
