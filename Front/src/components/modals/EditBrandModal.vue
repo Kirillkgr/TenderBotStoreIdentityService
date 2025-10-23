@@ -10,6 +10,11 @@
           <input v-model="form.name" type="text"/>
         </div>
         <div class="field">
+          <label>Домен (субдомен)</label>
+          <input v-model="form.domain" type="text" placeholder="например, my-brand"/>
+          <small class="hint">Если оставить пустым: при латинском названии домен обновится автоматически; при кириллице домен не изменится.</small>
+        </div>
+        <div class="field">
           <label>Юр. наименование</label>
           <input v-model="form.organizationName" type="text"/>
         </div>
@@ -49,6 +54,7 @@ const saving = ref(false);
 const form = reactive({
   id: null,
   name: '',
+  domain: '',
   organizationName: '',
   description: '',
   telegramBotToken: ''
@@ -60,6 +66,7 @@ watch(() => props.brand, (b) => {
   if (!b) {
     form.id = null;
     form.name = '';
+    form.domain = '';
     form.organizationName = '';
     form.description = '';
     form.telegramBotToken = '';
@@ -67,6 +74,7 @@ watch(() => props.brand, (b) => {
   }
   form.id = b.id || null;
   form.name = b.name || '';
+  form.domain = b.domain || '';
   form.organizationName = b.organizationName || '';
   form.description = b.description || '';
   form.telegramBotToken = b.telegramBotToken || '';
@@ -76,6 +84,7 @@ async function save() {
   saving.value = true;
   const payload = {
     name: form.name,
+    domain: form.domain || null,
     organizationName: form.organizationName,
     description: form.description,
     telegramBotToken: form.telegramBotToken,

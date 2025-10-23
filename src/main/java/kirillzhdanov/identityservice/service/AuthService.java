@@ -239,6 +239,17 @@ public class AuthService {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = userService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new BadRequestException("Пользователь не найден"));
 
+        // Единообразная пост-авторизационная провизия (как при регистрации и OAuth2):
+        // 1) гарантируем наличие мастер-аккаунта
+        // 2) гарантируем членство владельца
+        // 3) гарантируем дефолтный бренд и точку самовывоза
+        MasterAccount ensuredMaster = provisioningService.ensureMasterAccountForUser(user);
+        provisioningService.ensureOwnerMembership(user, ensuredMaster);
+        provisioningService.ensureDefaultBrandAndPickup(user, ensuredMaster);
+
+        // Перечитываем пользователя, чтобы получить актуальные коллекции (brands/memberships)
+        user = userService.findByUsername(user.getUsername()).orElse(user);
+
         // Отзываем все существующие токены пользователя (опционально)
         tokenService.revokeAllUserTokens(user);
 

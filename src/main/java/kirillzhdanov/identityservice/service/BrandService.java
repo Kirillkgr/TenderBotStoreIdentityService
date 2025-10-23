@@ -244,17 +244,35 @@ public class BrandService {
         brand.setOrganizationName(brandDto.getOrganizationName());
         brand.setTelegramBotToken(brandDto.getTelegramBotToken());
         brand.setDescription(brandDto.getDescription());
-        // Domain update if provided; if empty -> regenerate from name
+        // Обновление домена по правилам:
+        // - если домен передан явно, используем его (после нормализации и проверки уникальности)
+        // - если домен не передан:
+        //     * если имя на английском (латиница/цифры/пробел/дефис) — обновляем домен из имени
+        //     * если имя на кириллице/смешанное — домен НЕ меняем автоматически
         String desired = brandDto.getDomain();
-        String nextDomain = normalizeDomain((desired != null && !desired.isBlank()) ? desired : brandDto.getName());
-        if (nextDomain == null || nextDomain.isBlank()) {
-            throw new ResourceAlreadyExistsException("Invalid brand domain");
-        }
-        if (!nextDomain.equals(brand.getDomain())) {
-            if (brandRepository.existsByDomainAndIdNot(nextDomain, brand.getId())) {
-                throw new ResourceAlreadyExistsException("Brand domain already exists: " + nextDomain);
+        if (desired != null) {
+            String nextFromDesired = normalizeDomain(desired);
+            if (nextFromDesired == null || nextFromDesired.isBlank()) {
+                throw new ResourceAlreadyExistsException("Invalid brand domain");
             }
-            brand.setDomain(nextDomain);
+            if (!nextFromDesired.equals(brand.getDomain())) {
+                if (brandRepository.existsByDomainAndIdNot(nextFromDesired, brand.getId())) {
+                    throw new ResourceAlreadyExistsException("Brand domain already exists: " + nextFromDesired);
+                }
+                brand.setDomain(nextFromDesired);
+            }
+        } else {
+            // домен не передан: применяем авто‑синк только для латинского имени
+            String name = brandDto.getName();
+            if (isLatinName(name)) {
+                String nextFromName = normalizeDomain(name);
+                if (nextFromName != null && !nextFromName.isBlank() && !nextFromName.equals(brand.getDomain())) {
+                    if (brandRepository.existsByDomainAndIdNot(nextFromName, brand.getId())) {
+                        throw new ResourceAlreadyExistsException("Brand domain already exists: " + nextFromName);
+                    }
+                    brand.setDomain(nextFromName);
+                }
+            }
         }
         Brand updatedBrand = brandRepository.save(brand);
         return convertToDto(updatedBrand);
@@ -275,6 +293,18 @@ public class BrandService {
         // trim dashes
         s = s.replaceAll("(^-+)|(-+$)", "");
         return s;
+    }
+
+    /**
+     * Проверка, что имя состоит только из латинских символов/цифр/пробелов/дефисов
+     * (используем для решения, авто‑обновлять ли домен при переименовании).
+     */
+    private boolean isLatinName(String name) {
+        if (name == null) return false;
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) return false;
+        // Разрешаем только ASCII латиницу A-Z, a-z, цифры, пробелы и дефисы
+        return trimmed.matches("[A-Za-z0-9\\s-]+") && trimmed.matches(".*[A-Za-z].*");
     }
 
     /**
