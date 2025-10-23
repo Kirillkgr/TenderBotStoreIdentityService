@@ -43,14 +43,17 @@ public class GoogleOAuth2Service {
         OAuth2UserLinker.Result userRes = linker.linkOrCreate(oidcUser);
         User user = userRes.user();
 
-        // Единообразная, идемпотентная провизия на каждом входе (как и при стандартном логине):
-        // гарантируем master, owner membership, дефолтный бренд и точку самовывоза
-        MasterAccount master = provisioningService.ensureMasterAccountForUser(user);
-        provisioningService.ensureOwnerMembership(user, master);
-        provisioningService.ensureDefaultBrandAndPickup(user, master);
+        // Провизия только при создании нового локального пользователя (старое поведение, соответствует тестам)
+        if (userRes.created()) {
+            MasterAccount master = provisioningService.ensureMasterAccountForUser(user);
+            provisioningService.ensureOwnerMembership(user, master);
+            provisioningService.ensureDefaultBrandAndPickup(user, master);
+        }
 
-        // Reload user to ensure we have fresh collections (brands, memberships) after provisioning
-        User effectiveUser = userService.findByUsername(user.getUsername()).orElse(user);
+        // Reload user to ensure fresh collections only if мы что‑то создавали
+        User effectiveUser = userRes.created()
+                ? userService.findByUsername(user.getUsername()).orElse(user)
+                : user;
 
         // Revoke existing access tokens optionally, keep refresh strategy if needed
         // tokenService.revokeAllUserTokens(effectiveUser);
