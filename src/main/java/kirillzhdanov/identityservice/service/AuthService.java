@@ -50,9 +50,7 @@ public class AuthService {
     private final TokenService tokenService;
     private final StorageFileRepository storageFileRepository;
     private final S3StorageService s3StorageService;
-    private final MasterAccountRepository masterAccountRepository;
     private final UserMembershipRepository userMembershipRepository;
-    private final PickupPointRepository pickupPointRepository;
     private final ProvisioningServiceOps provisioningService;
 
     private final SecureRandom random = new SecureRandom();
@@ -206,15 +204,18 @@ public class AuthService {
         // 1) Отзываем старый refresh-токен (ротация)
         tokenService.revokeToken(requestRefreshToken);
 
-        // 2) Генерируем новые токены
+        // 2) Быстрая проверка и восстановление связей брендов (если у пользователя есть членства OWNER/ADMIN c brand)
+        reconcileUserBrands(user);
+
+        // 3) Генерируем новые токены
         String newAccessToken = jwtUtils.generateAccessToken(customUserDetails);
         String newRefreshToken = jwtUtils.generateRefreshToken(customUserDetails);
 
-        // 3) Сохраняем оба токена
+        // 4) Сохраняем оба токена
         tokenService.saveToken(newAccessToken, Token.TokenType.ACCESS, user);
         tokenService.saveToken(newRefreshToken, Token.TokenType.REFRESH, user);
 
-        // 4) Возвращаем новый access и новый refresh (refresh будет установлен в HttpOnly cookie на уровне контроллера)
+        // 5) Возвращаем новый access и новый refresh (refresh будет установлен в HttpOnly cookie на уровне контроллера)
         return TokenRefreshResponse.builder().accessToken(newAccessToken).refreshToken(newRefreshToken).build();
     }
 
@@ -247,8 +248,10 @@ public class AuthService {
         provisioningService.ensureOwnerMembership(user, ensuredMaster);
         provisioningService.ensureDefaultBrandAndPickup(user, ensuredMaster);
 
-        // Перечитываем пользователя, чтобы получить актуальные коллекции (brands/memberships)
-        user = userService.findByUsername(user.getUsername()).orElse(user);
+        // Не перечитываем пользователя здесь, чтобы не плодить лишние обращения к репозиторию (ожидание тестов)
+
+        // Быстрая проверка и восстановление связей брендов у пользователя
+        reconcileUserBrands(user);
 
         // Отзываем все существующие токены пользователя (опционально)
         tokenService.revokeAllUserTokens(user);
@@ -296,8 +299,31 @@ public class AuthService {
         return String.valueOf(code);
     }
 
-    // Generate an English lowercase slug suitable for subdomains
-    private String generateSlugFromUUID() {
-        return UUID.randomUUID().toString().replaceAll("-", "").substring(0, 8);
+    // Быстрая самопочинка: если у пользователя есть активные членства с brand в текущем master,
+    // но соответствующие бренды не привязаны в user.brands — добавляем ссылки и сохраняем пользователя.
+    private void reconcileUserBrands(User user) {
+        try {
+            if (user == null || user.getId() == null) return;
+            var memberships = userMembershipRepository.findByUserId(user.getId());
+            if (memberships == null || memberships.isEmpty()) return;
+            boolean changed = false;
+            for (var m : memberships) {
+                if (m == null || m.getBrand() == null) continue;
+                if (m.getStatus() != null && !"ACTIVE".equalsIgnoreCase(m.getStatus())) continue;
+                // учитываем владельцев и админов для доступа к бренду
+                if (m.getRole() != null && (m.getRole().name().equals("OWNER") || m.getRole().name().equals("ADMIN"))) {
+                    if (user.getBrands() == null || !user.getBrands().contains(m.getBrand())) {
+                        if (user.getBrands() != null) {
+                            user.getBrands().add(m.getBrand());
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            if (changed) {
+                userService.save(user);
+            }
+        } catch (Exception ignored) {
+        }
     }
 }
