@@ -7,6 +7,7 @@ import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import kirillzhdanov.identityservice.service.ProvisioningServiceOps;
 import kirillzhdanov.identityservice.service.TokenService;
+import kirillzhdanov.identityservice.service.UserService;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,15 +21,18 @@ public class GoogleOAuth2Service {
     private final TokenService tokenService;
     private final ProvisioningServiceOps provisioningService;
     private final OAuth2UserLinker linker;
+    private final UserService userService;
 
     public GoogleOAuth2Service(JwtUtils jwtUtils,
                                TokenService tokenService,
                                ProvisioningServiceOps provisioningService,
-                               OAuth2UserLinker linker) {
+                               OAuth2UserLinker linker,
+                               UserService userService) {
         this.jwtUtils = jwtUtils;
         this.tokenService = tokenService;
         this.provisioningService = provisioningService;
         this.linker = linker;
+        this.userService = userService;
     }
 
     /**
@@ -46,15 +50,18 @@ public class GoogleOAuth2Service {
             provisioningService.ensureDefaultBrandAndPickup(user, master);
         }
 
-        // Revoke existing access tokens optionally, keep refresh strategy if needed
-        // tokenService.revokeAllUserTokens(user);
+        // Reload user to ensure we have fresh collections (brands, memberships) after provisioning
+        User effectiveUser = userService.findByUsername(user.getUsername()).orElse(user);
 
-        CustomUserDetails cud = new CustomUserDetails(user);
+        // Revoke existing access tokens optionally, keep refresh strategy if needed
+        // tokenService.revokeAllUserTokens(effectiveUser);
+
+        CustomUserDetails cud = new CustomUserDetails(effectiveUser);
         String access = jwtUtils.generateAccessToken(cud);
         String refresh = jwtUtils.generateRefreshToken(cud);
 
-        tokenService.saveToken(access, Token.TokenType.ACCESS, user);
-        tokenService.saveToken(refresh, Token.TokenType.REFRESH, user);
+        tokenService.saveToken(access, Token.TokenType.ACCESS, effectiveUser);
+        tokenService.saveToken(refresh, Token.TokenType.REFRESH, effectiveUser);
 
         return new Tokens(access, refresh);
     }

@@ -187,6 +187,34 @@ public class AuthServiceTest {
         verify(userRepository).existsByUsername(registrationRequest.getUsername());
         verify(userRepository, never()).save(any(User.class));
     }
+
+    @Test
+    @DisplayName("Профиль пользователя содержит бренды (видимость в админ-панели)")
+    void getUserProfile_ReturnsBrands() {
+        // Подготовка
+        Brand brand = new Brand();
+        brand.setId(200L);
+        brand.setName("visibleBrand");
+
+        User userWithBrand = User.builder()
+                .id(5L)
+                .username("userWithBrand")
+                .brands(new HashSet<>(Collections.singletonList(brand)))
+                .roles(new HashSet<>(Collections.singletonList(userRole)))
+                .build();
+
+        when(userRepository.findByUsername("userWithBrand")).thenReturn(Optional.of(userWithBrand));
+
+        // Действие
+        var response = authService.getUserProfile("userWithBrand");
+
+        // Проверка
+        assertNotNull(response);
+        assertEquals("userWithBrand", response.getUsername());
+        assertNotNull(response.getBrands());
+        assertEquals(1, response.getBrands().size());
+        assertTrue(response.getBrands().stream().anyMatch(b -> b.getName().equals("visibleBrand")));
+    }
     @Test
     @DisplayName("Регистрация пользователя с дополнительными ролями - успешно")
     void registerUser_WithAdditionalRoles_Success() {
