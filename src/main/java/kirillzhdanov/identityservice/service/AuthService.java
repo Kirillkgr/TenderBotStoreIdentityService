@@ -80,7 +80,7 @@ public class AuthService {
 
         MasterAccount ensuredMaster = provisioningService.ensureMasterAccountForUser(savedUser);
         provisioningService.ensureOwnerMembership(savedUser, ensuredMaster);
-        // Автоматическое создание бренда отключено: пользователь создаст бренд вручную позже
+        provisioningService.ensureDefaultBrandAndPickup(savedUser, ensuredMaster);
 
         // Перезагружаем пользователя, чтобы коллекции (бренды) были актуальны
         User reloaded = userService.findByUsername(savedUser.getUsername())

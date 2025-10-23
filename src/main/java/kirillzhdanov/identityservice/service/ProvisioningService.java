@@ -82,6 +82,23 @@ public class ProvisioningService implements ProvisioningServiceOps {
     public void ensureDefaultBrandAndPickup(User user, MasterAccount master) {
         if (master == null) return;
 
+        // Fast-path guard: if user already has a brand for this master in memory, skip
+        if (user.getBrands() != null) {
+            Long mid = master.getId();
+            for (Brand b : user.getBrands()) {
+                if (b != null && b.getMaster() != null && Objects.equals(b.getMaster().getId(), mid)) {
+                    return;
+                }
+            }
+        }
+
+        // Idempotency guard: if user already linked to any brand for this master, do nothing
+        for (UserMembership m : userMembershipRepository.findByUserId(user.getId())) {
+            if (m.getMaster() != null && Objects.equals(m.getMaster().getId(), master.getId()) && m.getBrand() != null) {
+                return;
+            }
+        }
+
         // Generate a unique brand name slug
         String defaultBrandName = generateSlugFromUUID();
         while (brandRepository.existsByNameAndMaster_Id(defaultBrandName, master.getId())) {
