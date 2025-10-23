@@ -10,6 +10,10 @@ class NotificationsClient {
         this.running = false;
         this.subscribers = new Set();
         this.toast = null;
+        // Экспоненциальный бэкофф (1s -> 2s -> 4s ... -> 10m)
+        this.initialBackoffMs = 1000;
+        this.maxBackoffMs = 10 * 60 * 1000;
+        this.backoffMs = this.initialBackoffMs;
     }
 
     initToast() {
@@ -25,6 +29,8 @@ class NotificationsClient {
         if (this.running) return;
         this.running = true;
         this.initToast();
+        // Сброс бэкоффа на старте/после перезагрузки страницы
+        this.backoffMs = this.initialBackoffMs;
         // restore since from localStorage
         try {
             const v = localStorage.getItem('lp_since');
@@ -46,6 +52,8 @@ class NotificationsClient {
                 const resp = await apiClient.get('/notifications/longpoll', {
                     params: {since: this.since},
                 });
+                // Любой успешный ответ — сбрасываем бэкофф
+                this.backoffMs = this.initialBackoffMs;
                 // Обновляем индикатор непрочитанных, если сервер прислал значение
                 try {
                     const authStore = useAuthStore();
@@ -143,8 +151,18 @@ class NotificationsClient {
                 // Немедленно продолжаем, если сервер сигнализирует о наличии ещё событий
                 if (hasMore) continue;
             } catch (e) {
-                // network/server error: backoff a bit
-                await new Promise(r => setTimeout(r, 1500));
+                // Ошибка сети/сервера/авторизации: экспоненциальный бэкофф
+                // Если бэкофф превысил лимит — прекращаем попытки до перезагрузки страницы
+                if (this.backoffMs > this.maxBackoffMs) {
+                    this.running = false;
+                    try {
+                        if (this.toast) this.toast.error('Уведомления недоступны. Обновите страницу для повторной попытки.');
+                    } catch (_) {}
+                    break;
+                }
+                await new Promise(r => setTimeout(r, this.backoffMs));
+                // Увеличиваем бэкофф в 2 раза (с ограничением)
+                this.backoffMs = Math.min(this.backoffMs * 2, this.maxBackoffMs + 1);
             }
             // small delay between polls to avoid tight loop after empty response
             await new Promise(r => setTimeout(r, 150));
