@@ -34,7 +34,15 @@
           <tbody>
           <tr v-for="(b, idx) in filtered" :key="b.id">
             <td>{{ idx + 1 }}</td>
-            <td>{{ b.name }}</td>
+            <td class="name-cell">
+              <span class="name-text" :title="b.name">{{ b.name }}</span>
+              <button
+                  v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
+                  class="name-edit-btn"
+                  title="Редактировать бренд"
+                  @click="onEdit(b)"
+              >✏️</button>
+            </td>
             <td>{{ b.organizationName || '—' }}</td>
             <td :title="b.description || '—'">{{
                 b.description ? (b.description.length > 40 ? (b.description.slice(0, 40) + '…') : b.description) : '—'
@@ -53,12 +61,6 @@
                   title="Просмотр"
                   @click="onView(b)"
               >👁️
-              </button>
-              <button
-                  v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
-                  class="btn"
-                  @click="onEdit(b)"
-              >✏️
               </button>
               <button
                   v-can="{ any: ['ADMIN','OWNER'], mode: 'disable', tooltip: 'Недостаточно прав' }"
@@ -270,5 +272,41 @@ input[type="text"] {
   padding: 6px 10px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
+}
+
+/* Hover edit button over brand name */
+.name-cell {
+  position: relative;
+}
+
+.name-text {
+  display: inline-block;
+  max-width: 100%;
+  padding-right: 28px; /* space for edit button */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.name-edit-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  line-height: 22px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.name-cell:hover .name-edit-btn {
+  opacity: 1;
+  pointer-events: auto;
 }
 </style>
