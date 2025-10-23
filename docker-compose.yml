@@ -8,8 +8,8 @@ services:
       POSTGRES_DB: tenderbotstore_db
       POSTGRES_USER: user_db
       POSTGRES_PASSWORD: password_db
-  #    volumes:
-  #      - /home/user/postgres-data:/var/lib/postgresql/data
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
   #    ports:
   #      - "5432:5432"  # Открываем порт для подключения с хоста (psql/GUI), чтобы вручную создать БД
 
@@ -50,4 +50,5 @@ services:
       - /home/user/certs/ssl:/etc/ssl:ro
       - /home/user/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
-volumes: { }
+volumes:
+  postgres_data:
