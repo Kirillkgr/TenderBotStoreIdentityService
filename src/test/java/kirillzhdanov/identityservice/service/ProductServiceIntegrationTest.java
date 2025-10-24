@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.DirtiesContext;
+import kirillzhdanov.identityservice.tenant.TenantContext;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -63,6 +64,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Товар: создание в корне и обновление полей")
     void product_create_and_update() {
+        TenantContext.setBrandId(brand.getId());
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName("Water");
         req.setDescription("0.5L");
@@ -71,6 +73,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setGroupTagId(0L);
         req.setVisible(true);
 
+        TenantContext.setBrandId(brand.getId());
         ProductResponse created = productService.create(req);
         assertNotNull(created.getId());
         assertNull(created.getGroupTagId());
@@ -82,6 +85,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         upd.setPromoPrice(new BigDecimal("40"));
         upd.setVisible(true);
 
+        TenantContext.setBrandId(brand.getId());
         ProductResponse updated = productService.update(created.getId(), upd);
         assertEquals("Water Updated", updated.getName());
         assertEquals(new BigDecimal("45"), updated.getPrice());
@@ -91,6 +95,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Товар: перемещение в группу и переключение видимости")
     void product_move_and_visibility() {
+        TenantContext.setBrandId(brand.getId());
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName("X");
         req.setPrice(new BigDecimal("10"));
@@ -99,9 +104,11 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setVisible(true);
         ProductResponse created = productService.create(req);
 
+        TenantContext.setBrandId(brand.getId());
         ProductResponse moved = productService.move(created.getId(), group.getId());
         assertEquals(group.getId(), moved.getGroupTagId());
 
+        TenantContext.setBrandId(brand.getId());
         ProductResponse invisible = productService.updateVisibility(created.getId(), false);
         assertFalse(invisible.isVisible());
     }
@@ -109,6 +116,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Товар: удаление в архив и список архива по бренду")
     void product_delete_to_archive_and_list() {
+        TenantContext.setBrandId(brand.getId());
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName("Y");
         req.setPrice(new BigDecimal("20"));
@@ -117,14 +125,17 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setVisible(true);
         ProductResponse created = productService.create(req);
 
+        TenantContext.setBrandId(brand.getId());
         productService.deleteToArchive(created.getId());
         assertTrue(productRepository.findById(created.getId()).isEmpty());
+        TenantContext.setBrandId(brand.getId());
         assertEquals(1, productService.listArchiveByBrand(brand.getId()).size());
     }
 
     @Test
     @DisplayName("Товар: восстановление из архива и очистка архива")
     void product_restore_and_purge_archive() {
+        TenantContext.setBrandId(brand.getId());
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName("Z");
         req.setPrice(new BigDecimal("30"));
@@ -133,8 +144,10 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setVisible(true);
         ProductResponse created = productService.create(req);
 
+        TenantContext.setBrandId(brand.getId());
         productService.deleteToArchive(created.getId());
         Long archiveId = productArchiveRepository.findAll().getFirst().getId();
+        TenantContext.setBrandId(brand.getId());
         ProductResponse restored = productService.restoreFromArchive(archiveId, group.getId());
         assertNotNull(restored.getId());
         assertEquals(group.getId(), restored.getGroupTagId());
@@ -147,6 +160,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Товар: получение по id")
     void product_get_by_id() {
+        TenantContext.setBrandId(brand.getId());
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName("GetMe");
         req.setPrice(new BigDecimal("15"));
@@ -155,6 +169,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setVisible(true);
         ProductResponse created = productService.create(req);
 
+        TenantContext.setBrandId(brand.getId());
         ProductResponse loaded = productService.getById(created.getId());
         assertEquals("GetMe", loaded.getName());
     }
@@ -162,6 +177,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Товар: фильтрация по visibleOnly для бренда/группы")
     void getByBrandAndGroup_filtersVisible() {
+        TenantContext.setBrandId(brand.getId());
         // two products: one visible, one hidden
         ProductCreateRequest req1 = new ProductCreateRequest();
         req1.setName("A");
@@ -179,10 +195,12 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req2.setVisible(false);
         productService.create(req2);
 
+        TenantContext.setBrandId(brand.getId());
         List<ProductResponse> onlyVisible = productService.getByBrandAndGroup(brand.getId(), group.getId(), true);
         assertEquals(1, onlyVisible.size());
         assertEquals(p1.getId(), onlyVisible.getFirst().getId());
 
+        TenantContext.setBrandId(brand.getId());
         List<ProductResponse> all = productService.getByBrandAndGroup(brand.getId(), group.getId(), false);
         assertEquals(2, all.size());
     }
@@ -203,10 +221,13 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setBrandId(brand.getId());
         req.setGroupTagId(group.getId());
         req.setVisible(true);
+        TenantContext.setBrandId(brand.getId());
         ProductResponse created = productService.create(req);
         assertEquals(group.getId(), created.getGroupTagId());
 
         // меняем бренд на другой -> группа должна сброситься в корень
+        // ВАЖНО: смену бренда выполняем из контекста исходного бренда товара
+        TenantContext.setBrandId(brand.getId());
         ProductResponse changed = productService.changeBrand(created.getId(), other.getId());
         assertEquals(other.getId(), changed.getBrandId());
         assertNull(changed.getGroupTagId());
@@ -234,17 +255,20 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setBrandId(brand.getId());
         req.setGroupTagId(0L);
         req.setVisible(true);
+        TenantContext.setBrandId(brand.getId());
         ProductResponse created = productService.create(req);
 
         // попытка переместить в группу другого бренда -> IllegalArgumentException
         Long productId = created.getId();
         Long foreignGroupId = otherGroup.getId();
+        TenantContext.setBrandId(brand.getId());
         assertThrows(IllegalArgumentException.class, () -> productService.move(productId, foreignGroupId));
     }
 
     @Test
     @DisplayName("Товар: перемещение в корень сбрасывает группу")
     void product_move_to_root_moves_out_of_group() {
+        TenantContext.setBrandId(brand.getId());
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName("RootMove");
         req.setPrice(new BigDecimal("77"));
@@ -254,6 +278,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         ProductResponse created = productService.create(req);
         assertEquals(group.getId(), created.getGroupTagId());
 
+        TenantContext.setBrandId(brand.getId());
         ProductResponse movedToRoot = productService.move(created.getId(), 0L);
         assertNull(movedToRoot.getGroupTagId());
     }
@@ -261,6 +286,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Товар: частичное обновление не затирает поля null значениями")
     void product_update_partial_does_not_overwrite_nulls() {
+        TenantContext.setBrandId(brand.getId());
         ProductCreateRequest req = new ProductCreateRequest();
         req.setName("Partial");
         req.setDescription("Desc");
@@ -314,8 +340,10 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setBrandId(brand.getId());
         req.setGroupTagId(0L);
         req.setVisible(true);
+        TenantContext.setBrandId(brand.getId());
         ProductResponse created = productService.create(req);
 
+        TenantContext.setBrandId(brand.getId());
         assertThrows(kirillzhdanov.identityservice.exception.ResourceNotFoundException.class,
                 () -> productService.move(created.getId(), 123456789L));
     }
@@ -356,9 +384,11 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setBrandId(brand.getId());
         req.setGroupTagId(liveGroup.getId());
         req.setVisible(true);
+        TenantContext.setBrandId(brand.getId());
         ProductResponse created = productService.create(req);
 
         // 2) Архивируем товар и берём его человеко-читаемый путь (name-path)
+        TenantContext.setBrandId(brand.getId());
         productService.deleteToArchive(created.getId());
         var productArchivesByBrand = productArchiveRepository.findByBrandId(brand.getId());
         var productArchive = productArchivesByBrand.stream()
@@ -393,6 +423,7 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         assertTrue(groupTagArchiveRepository.findById(gaId).isPresent());
 
         // 4) Восстановление товара без указания target -> сервис поднимет нужную группу из архива
+        TenantContext.setBrandId(brand.getId());
         ProductResponse restored = productService.restoreFromArchive(productArchiveId, null);
         assertNotNull(restored.getGroupTagId());
 
@@ -434,14 +465,17 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setBrandId(b.getId());
         req.setGroupTagId(g.getId());
         req.setVisible(true);
+        TenantContext.setBrandId(b.getId());
         ProductResponse created = productService.create(req);
 
+        TenantContext.setBrandId(b.getId());
         productService.deleteToArchive(created.getId());
         Long productArchiveId = productArchiveRepository.findAll().getFirst().getId();
 
         // Удаляем живую группу и не добавляем архив записей групп
         groupTagRepository.delete(g);
 
+        TenantContext.setBrandId(b.getId());
         ProductResponse restored = productService.restoreFromArchive(productArchiveId, null);
         assertNotNull(restored.getGroupTagId());
         // Восстановленная группа должна существовать
@@ -468,8 +502,10 @@ public class ProductServiceIntegrationTest extends IntegrationTestBase {
         req.setBrandId(b.getId());
         req.setGroupTagId(g.getId());
         req.setVisible(true);
+        TenantContext.setBrandId(b.getId());
         ProductResponse created = productService.create(req);
 
+        TenantContext.setBrandId(b.getId());
         productService.deleteToArchive(created.getId());
         var archives = productArchiveRepository.findByBrandId(b.getId());
         assertEquals(1, archives.size());

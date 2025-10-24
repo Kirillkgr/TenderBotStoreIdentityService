@@ -748,10 +748,22 @@ watch(products, (list) => {
 const loadProductsForCurrentLevel = async () => {
   if (!selectedBrand.value && selectedBrand.value !== 0) return;
   try {
-    await productStore.fetchByBrandAndGroup(Number(selectedBrand.value), Number(currentParentId.value || 0), false);
+    const ret = await productStore.fetchByBrandAndGroup(Number(selectedBrand.value), Number(currentParentId.value || 0), false);
+    if (ret && ret.__notFound) {
+      // Информационное уведомление: бренд пустой
+      toast.info('Бренд пустой');
+    }
   } catch (e) {
-    console.error('Не удалось загрузить товары:', e);
-    toast.error(e?.message || 'Не удалось загрузить товары');
+    const status = e?.response?.status;
+    console.warn('Не удалось загрузить товары:', status, e);
+    if (status === 404) {
+      // Информационное уведомление: бренд пустой
+      toast.info('Бренд пустой');
+      return;
+    }
+    if (status >= 500) {
+      toast.error(e?.message || 'Не удалось загрузить товары (ошибка сервера)');
+    }
   }
 };
 
@@ -941,7 +953,11 @@ const fetchTags = async (brandId, parentId = null) => {
 
     // Handle different response formats
     let loadedTags;
-    if (Array.isArray(response)) {
+    if (response && response.__notFound) {
+      // Информационное уведомление: бренд пустой
+      loadedTags = [];
+      toast.info('Бренд пустой');
+    } else if (Array.isArray(response)) {
       loadedTags = response;
     } else if (response && Array.isArray(response.data)) {
       loadedTags = response.data;
@@ -1005,19 +1021,22 @@ const fetchTags = async (brandId, parentId = null) => {
     });
 
   } catch (err) {
-    console.error('Error loading tags:', {
-      error: err,
-      response: err.response,
-      status: err.response?.status,
-      data: err.response?.data
-    });
-
-    const errorMessage = err.response?.data?.message || err.message || 'Не удалось загрузить теги. Пожалуйста, попробуйте снова.';
-    tagError.value = errorMessage;
-    toast.error(errorMessage);
-
-    // Clear tags on error
-    tags.value = [];
+    const status = err?.response?.status;
+    console.warn('Error loading tags:', status, err);
+    if (status === 404) {
+      // Нет тегов/не найдено в текущем контексте — показываем пустой список без ошибок
+      tags.value = [];
+      tagError.value = null;
+    } else if (status >= 500) {
+      const errorMessage = err.response?.data?.message || err.message || 'Не удалось загрузить теги (ошибка сервера)';
+      tagError.value = errorMessage;
+      toast.error(errorMessage);
+      tags.value = [];
+    } else {
+      // Прочие статусы (400/403) — молча
+      tags.value = [];
+      tagError.value = null;
+    }
   } finally {
     tagLoading.value = false;
   }
@@ -1107,11 +1126,14 @@ onMounted(async () => {
     console.log('Загрузка брендов...');
     const loadedBrands = await fetchBrands();
     console.log('Бренды успешно загружены:', loadedBrands);
-
-    // If we have brands, select the first one by default
-    if (loadedBrands && loadedBrands.length > 0) {
-      await selectBrand(loadedBrands[0].id);
-    }
+    // Больше НЕ выбираем первый бренд по умолчанию, чтобы не грузить чужие данные.
+    // Пытаемся восстановить ранее выбранный бренд из localStorage, если он доступен.
+    try {
+      const storedId = Number(localStorage.getItem('current_brand_id'));
+      if (storedId && Array.isArray(loadedBrands) && loadedBrands.some(b => Number(b.id) === storedId)) {
+        await selectBrand(storedId);
+      }
+    } catch (_) {}
   } catch (error) {
     console.error('Ошибка при инициализации:', error);
     const errorMsg = error.response?.data?.message || error.message || 'Неизвестная ошибка';
@@ -1244,11 +1266,18 @@ const selectBrand = async (brandId) => {
       tags.value = [];
     }
   } catch (error) {
-    console.error('Ошибка при выборе бренда:', error);
-    const errorMsg = error.response?.data?.message || error.message || 'Не удалось загрузить теги';
-    tagError.value = errorMsg;
-    toast.error(`Ошибка: ${errorMsg}`);
-    throw error;
+    const status = error?.response?.status;
+    console.warn('Ошибка при выборе бренда:', status, error);
+    if (status === 404) {
+      // Пустой набор тегов, без уведомлений
+      tags.value = [];
+      tagError.value = null;
+    } else if (status >= 500) {
+      const errorMsg = error.response?.data?.message || error.message || 'Не удалось загрузить теги (ошибка сервера)';
+      tagError.value = errorMsg;
+      toast.error(`Ошибка: ${errorMsg}`);
+    }
+    // Не пробрасываем ошибку, чтобы не ломать UX
   } finally {
     loading.value = false;
     tagLoading.value = false;

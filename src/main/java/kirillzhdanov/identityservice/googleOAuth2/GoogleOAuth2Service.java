@@ -6,6 +6,7 @@ import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.security.CustomUserDetails;
 import kirillzhdanov.identityservice.security.JwtUtils;
 import kirillzhdanov.identityservice.service.ProvisioningServiceOps;
+import kirillzhdanov.identityservice.service.BrandLinksReconcileService;
 import kirillzhdanov.identityservice.service.TokenService;
 import kirillzhdanov.identityservice.service.UserService;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -20,6 +21,7 @@ public class GoogleOAuth2Service {
     private final JwtUtils jwtUtils;
     private final TokenService tokenService;
     private final ProvisioningServiceOps provisioningService;
+    private final BrandLinksReconcileService brandLinksReconcileService;
     private final OAuth2UserLinker linker;
     private final UserService userService;
 
@@ -27,12 +29,14 @@ public class GoogleOAuth2Service {
                                TokenService tokenService,
                                ProvisioningServiceOps provisioningService,
                                OAuth2UserLinker linker,
-                               UserService userService) {
+                               UserService userService,
+                               BrandLinksReconcileService brandLinksReconcileService) {
         this.jwtUtils = jwtUtils;
         this.tokenService = tokenService;
         this.provisioningService = provisioningService;
         this.linker = linker;
         this.userService = userService;
+        this.brandLinksReconcileService = brandLinksReconcileService;
     }
 
     /**
@@ -43,7 +47,7 @@ public class GoogleOAuth2Service {
         OAuth2UserLinker.Result userRes = linker.linkOrCreate(oidcUser);
         User user = userRes.user();
 
-        // Провизия только при создании нового локального пользователя (старое поведение, соответствует тестам)
+        // Провизия только при создании нового локального пользователя (как при стандартной регистрации)
         if (userRes.created()) {
             MasterAccount master = provisioningService.ensureMasterAccountForUser(user);
             provisioningService.ensureOwnerMembership(user, master);
@@ -54,6 +58,9 @@ public class GoogleOAuth2Service {
         User effectiveUser = userRes.created()
                 ? userService.findByUsername(user.getUsername()).orElse(user)
                 : user;
+
+        // Привести user.brands в соответствие активным membership (унификация с логином)
+        brandLinksReconcileService.reconcileUserBrands(effectiveUser);
 
         // Revoke existing access tokens optionally, keep refresh strategy if needed
         // tokenService.revokeAllUserTokens(effectiveUser);
@@ -68,5 +75,5 @@ public class GoogleOAuth2Service {
         return new Tokens(access, refresh);
     }
 
-    
+
 }

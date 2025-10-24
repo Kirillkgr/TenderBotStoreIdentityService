@@ -54,7 +54,20 @@ public class CartMergeIntegrationTest extends IntegrationTestBase {
         // 1) Подготовим бренд/продукт админом
         var adminCtx = fixtures.prepareRoleMembership(adminLogin, adminUser, RoleMembership.ADMIN);
         long brandId = sb.createBrand(adminCtx.cookie(), adminCtx.masterId(), "CART-BRAND", "ORG");
-        long productId = sb.createProduct(adminCtx.cookie(), adminCtx.masterId(), "CART-PROD", new BigDecimal("12.34"), brandId);
+        // Переключим контекст на этот бренд перед приватной операцией создания продукта
+        var ctxReq = new kirillzhdanov.identityservice.dto.ContextSwitchRequest();
+        ctxReq.setMembershipId(adminCtx.membershipId());
+        ctxReq.setBrandId(brandId);
+        var ctxRes = mockMvc.perform(post("/auth/v1/context/switch")
+                        .cookie(adminCtx.cookie())
+                        .header("Authorization", "Bearer " + adminCtx.cookie().getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ctxReq)))
+                .andExpect(status().isOk())
+                .andReturn();
+        String newAccess = objectMapper.readTree(ctxRes.getResponse().getContentAsString()).get("accessToken").asText();
+        Cookie ctxCookie = new Cookie("accessToken", newAccess);
+        long productId = sb.createProduct(ctxCookie, adminCtx.masterId(), "CART-PROD", new BigDecimal("12.34"), brandId);
 
         // 2) Гость добавляет товар в корзину -> сервер установит cart_token
         String body = objectMapper.writeValueAsString(Map.of("productId", productId, "quantity", 2));
@@ -119,9 +132,34 @@ public class CartMergeIntegrationTest extends IntegrationTestBase {
         // 1) Подготовим 2 бренда и продукты
         var adminCtx = fixtures.prepareRoleMembership(adminLogin, adminUser, RoleMembership.ADMIN);
         long brandA = sb.createBrand(adminCtx.cookie(), adminCtx.masterId(), "BRAND-A", "ORGA");
-        long prodA = sb.createProduct(adminCtx.cookie(), adminCtx.masterId(), "PA", new BigDecimal("10"), brandA);
+        // ctx -> A
+        var ctxReqA = new kirillzhdanov.identityservice.dto.ContextSwitchRequest();
+        ctxReqA.setMembershipId(adminCtx.membershipId());
+        ctxReqA.setBrandId(brandA);
+        var ctxResA = mockMvc.perform(post("/auth/v1/context/switch")
+                        .cookie(adminCtx.cookie())
+                        .header("Authorization", "Bearer " + adminCtx.cookie().getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ctxReqA)))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie ctxCookieA = new Cookie("accessToken", objectMapper.readTree(ctxResA.getResponse().getContentAsString()).get("accessToken").asText());
+        long prodA = sb.createProduct(ctxCookieA, adminCtx.masterId(), "PA", new BigDecimal("10"), brandA);
+
         long brandB = sb.createBrand(adminCtx.cookie(), adminCtx.masterId(), "BRAND-B", "ORGB");
-        long prodB = sb.createProduct(adminCtx.cookie(), adminCtx.masterId(), "PB", new BigDecimal("20"), brandB);
+        // ctx -> B
+        var ctxReqB = new kirillzhdanov.identityservice.dto.ContextSwitchRequest();
+        ctxReqB.setMembershipId(adminCtx.membershipId());
+        ctxReqB.setBrandId(brandB);
+        var ctxResB = mockMvc.perform(post("/auth/v1/context/switch")
+                        .cookie(adminCtx.cookie())
+                        .header("Authorization", "Bearer " + adminCtx.cookie().getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ctxReqB)))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie ctxCookieB = new Cookie("accessToken", objectMapper.readTree(ctxResB.getResponse().getContentAsString()).get("accessToken").asText());
+        long prodB = sb.createProduct(ctxCookieB, adminCtx.masterId(), "PB", new BigDecimal("20"), brandB);
 
         // 2) Зарегистрируем пользователя и сформируем его корзину (бренд A)
         String username = "conflict-user-" + System.nanoTime();

@@ -60,7 +60,8 @@ public class MenuController {
             @PathVariable Long brandId,
             @RequestParam(required = false, defaultValue = "0") Long parentId
     ) {
-        List<GroupTagResponse> tags = groupTagService.getGroupTagsByBrandAndParent(brandId, parentId);
+        // ВАЖНО: публичный вариант без tenant-контекста
+        List<GroupTagResponse> tags = groupTagService.getPublicGroupTagsByBrandAndParent(brandId, parentId);
         // Публичное меню: скрываем пустые группы (нет видимых товаров ни в самой группе, ни глубже)
         List<PublicGroupTagResponse> response = tags.stream()
                 .filter(t -> groupTagService.hasVisibleProductsInSubtree(brandId, t.getId()))
@@ -76,7 +77,8 @@ public class MenuController {
             @PathVariable Long brandId,
             @RequestParam(required = false, defaultValue = "0") Long groupTagId
     ) {
-        List<ProductResponse> products = productService.getByBrandAndGroup(brandId, groupTagId, true);
+        // ВАЖНО: используем публичный метод без проверок tenant-контекста
+        List<ProductResponse> products = productService.getPublicByBrandAndGroup(brandId, groupTagId);
         List<PublicProductResponse> response = products.stream()
                 .map(p -> new PublicProductResponse(p.getId(), p.getName(), p.getDescription(), p.getPrice(), p.getPromoPrice(), p.isVisible()))
                 .collect(Collectors.toList());

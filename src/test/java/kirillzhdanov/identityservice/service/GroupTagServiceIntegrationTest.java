@@ -16,6 +16,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
+import kirillzhdanov.identityservice.tenant.TenantContext;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -60,9 +61,12 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         brand2 = brandRepository.save(brand2);
     }
 
+    private void ctx(Long brandId) { TenantContext.setBrandId(brandId); }
+
     @Test
     @DisplayName("Группа: hasVisibleProductsInSubtree - видимый товар в самой группе")
     void hasVisible_in_current_group() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("R");
         r.setBrandId(brand1.getId());
@@ -75,6 +79,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         pr.setBrandId(brand1.getId());
         pr.setGroupTagId(root.getId());
         pr.setVisible(true);
+        ctx(brand1.getId());
         productService.create(pr);
 
         assertTrue(groupTagService.hasVisibleProductsInSubtree(brand1.getId(), root.getId()));
@@ -83,6 +88,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: hasVisibleProductsInSubtree - видимый товар только в дочерней группе")
     void hasVisible_in_child_group() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("R");
         r.setBrandId(brand1.getId());
@@ -109,6 +115,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: hasVisibleProductsInSubtree - нет видимых товаров")
     void hasVisible_none() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("R");
         r.setBrandId(brand1.getId());
@@ -127,6 +134,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         p1.setBrandId(brand1.getId());
         p1.setGroupTagId(root.getId());
         p1.setVisible(false);
+        ctx(brand1.getId());
         productService.create(p1);
 
         ProductCreateRequest p2 = new ProductCreateRequest();
@@ -135,6 +143,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         p2.setBrandId(brand1.getId());
         p2.setGroupTagId(child.getId());
         p2.setVisible(false);
+        ctx(brand1.getId());
         productService.create(p2);
 
         assertFalse(groupTagService.hasVisibleProductsInSubtree(brand1.getId(), root.getId()));
@@ -143,6 +152,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: deleteWithArchive архивирует продукты и группы, удаляет живые; последующее восстановление работает (smoke)")
     void deleteWithArchive_e2e_and_restore_smoke() {
+        ctx(brand1.getId());
         // Build tree: Root -> Child
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("Root");
@@ -163,6 +173,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         p1.setBrandId(brand1.getId());
         p1.setGroupTagId(root.getId());
         p1.setVisible(true);
+        ctx(brand1.getId());
         ProductResponse pr1 = productService.create(p1);
 
         ProductCreateRequest p2 = new ProductCreateRequest();
@@ -171,9 +182,11 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         p2.setBrandId(brand1.getId());
         p2.setGroupTagId(child.getId());
         p2.setVisible(true);
+        ctx(brand1.getId());
         ProductResponse pr2 = productService.create(p2);
 
         // Delete with archive the whole subtree at root
+        ctx(brand1.getId());
         groupTagService.deleteWithArchive(root.getId());
 
         // Live groups gone
@@ -188,10 +201,12 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         assertEquals(2, groupTagArchiveRepository.findByBrandId(brand1.getId()).size());
 
         // Paged archives smoke
+        ctx(brand1.getId());
         var pageProducts = productService.listArchiveByBrandPaged(brand1.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
         assertEquals(1, pageProducts.getContent().size());
         assertTrue(pageProducts.getTotalElements() >= 2);
 
+        ctx(brand1.getId());
         var pageGroups = groupTagService.listArchiveByBrandPaged(brand1.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
         assertEquals(1, pageGroups.getContent().size());
         assertTrue(pageGroups.getTotalElements() >= 2);
@@ -199,6 +214,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         // Restore a group (child) from archive: choose the record with name "Child"
         var groupArchives = groupTagArchiveRepository.findByBrandId(brand1.getId());
         Long childArchiveId = groupArchives.stream().filter(a -> "Child".equals(a.getName())).findFirst().orElseThrow().getId();
+        ctx(brand1.getId());
         GroupTagResponse restoredChild = groupTagService.restoreGroupFromArchive(childArchiveId, null);
         assertNotNull(restoredChild.getId());
 
@@ -248,6 +264,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: создание корневой и дочерней, дерево /tree")
     void create_root_and_child_and_tree() {
+        ctx(brand1.getId());
         // root
         CreateGroupTagRequest rootReq = new CreateGroupTagRequest();
         rootReq.setName("Root");
@@ -266,6 +283,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         assertEquals(root.getId(), child.getParentId());
 
         // tree should include both
+        ctx(brand1.getId());
         List<GroupTagTreeResponse> tree = groupTagService.tree(brand1.getId());
         assertEquals(1, tree.size());
         assertEquals("Root", tree.getFirst().getName());
@@ -276,6 +294,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: updateFull переименование + перенос")
     void update_full_move_and_rename() {
+        ctx(brand1.getId());
         // root
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("R"); r.setBrandId(brand1.getId()); r.setParentId(0L);
@@ -293,6 +312,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         upd.setName("B-Updated");
         upd.setParentId(a.getId());
         upd.setBrandId(brand1.getId());
+        ctx(brand1.getId());
         GroupTagResponse res = groupTagService.updateGroupTag(b.getId(), upd);
         assertEquals("B-Updated", res.getName());
         assertEquals(a.getId(), res.getParentId());
@@ -301,6 +321,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: смена бренда переносит и товары")
     void change_brand_moves_products() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r1 = new CreateGroupTagRequest();
         r1.setName("R1"); r1.setBrandId(brand1.getId()); r1.setParentId(0L);
         GroupTagResponse root1 = groupTagService.createGroupTag(r1);
@@ -316,6 +337,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         pr.setBrandId(brand1.getId());
         pr.setGroupTagId(node.getId());
         pr.setVisible(true);
+        ctx(brand1.getId());
         ProductResponse created = productService.create(pr);
         assertEquals(brand1.getId(), created.getBrandId());
         assertEquals(node.getId(), created.getGroupTagId());
@@ -323,9 +345,12 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         // change brand of node subtree
         UpdateGroupTagRequest upd = new UpdateGroupTagRequest();
         upd.setBrandId(brand2.getId());
+        // ВАЖНО: менять бренд узла нужно из контекста исходного бренда узла
+        ctx(brand1.getId());
         GroupTagResponse after = groupTagService.updateGroupTag(node.getId(), upd);
         assertEquals(brand2.getId(), after.getBrandId());
 
+        ctx(brand2.getId());
         ProductResponse reloaded = productService.getById(created.getId());
         assertEquals(brand2.getId(), reloaded.getBrandId());
         assertEquals(node.getId(), reloaded.getGroupTagId());
@@ -334,6 +359,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: перемещение в корень сбрасывает parent")
     void move_to_root_resets_parent() {
+        ctx(brand1.getId());
         CreateGroupTagRequest rootReq = new CreateGroupTagRequest();
         rootReq.setName("R");
         rootReq.setBrandId(brand1.getId());
@@ -346,6 +372,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         childReq.setParentId(root.getId());
         GroupTagResponse child = groupTagService.createGroupTag(childReq);
 
+        ctx(brand1.getId());
         GroupTagResponse moved = groupTagService.move(child.getId(), 0L);
         assertNull(moved.getParentId());
     }
@@ -353,6 +380,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: перемещение к родителю другого бренда -> IllegalArgumentException")
     void move_to_other_brand_parent_throws() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r1 = new CreateGroupTagRequest();
         r1.setName("R1");
         r1.setBrandId(brand1.getId());
@@ -369,14 +397,17 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         otherRootReq.setName("OtherRoot");
         otherRootReq.setBrandId(brand2.getId());
         otherRootReq.setParentId(0L);
+        ctx(brand2.getId());
         GroupTagResponse otherRoot = groupTagService.createGroupTag(otherRootReq);
 
+        ctx(brand1.getId());
         assertThrows(IllegalArgumentException.class, () -> groupTagService.move(child.getId(), otherRoot.getId()));
     }
 
     @Test
     @DisplayName("Группа: перемещение к несуществующему родителю -> ResourceNotFoundException")
     void move_to_nonexistent_parent_throws() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r1 = new CreateGroupTagRequest();
         r1.setName("R1");
         r1.setBrandId(brand1.getId());
@@ -389,6 +420,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         childReq.setParentId(root1.getId());
         GroupTagResponse child = groupTagService.createGroupTag(childReq);
 
+        ctx(brand1.getId());
         assertThrows(kirillzhdanov.identityservice.exception.ResourceNotFoundException.class,
                 () -> groupTagService.move(child.getId(), 999999L));
     }
@@ -396,6 +428,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: rename конфликт под тем же родителем -> IllegalArgumentException")
     void rename_conflict_same_parent_throws() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("R");
         r.setBrandId(brand1.getId());
@@ -414,6 +447,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         bReq.setParentId(root.getId());
         GroupTagResponse b = groupTagService.createGroupTag(bReq);
 
+        ctx(brand1.getId());
         assertThrows(IllegalArgumentException.class, () -> groupTagService.rename(b.getId(), "A"));
     }
 
@@ -421,6 +455,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Transactional
     @DisplayName("Группа: getGroupTagsTree возвращает детей для корней")
     void getGroupTagsTree_structure() {
+        ctx(brand1.getId());
         CreateGroupTagRequest rootReq = new CreateGroupTagRequest();
         rootReq.setName("Root");
         rootReq.setBrandId(brand1.getId());
@@ -433,10 +468,12 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         childReq.setParentId(root.getId());
         groupTagService.createGroupTag(childReq);
 
+        ctx(brand1.getId());
         var tree = groupTagService.getGroupTagsTree(brand1.getId());
         assertEquals(1, tree.size());
         assertEquals("Root", tree.getFirst().getName());
         // Проверяем детей через специализированный метод, не полагаясь на заполненность DTO.children
+        ctx(brand1.getId());
         var directChildren = groupTagService.getGroupTagsByBrandAndParent(brand1.getId(), root.getId());
         assertEquals(1, directChildren.size());
         assertEquals("Child", directChildren.getFirst().getName());
@@ -445,6 +482,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("Группа: getGroupTagsPaged пагинация по корневым")
     void getGroupTagsPaged_pagination() {
+        ctx(brand1.getId());
         for (int i = 0; i < 5; i++) {
             CreateGroupTagRequest r = new CreateGroupTagRequest();
             r.setName("R" + i);
@@ -454,6 +492,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         }
         org.springframework.data.domain.Pageable p0 = org.springframework.data.domain.PageRequest.of(0, 2,
                 org.springframework.data.domain.Sort.by("name").ascending());
+        ctx(brand1.getId());
         var page = groupTagService.getGroupTagsPaged(brand1.getId(), 0L, p0);
         assertEquals(2, page.getContent().size());
         assertTrue(page.getTotalElements() >= 5);
@@ -463,6 +502,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
     @Transactional
     @DisplayName("Группа: breadcrumbs порядок от корня к листу")
     void breadcrumbs_order() {
+        ctx(brand1.getId());
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("R");
         r.setBrandId(brand1.getId());
@@ -481,6 +521,7 @@ public class GroupTagServiceIntegrationTest extends IntegrationTestBase {
         bReq.setParentId(a.getId());
         GroupTagResponse b = groupTagService.createGroupTag(bReq);
 
+        ctx(brand1.getId());
         var bc = groupTagService.breadcrumbs(b.getId());
         assertEquals(3, bc.size());
         assertEquals("R", bc.get(0).getName());

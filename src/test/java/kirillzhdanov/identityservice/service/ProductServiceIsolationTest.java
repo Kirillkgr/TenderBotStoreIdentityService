@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import kirillzhdanov.identityservice.tenant.TenantContext;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -51,6 +52,8 @@ public class ProductServiceIsolationTest extends IntegrationTestBase {
         p1.setBrandId(b1.getId());
         p1.setGroupTagId(0L);
         p1.setVisible(true);
+        // set brand context for private create
+        TenantContext.setBrandId(b1.getId());
         productService.create(p1);
 
         ProductCreateRequest p2 = new ProductCreateRequest();
@@ -59,16 +62,20 @@ public class ProductServiceIsolationTest extends IntegrationTestBase {
         p2.setBrandId(b2.getId());
         p2.setGroupTagId(0L);
         p2.setVisible(true);
+        // switch brand context for second create
+        TenantContext.setBrandId(b2.getId());
         productService.create(p2);
     }
 
     @Test
     @DisplayName("getByBrandAndGroup: возвращает товары только своего бренда")
     void getByBrandAndGroup_isolated_by_brand() {
+        TenantContext.setBrandId(b1.getId());
         List<ProductResponse> list1 = productService.getByBrandAndGroup(b1.getId(), 0L, true);
         assertEquals(1, list1.size());
         assertEquals("B1", list1.getFirst().getBrandId().equals(b1.getId()) ? "B1" : "?");
 
+        TenantContext.setBrandId(b2.getId());
         List<ProductResponse> list2 = productService.getByBrandAndGroup(b2.getId(), 0L, true);
         assertEquals(1, list2.size());
         assertEquals("B2", list2.getFirst().getBrandId().equals(b2.getId()) ? "B2" : "?");
@@ -84,9 +91,11 @@ public class ProductServiceIsolationTest extends IntegrationTestBase {
         p.setBrandId(b1.getId());
         p.setVisible(true);
         p.setGroupTagId(0L);
+        TenantContext.setBrandId(b1.getId());
         ProductResponse created = productService.create(p);
 
-        // меняем бренд на b2
+        // меняем бренд на b2 (ВАЖНО: из контекста исходного бренда b1)
+        TenantContext.setBrandId(b1.getId());
         ProductResponse changed = productService.changeBrand(created.getId(), b2.getId());
         assertEquals(b2.getId(), changed.getBrandId());
     }

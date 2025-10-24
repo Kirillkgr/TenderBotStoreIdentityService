@@ -48,6 +48,13 @@ public class BrandService {
     private final UserBrandMembershipRepository userBrandMembershipRepository;
     private final MasterAccountService masterAccountService;
 
+    // ===== Context guards for brands =====
+    private Brand getBrandInCurrentMasterOr404(Long id) {
+        Long masterId = ContextAccess.getMasterIdOrThrow();
+        return brandRepository.findByIdAndMaster_Id(id, masterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id in current master: " + id));
+    }
+
     /**
      * Возвращает бренды для текущего master‑аккаунта. Если master ещё не определён,
      * создаёт/разрешает его для текущего пользователя.
@@ -92,14 +99,21 @@ public class BrandService {
 
         Long masterId = ContextAccess.getMasterIdOrNull();
         if (masterId == null) {
-            // Без контекста бренды не возвращаем (новый пользователь увидит пусто, но сможет создать бренд)
-            return List.of();
+            // Улучшаем UX: если контекст ещё не выбран (новый пользователь, OAuth2-редирект),
+            // пробуем определить/создать master для текущего пользователя.
+            try {
+                masterId = masterAccountService.resolveOrCreateMasterIdForCurrentUser();
+            } catch (Exception ignored) {
+                // если не удалось — вернём пусто, как раньше
+                return List.of();
+            }
         }
 
         List<UserMembership> memberships = userMembershipRepository.findByUserId(currentUser.getId());
+        Long finalMasterId = masterId;
         List<Long> brandIds = memberships.stream()
                 .filter(m -> m.getBrand() != null)
-                .filter(m -> m.getMaster() != null && masterId.equals(m.getMaster().getId()))
+                .filter(m -> m.getMaster() != null && finalMasterId.equals(m.getMaster().getId()))
                 .filter(m -> "ACTIVE".equalsIgnoreCase(m.getStatus()))
                 .filter(m -> m.getRole() == RoleMembership.ADMIN || m.getRole() == RoleMembership.OWNER)
                 .map(m -> m.getBrand().getId())
@@ -339,8 +353,8 @@ public class BrandService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        Brand brand = brandRepository.findById(brandId)
-                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
+        // Разрешаем назначение только на бренд в пределах текущего master-контекста
+        Brand brand = getBrandInCurrentMasterOr404(brandId);
 
         user.getBrands()
                 .add(brand);
@@ -356,8 +370,8 @@ public class BrandService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        Brand brand = brandRepository.findById(brandId)
-                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
+        // Разрешаем удаление только бренда из текущего master-контекста
+        Brand brand = getBrandInCurrentMasterOr404(brandId);
 
         user.getBrands()
                 .remove(brand);
