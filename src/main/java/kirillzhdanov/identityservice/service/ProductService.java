@@ -11,7 +11,7 @@ import kirillzhdanov.identityservice.model.product.Product;
 import kirillzhdanov.identityservice.model.product.ProductArchive;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
 import kirillzhdanov.identityservice.repository.*;
-import kirillzhdanov.identityservice.tenant.TenantContext;
+import kirillzhdanov.identityservice.tenant.ContextGuards;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -30,8 +30,13 @@ public class ProductService {
     private final ProductArchiveRepository productArchiveRepository;
     private final GroupTagArchiveRepository groupTagArchiveRepository;
 
+    // ===== Context guards: use centralized helpers =====
+
     @Transactional
     public ProductResponse create(ProductCreateRequest request) {
+        // Приватные операции: бренд из запроса должен совпадать с активным контекстом
+        ContextGuards.requireBrandInContextOr404(request.getBrandId());
+
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Бренд не найден: " + request.getBrandId()));
 
@@ -125,6 +130,7 @@ public class ProductService {
     public ProductResponse updateVisibility(Long productId, boolean visible) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(product.getBrand());
         product.setVisible(visible);
         Product saved = productRepository.save(product);
         return toResponse(saved);
@@ -132,6 +138,8 @@ public class ProductService {
 
     @Transactional
     public List<ProductResponse> getByBrandAndGroup(Long brandId, Long groupTagId, boolean visibleOnly) {
+        // Жёстко ограничиваем доступом по контексту бренда
+        ContextGuards.requireBrandInContextOr404(brandId);
         Brand brand = brandRepository.findById(brandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Бренд не найден: " + brandId));
 
@@ -144,6 +152,25 @@ public class ProductService {
             products = visibleOnly
                     ? productRepository.findByBrandAndGroupTagIdAndVisibleIsTrue(brand, groupTagId)
                     : productRepository.findByBrandAndGroupTagId(brand, groupTagId);
+        }
+
+        return products.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Публичная версия: товары по бренду и группе, всегда только видимые, без проверки tenant-контекста.
+     * Используется MenuController для публичного меню.
+     */
+    @Transactional
+    public List<ProductResponse> getPublicByBrandAndGroup(Long brandId, Long groupTagId) {
+        Brand brand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Бренд не найден: " + brandId));
+
+        List<Product> products;
+        if (groupTagId == null || groupTagId == 0) {
+            products = productRepository.findByBrandAndGroupTagIsNullAndVisibleIsTrue(brand);
+        } else {
+            products = productRepository.findByBrandAndGroupTagIdAndVisibleIsTrue(brand, groupTagId);
         }
 
         return products.stream().map(this::toResponse).collect(Collectors.toList());
@@ -168,6 +195,7 @@ public class ProductService {
     public void deleteToArchive(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(product.getBrand());
 
         ProductArchive archive = new ProductArchive();
         archive.setOriginalProductId(product.getId());
@@ -233,16 +261,10 @@ public class ProductService {
 
     @Transactional
     public ProductResponse getById(Long productId) {
-        Long masterId = TenantContext.getMasterId();
-        Product product;
-        if (masterId != null) {
-            product = productRepository.findByIdAndBrand_Master_Id(productId, masterId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
-        } else {
-            // fallback: без контекста — как раньше (для публичных ручек вне auth)
-            product = productRepository.findById(productId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
-        }
+        // Для приватных ручек требуем соответствие бренда товара контексту
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(product.getBrand());
         return toResponse(product);
     }
 
@@ -250,6 +272,7 @@ public class ProductService {
     public ProductResponse update(Long productId, ProductUpdateRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(product.getBrand());
 
         if (request.getName() != null) product.setName(request.getName());
         product.setDescription(request.getDescription());
@@ -265,6 +288,8 @@ public class ProductService {
     public ProductResponse changeBrand(Long productId, Long brandId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        // Разрешаем смену бренда только из контекста ИСХОДНОГО бренда товара.
+        ContextGuards.requireEntityBrandMatchesContextOr404(product.getBrand());
         Brand newBrand = brandRepository.findById(brandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Бренд не найден: " + brandId));
 
@@ -282,6 +307,7 @@ public class ProductService {
 
     @Transactional
     public List<ProductArchiveResponse> listArchiveByBrand(Long brandId) {
+        ContextGuards.requireBrandInContextOr404(brandId);
         return productArchiveRepository.findByBrandId(brandId)
                 .stream()
                 .map(a -> ProductArchiveResponse.builder()
@@ -304,6 +330,7 @@ public class ProductService {
 
     @Transactional
     public Page<ProductArchiveResponse> listArchiveByBrandPaged(Long brandId, org.springframework.data.domain.Pageable pageable) {
+        ContextGuards.requireBrandInContextOr404(brandId);
         var page = productArchiveRepository.findByBrandId(brandId, pageable);
         return page.map(a -> ProductArchiveResponse.builder()
                 .id(a.getId())
@@ -326,7 +353,8 @@ public class ProductService {
     public ProductResponse restoreFromArchive(Long archiveId, Long targetGroupTagId) {
         ProductArchive archive = productArchiveRepository.findById(archiveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Запись архива не найдена: " + archiveId));
-
+        // Восстановление возможно только в рамках текущего контекста бренда
+        ContextGuards.requireBrandInContextOr404(archive.getBrandId());
         Brand brand = brandRepository.findById(archive.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Бренд не найден: " + archive.getBrandId()));
 

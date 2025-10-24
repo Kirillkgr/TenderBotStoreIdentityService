@@ -23,10 +23,25 @@ export const useProductStore = defineStore('product', {
                 this.products = arr || [];
                 return this.products;
             } catch (error) {
-                console.error('Ошибка при загрузке товаров по бренду/группе:', error);
-                this.error = error.message || 'Не удалось загрузить товары';
+                const status = error?.response?.status;
+                console.warn('Ошибка при загрузке товаров по бренду/группе:', status, error);
+                // 404 трактуем как отсутствие товаров/группы — без тоста и без ошибки наверх
+                if (status === 404) {
+                    this.products = [];
+                    this.error = null;
+                    // Возвращаем служебный маркер, чтобы UI мог показать инфо-уведомление "товаров нет"
+                    return { __notFound: true, items: [] };
+                }
+                // 5xx — считаем ошибкой
+                if (status >= 500) {
+                    this.error = error.message || 'Не удалось загрузить товары (ошибка сервера)';
+                    this.products = [];
+                    throw error;
+                }
+                // Остальные (например, 400/403) — молча очищаем список, не шумим на UI
                 this.products = [];
-                throw error;
+                this.error = null;
+                return [];
             } finally {
                 this.loading = false;
             }

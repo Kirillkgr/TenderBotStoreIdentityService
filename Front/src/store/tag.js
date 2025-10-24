@@ -25,10 +25,28 @@ export const useTagStore = defineStore('tag', () => {
       
       return response;
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Ошибка при загрузке тегов';
-      error.value = errorMessage;
-      console.error('Ошибка при загрузке тегов:', errorMessage, err);
-      throw new Error(errorMessage);
+      const status = err?.response?.status;
+      console.warn('Ошибка при загрузке тегов:', status, err);
+      if (status === 404) {
+        // Нет тегов на этом уровне/в этом бренде — не считаем ошибкой
+        if (parentId === null || parentId === 0) {
+          tags.value = [];
+        }
+        error.value = null;
+        return { __notFound: true, items: [] };
+      }
+      if (status >= 500) {
+        const errorMessage = err.response?.data?.message || 'Ошибка при загрузке тегов (ошибка сервера)';
+        error.value = errorMessage;
+        console.error('Ошибка при загрузке тегов:', errorMessage, err);
+        throw err;
+      }
+      // Прочие (400/403) — молча
+      if (parentId === null || parentId === 0) {
+        tags.value = [];
+      }
+      error.value = null;
+      return [];
     } finally {
       isLoading.value = false;
     }

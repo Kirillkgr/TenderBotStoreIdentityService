@@ -50,7 +50,20 @@ public class ProductAdminControllerTest extends IntegrationTestBase {
     void owner_can_create_product() throws Exception {
         var owner = fx.prepareRoleMembership(login, username, RoleMembership.OWNER);
         long brandId = sb.createBrand(owner.cookie(), owner.masterId(), "B2P-Owner-Brand", "Org-P-Owner");
-        long productId = sb.createProduct(owner.cookie(), owner.masterId(), "B2P-Owner-Prod", new BigDecimal("11.11"), brandId);
+        // Переключаем контекст на созданный бренд, чтобы гарды пропустили приватную операцию
+        kirillzhdanov.identityservice.dto.ContextSwitchRequest ctxReq = new kirillzhdanov.identityservice.dto.ContextSwitchRequest();
+        ctxReq.setMembershipId(owner.membershipId());
+        ctxReq.setBrandId(brandId);
+        var ctxRes = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/auth/v1/context/switch")
+                        .cookie(owner.cookie())
+                        .header("Authorization", "Bearer " + owner.cookie().getValue())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ctxReq)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andReturn();
+        String newAccess = objectMapper.readTree(ctxRes.getResponse().getContentAsString()).get("accessToken").asText();
+        jakarta.servlet.http.Cookie ctxCookie = new jakarta.servlet.http.Cookie("accessToken", newAccess);
+        long productId = sb.createProduct(ctxCookie, owner.masterId(), "B2P-Owner-Prod", new BigDecimal("11.11"), brandId);
         assertThat(productId).isPositive();
     }
 
@@ -59,7 +72,20 @@ public class ProductAdminControllerTest extends IntegrationTestBase {
     void admin_can_create_product() throws Exception {
         var admin = fx.prepareRoleMembership(login, username, RoleMembership.ADMIN);
         long brandId = sb.createBrand(admin.cookie(), admin.masterId(), "B2P-Admin-Brand", "Org-P-Admin");
-        long productId = sb.createProduct(admin.cookie(), admin.masterId(), "B2P-Admin-Prod", new BigDecimal("12.34"), brandId);
+        // Переключаем контекст на созданный бренд
+        kirillzhdanov.identityservice.dto.ContextSwitchRequest ctxReq = new kirillzhdanov.identityservice.dto.ContextSwitchRequest();
+        ctxReq.setMembershipId(admin.membershipId());
+        ctxReq.setBrandId(brandId);
+        var ctxRes = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/auth/v1/context/switch")
+                        .cookie(admin.cookie())
+                        .header("Authorization", "Bearer " + admin.cookie().getValue())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ctxReq)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andReturn();
+        String newAccess = objectMapper.readTree(ctxRes.getResponse().getContentAsString()).get("accessToken").asText();
+        jakarta.servlet.http.Cookie ctxCookie = new jakarta.servlet.http.Cookie("accessToken", newAccess);
+        long productId = sb.createProduct(ctxCookie, admin.masterId(), "B2P-Admin-Prod", new BigDecimal("12.34"), brandId);
         assertThat(productId).isPositive();
     }
 
@@ -68,7 +94,20 @@ public class ProductAdminControllerTest extends IntegrationTestBase {
     void cross_master_product_returns_404() throws Exception {
         var admin = fx.prepareRoleMembership(login, username, RoleMembership.ADMIN);
         long brandId = sb.createBrand(admin.cookie(), admin.masterId(), "B2P-X-Brand", "Org-X");
-        long productId = sb.createProduct(admin.cookie(), admin.masterId(), "B2P-X-Prod", new BigDecimal("9.99"), brandId);
+        // Переключаем контекст на созданный бренд, чтобы создать продукт
+        kirillzhdanov.identityservice.dto.ContextSwitchRequest ctxReq = new kirillzhdanov.identityservice.dto.ContextSwitchRequest();
+        ctxReq.setMembershipId(admin.membershipId());
+        ctxReq.setBrandId(brandId);
+        var ctxRes = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/auth/v1/context/switch")
+                        .cookie(admin.cookie())
+                        .header("Authorization", "Bearer " + admin.cookie().getValue())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ctxReq)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andReturn();
+        String newAccess = objectMapper.readTree(ctxRes.getResponse().getContentAsString()).get("accessToken").asText();
+        jakarta.servlet.http.Cookie ctxCookie = new jakarta.servlet.http.Cookie("accessToken", newAccess);
+        long productId = sb.createProduct(ctxCookie, admin.masterId(), "B2P-X-Prod", new BigDecimal("9.99"), brandId);
 
         var admin2 = fx.prepareRoleMembership(login, username, RoleMembership.ADMIN);
         mockMvc.perform(get("/auth/v1/products/" + productId)

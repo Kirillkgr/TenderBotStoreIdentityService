@@ -57,7 +57,9 @@ public class ContextController {
      */
     @PostMapping("/switch")
     @Operation(summary = "Переключение контекста (membership)", description = "Требуется аутентификация. Меняет активный контекст и выдаёт новый accessToken. Ошибки: 400 при несоответствии membership/brand/location, 401 без аутентификации.")
-    public ResponseEntity<ContextSwitchResponse> switchContext(@RequestBody ContextSwitchRequest request) {
+    public ResponseEntity<ContextSwitchResponse> switchContext(@RequestBody ContextSwitchRequest request,
+                                                              HttpServletRequest httpReq,
+                                                              HttpServletResponse httpResp) {
         if (request.getMembershipId() == null) {
             throw new BadRequestException("membershipId is required");
         }
@@ -89,6 +91,31 @@ public class ContextController {
         String accessToken = jwtUtils.generateAccessToken(new CustomUserDetails(user),
                 membership.getId(), masterId, brandId, locationId);
         tokenService.saveToken(accessToken, Token.TokenType.ACCESS, user);
+
+        // Дополнительно: устанавливаем HttpOnly cookie "ctx", чтобы ContextEnforcementFilter видел контекст без JWT-клейм
+        try {
+            long issuedAt = System.currentTimeMillis();
+            String json = "{" +
+                    (masterId != null ? "\"masterId\":" + masterId + "," : "") +
+                    (brandId != null ? "\"brandId\":" + brandId + "," : "") +
+                    (locationId != null ? "\"pickupPointId\":" + locationId + "," : "") +
+                    "\"issuedAt\":" + issuedAt +
+                    "}";
+            String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+            HmacSigner signer = new HmacSigner(ctxSecret);
+            String sig = signer.signBase64Url(payload);
+            String value = payload + "." + sig;
+            boolean secure = httpReq.isSecure();
+            ResponseCookie cookie = ResponseCookie.from("ctx", value)
+                    .httpOnly(true)
+                    .secure(secure)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(ctxMaxAge)
+                    .build();
+            httpResp.addHeader("Set-Cookie", cookie.toString());
+        } catch (Exception ignored) {}
+
         return ResponseEntity.ok(new ContextSwitchResponse(accessToken));
     }
 

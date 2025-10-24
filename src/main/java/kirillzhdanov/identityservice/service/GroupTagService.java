@@ -10,6 +10,7 @@ import kirillzhdanov.identityservice.repository.BrandRepository;
 import kirillzhdanov.identityservice.repository.GroupTagArchiveRepository;
 import kirillzhdanov.identityservice.repository.GroupTagRepository;
 import kirillzhdanov.identityservice.repository.ProductRepository;
+import kirillzhdanov.identityservice.tenant.ContextGuards;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static kirillzhdanov.identityservice.tenant.ContextGuards.requireBrandInContextOr404;
+
 @Service
 @RequiredArgsConstructor
 public class GroupTagService {
@@ -31,8 +34,11 @@ public class GroupTagService {
     private final ProductRepository productRepository;
     private final ProductService productService;
 
+    // ===== Context guards (centralized in ContextGuards) =====
+
     @Transactional
     public GroupTagResponse createGroupTag(CreateGroupTagRequest request) {
+        requireBrandInContextOr404(request.getBrandId());
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + request.getBrandId()));
 
@@ -41,6 +47,7 @@ public class GroupTagService {
             parent = groupTagRepository.findByIdAndBrand(request.getParentId(), brand)
                     .orElseThrow(() -> new ResourceNotFoundException("Parent group tag not found with id: " + request.getParentId()));
         }
+
         // Check if group tag with same name already exists under the same parent
         if (groupTagRepository.existsByBrandAndNameAndParent(brand, request.getName(), parent)) {
             throw new IllegalArgumentException("Group tag with this name already exists in the specified location");
@@ -52,8 +59,27 @@ public class GroupTagService {
         return convertToDto(groupTag);
     }
 
+    // ===== Public variants (no tenant checks) =====
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public List<GroupTagResponse> getPublicGroupTagsByBrandAndParent(Long brandId, Long parentId) {
+        Brand brand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
+
+        List<GroupTag> groupTags;
+        if (parentId == null || parentId == 0) {
+            groupTags = groupTagRepository.findByBrandAndParentIsNull(brand);
+        } else {
+            groupTags = groupTagRepository.findByBrandAndParentId(brand, parentId);
+        }
+
+        return groupTags.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(Transactional.TxType.SUPPORTS)
     public java.util.List<GroupTagTreeResponse> tree(Long brandId) {
+        requireBrandInContextOr404(brandId);
         Brand brand = brandRepository.findById(brandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
 
@@ -85,6 +111,7 @@ public class GroupTagService {
     }
 
     public List<GroupTagResponse> getGroupTagsByBrandAndParent(Long brandId, Long parentId) {
+        requireBrandInContextOr404(brandId);
         Brand brand = brandRepository.findById(brandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
 
@@ -101,6 +128,7 @@ public class GroupTagService {
     }
 
     public List<GroupTagResponse> getGroupTagsTree(Long brandId) {
+        requireBrandInContextOr404(brandId);
         Brand brand = brandRepository.findById(brandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
 
@@ -111,6 +139,7 @@ public class GroupTagService {
     }
 
     public Page<GroupTagResponse> getGroupTagsPaged(Long brandId, Long parentId, Pageable pageable) {
+        requireBrandInContextOr404(brandId);
         Brand brand = brandRepository.findById(brandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + brandId));
 
@@ -127,6 +156,7 @@ public class GroupTagService {
     public GroupTagResponse rename(Long groupTagId, String newName) {
         GroupTag groupTag = groupTagRepository.findById(groupTagId)
                 .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(groupTag.getBrand());
         // uniqueness within same parent and brand
         if (groupTagRepository.existsByBrandAndNameAndParent(groupTag.getBrand(), newName, groupTag.getParent())) {
             throw new IllegalArgumentException("Group tag with this name already exists in the specified location");
@@ -140,6 +170,7 @@ public class GroupTagService {
     public GroupTagResponse updateGroupTag(Long groupTagId, UpdateGroupTagRequest request) {
         GroupTag current = groupTagRepository.findById(groupTagId)
                 .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(current.getBrand());
 
         // 1) Change brand if requested and different
         if (request.getBrandId() != null && !request.getBrandId().equals(current.getBrand().getId())) {
@@ -172,6 +203,8 @@ public class GroupTagService {
     public GroupTagResponse changeBrand(Long groupTagId, Long newBrandId) {
         GroupTag root = groupTagRepository.findById(groupTagId)
                 .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        // Разрешаем смену бренда только из контекста ИСХОДНОГО бренда узла.
+        ContextGuards.requireEntityBrandMatchesContextOr404(root.getBrand());
         Brand newBrand = brandRepository.findById(newBrandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + newBrandId));
         Brand oldBrand = root.getBrand();
@@ -211,6 +244,7 @@ public class GroupTagService {
     public GroupTagResponse move(Long groupTagId, Long newParentId) {
         GroupTag groupTag = groupTagRepository.findById(groupTagId)
                 .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(groupTag.getBrand());
 
         GroupTag newParent = null;
         if (newParentId != null && newParentId != 0) {
@@ -234,6 +268,7 @@ public class GroupTagService {
     public List<GroupTagResponse> breadcrumbs(Long groupTagId) {
         GroupTag node = groupTagRepository.findById(groupTagId)
                 .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(node.getBrand());
         List<GroupTagResponse> result = new ArrayList<>();
         GroupTag cur = node;
         while (cur != null) {
@@ -247,6 +282,7 @@ public class GroupTagService {
     public void deleteWithArchive(Long groupTagId) {
         GroupTag root = groupTagRepository.findById(groupTagId)
                 .orElseThrow(() -> new ResourceNotFoundException("Group tag not found: " + groupTagId));
+        ContextGuards.requireEntityBrandMatchesContextOr404(root.getBrand());
 
         Brand brand = root.getBrand();
         String subtreePrefix = root.getPath() + root.getId() + "/";
@@ -303,6 +339,7 @@ public class GroupTagService {
 
     @Transactional(Transactional.TxType.SUPPORTS)
     public List<GroupTagArchiveResponse> listArchiveByBrand(Long brandId) {
+        requireBrandInContextOr404(brandId);
         List<GroupTagArchive> list = groupTagArchiveRepository.findByBrandId(brandId);
         return list.stream()
                 .sorted(Comparator.comparing(GroupTagArchive::getArchivedAt).reversed())
@@ -321,6 +358,7 @@ public class GroupTagService {
 
     @Transactional(Transactional.TxType.SUPPORTS)
     public org.springframework.data.domain.Page<GroupTagArchiveResponse> listArchiveByBrandPaged(Long brandId, org.springframework.data.domain.Pageable pageable) {
+        requireBrandInContextOr404(brandId);
         var page = groupTagArchiveRepository.findByBrandId(brandId, pageable);
         return page.map(a -> GroupTagArchiveResponse.builder()
                 .id(a.getId())
@@ -338,7 +376,7 @@ public class GroupTagService {
     public GroupTagResponse restoreGroupFromArchive(Long archiveId, Long targetParentId) {
         GroupTagArchive a = groupTagArchiveRepository.findById(archiveId)
                 .orElseThrow(() -> new ResourceNotFoundException("GroupTag archive not found: " + archiveId));
-
+        requireBrandInContextOr404(a.getBrandId());
         Brand brand = brandRepository.findById(a.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + a.getBrandId()));
 

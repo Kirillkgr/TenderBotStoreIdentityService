@@ -67,6 +67,9 @@ public class AuthServiceTest {
     @Mock
     private ProvisioningServiceOps provisioningService;
 
+    @Mock
+    private BrandLinksReconcileService brandLinksReconcileService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -350,6 +353,8 @@ public class AuthServiceTest {
         verify(jwtUtils).generateRefreshToken(any(CustomUserDetails.class));
         verify(tokenService).saveToken(eq("access-token-123"), eq(Token.TokenType.ACCESS), eq(testUser));
         verify(tokenService).saveToken(eq("refresh-token-123"), eq(Token.TokenType.REFRESH), eq(testUser));
+        // brand links are reconciled
+        verify(brandLinksReconcileService).reconcileUserBrands(eq(testUser));
     }
 
     @Test
@@ -398,6 +403,8 @@ public class AuthServiceTest {
         verify(jwtUtils).generateRefreshToken(any(CustomUserDetails.class));
         verify(tokenService).saveToken(eq("new-access-token-123"), eq(Token.TokenType.ACCESS), eq(testUser));
         verify(tokenService).saveToken(eq("new-refresh-token-456"), eq(Token.TokenType.REFRESH), eq(testUser));
+        // brand links are reconciled during refresh
+        verify(brandLinksReconcileService).reconcileUserBrands(eq(testUser));
     }
 
     @Test

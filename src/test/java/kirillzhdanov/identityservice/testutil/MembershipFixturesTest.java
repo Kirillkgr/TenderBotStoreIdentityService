@@ -61,7 +61,20 @@ public class MembershipFixturesTest extends IntegrationTestBase {
     void adminCanCreateBrandAndProduct() throws Exception {
         var admin = fixtures.prepareRoleMembership(login, username, RoleMembership.ADMIN);
         long brandId = sb.createBrand(admin.cookie(), admin.masterId(), "FX-BRAND", "FX-ORG");
-        long productId = sb.createProduct(admin.cookie(), admin.masterId(), "FX-PROD", new BigDecimal("9.99"), brandId);
+        // Переключаем контекст на созданный бренд перед приватной операцией создания продукта
+        var ctxReq = new kirillzhdanov.identityservice.dto.ContextSwitchRequest();
+        ctxReq.setMembershipId(admin.membershipId());
+        ctxReq.setBrandId(brandId);
+        var ctxRes = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/auth/v1/context/switch")
+                        .cookie(admin.cookie())
+                        .header("Authorization", "Bearer " + admin.cookie().getValue())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ctxReq)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andReturn();
+        String newAccess = objectMapper.readTree(ctxRes.getResponse().getContentAsString()).get("accessToken").asText();
+        jakarta.servlet.http.Cookie ctxCookie = new jakarta.servlet.http.Cookie("accessToken", newAccess);
+        long productId = sb.createProduct(ctxCookie, admin.masterId(), "FX-PROD", new BigDecimal("9.99"), brandId);
         assertThat(brandId).isPositive();
         assertThat(productId).isPositive();
     }

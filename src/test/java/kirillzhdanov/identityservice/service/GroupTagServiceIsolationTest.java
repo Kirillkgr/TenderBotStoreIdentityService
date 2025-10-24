@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import kirillzhdanov.identityservice.tenant.TenantContext;
 
 import java.util.List;
 
@@ -45,6 +46,7 @@ public class GroupTagServiceIsolationTest extends IntegrationTestBase {
         brandRepository.saveAll(java.util.List.of(b1, b2));
 
         // Build simple tree under b1: Root -> Child
+        TenantContext.setBrandId(b1.getId());
         CreateGroupTagRequest r = new CreateGroupTagRequest();
         r.setName("Root");
         r.setBrandId(b1.getId());
@@ -57,6 +59,7 @@ public class GroupTagServiceIsolationTest extends IntegrationTestBase {
         groupTagService.createGroupTag(c);
 
         // Another root under b2
+        TenantContext.setBrandId(b2.getId());
         CreateGroupTagRequest r2 = new CreateGroupTagRequest();
         r2.setName("OtherRoot");
         r2.setBrandId(b2.getId());
@@ -67,10 +70,12 @@ public class GroupTagServiceIsolationTest extends IntegrationTestBase {
     @Test
     @DisplayName("tree(brandId): возвращает только группы выбранного бренда")
     void tree_isolated_by_brand() {
+        TenantContext.setBrandId(b1.getId());
         List<GroupTagTreeResponse> t1 = groupTagService.tree(b1.getId());
         assertEquals(1, t1.size());
         assertEquals("Root", t1.getFirst().getName());
 
+        TenantContext.setBrandId(b2.getId());
         List<GroupTagTreeResponse> t2 = groupTagService.tree(b2.getId());
         assertEquals(1, t2.size());
         assertEquals("OtherRoot", t2.getFirst().getName());
@@ -79,9 +84,11 @@ public class GroupTagServiceIsolationTest extends IntegrationTestBase {
     @Test
     @DisplayName("getGroupTagsByBrandAndParent: изоляция по бренду")
     void get_by_brand_and_parent_isolated() {
+        TenantContext.setBrandId(b1.getId());
         var rootsB1 = groupTagService.getGroupTagsByBrandAndParent(b1.getId(), 0L);
         assertTrue(rootsB1.stream().allMatch(gt -> gt.getBrandId().equals(b1.getId())));
 
+        TenantContext.setBrandId(b2.getId());
         var rootsB2 = groupTagService.getGroupTagsByBrandAndParent(b2.getId(), 0L);
         assertTrue(rootsB2.stream().allMatch(gt -> gt.getBrandId().equals(b2.getId())));
     }
@@ -90,16 +97,20 @@ public class GroupTagServiceIsolationTest extends IntegrationTestBase {
     @DisplayName("move: запрет перемещения к родителю другого бренда")
     void move_cross_brand_forbidden() {
         // Make two roots in different brands
+        TenantContext.setBrandId(b1.getId());
         var rootB1 = groupTagService.getGroupTagsByBrandAndParent(b1.getId(), 0L).getFirst();
+        TenantContext.setBrandId(b2.getId());
         var rootB2 = groupTagService.getGroupTagsByBrandAndParent(b2.getId(), 0L).getFirst();
 
         // Create child under b1
+        TenantContext.setBrandId(b1.getId());
         CreateGroupTagRequest childReq = new CreateGroupTagRequest();
         childReq.setName("X");
         childReq.setBrandId(b1.getId());
         childReq.setParentId(rootB1.getId());
         GroupTagResponse child = groupTagService.createGroupTag(childReq);
 
+        TenantContext.setBrandId(b1.getId());
         assertThrows(IllegalArgumentException.class, () -> groupTagService.move(child.getId(), rootB2.getId()));
     }
 }

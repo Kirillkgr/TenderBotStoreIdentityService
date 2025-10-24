@@ -1,7 +1,7 @@
 package kirillzhdanov.identityservice.googleOAuth2;
 
-import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.Brand;
+import kirillzhdanov.identityservice.model.Token;
 import kirillzhdanov.identityservice.model.User;
 import kirillzhdanov.identityservice.model.master.MasterAccount;
 import kirillzhdanov.identityservice.security.JwtUtils;
@@ -16,7 +16,6 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 
 
@@ -27,6 +26,7 @@ public class GoogleOAuth2ServiceTest {
     private OAuth2UserLinker linker;
     private GoogleOAuth2Service service;
     private UserService userService;
+    private kirillzhdanov.identityservice.service.BrandLinksReconcileService brandLinksReconcileService;
 
     @BeforeEach
     void setUp() {
@@ -35,7 +35,8 @@ public class GoogleOAuth2ServiceTest {
         provisioningService = mock(ProvisioningServiceOps.class);
         linker = mock(OAuth2UserLinker.class);
         userService = mock(UserService.class);
-        service = new GoogleOAuth2Service(jwtUtils, tokenService, provisioningService, linker, userService);
+        brandLinksReconcileService = mock(kirillzhdanov.identityservice.service.BrandLinksReconcileService.class);
+        service = new GoogleOAuth2Service(jwtUtils, tokenService, provisioningService, linker, userService, brandLinksReconcileService);
 
         when(jwtUtils.generateAccessToken(any())).thenReturn("access.jwt");
         when(jwtUtils.generateRefreshToken(any())).thenReturn("refresh.jwt");
@@ -70,7 +71,9 @@ public class GoogleOAuth2ServiceTest {
         User created = User.builder().id(10L).username("user").brands(new java.util.HashSet<>()).build();
         when(linker.linkOrCreate(any())).thenReturn(new OAuth2UserLinker.Result(created, true));
         // Эмулируем, что после провиженинга у пользователя появился бренд и он виден при перезагрузке
-        Brand b = new Brand(); b.setId(100L); b.setName("testbrand");
+        Brand b = new Brand();
+        b.setId(100L);
+        b.setName("testbrand");
         User reloaded = User.builder().id(10L).username("user").brands(new java.util.HashSet<>(java.util.List.of(b))).build();
         when(userService.findByUsername(eq("user"))).thenReturn(java.util.Optional.of(reloaded));
 
@@ -91,8 +94,8 @@ public class GoogleOAuth2ServiceTest {
 
         // Провиженинг вызван (включая автосоздание бренда) и пользователь перезагружается
         verify(provisioningService, atLeastOnce()).ensureMasterAccountForUser(any(User.class));
-        verify(provisioningService, atLeastOnce()).ensureOwnerMembership(any(User.class), nullable(MasterAccount.class));
-        verify(provisioningService, atLeastOnce()).ensureDefaultBrandAndPickup(any(User.class), nullable(MasterAccount.class));
+        verify(provisioningService, atLeastOnce()).ensureOwnerMembership(any(User.class), any(MasterAccount.class));
+        verify(provisioningService, atLeastOnce()).ensureDefaultBrandAndPickup(any(User.class), any(MasterAccount.class));
         verify(userService, atLeastOnce()).findByUsername(eq("user"));
     }
 
