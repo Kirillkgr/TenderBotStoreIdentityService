@@ -1,12 +1,13 @@
 package kirillzhdanov.identityservice.dto.inventory.supply;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Data
 public class UpdateSupplyRequest {
@@ -16,13 +17,15 @@ public class UpdateSupplyRequest {
     private String notes; // optional
 
     @Valid
-    private List<Item> items; // optional: replace all items
+    private List<@Valid Item> items; // optional: replace all items
 
     @Data
     public static class Item {
         private Long ingredientId; // optional, but required if items provided
-        @Min(0)
-        private Double qty;       // required >0
+        @DecimalMin(value = "0", inclusive = false)
+        private BigDecimal qty;       // required >0
+        @DecimalMin(value = "0")
+        private BigDecimal unitCost;  // optional, but if provided must be >= 0
         private LocalDate expiresAt; // optional
     }
 }

@@ -70,8 +70,8 @@ public class SupplyController {
     })
     public ResponseEntity<SupplyDto> get(@Parameter(description = "ID поставки") @PathVariable Long id) {
         rbacGuard.requireStaffOrHigher();
-        Supply s = supplyService.get(id);
-        return ResponseEntity.ok(supplyService.toDto(s));
+        SupplyDto dto = supplyService.getDto(id);
+        return ResponseEntity.ok(dto);
     }
 
     @PutMapping("/{id}")
@@ -85,8 +85,9 @@ public class SupplyController {
     })
     public ResponseEntity<SupplyDto> update(@Parameter(description = "ID поставки") @PathVariable Long id, @Valid @RequestBody UpdateSupplyRequest req) {
         rbacGuard.requireOwnerOrAdmin();
-        Supply s = supplyService.update(id, req);
-        return ResponseEntity.ok(supplyService.toDto(s));
+        supplyService.update(id, req);
+        // fetch-join inside service to avoid LazyInitializationException
+        return ResponseEntity.ok(supplyService.getDto(id));
     }
 
     @PostMapping("/{id}/post")

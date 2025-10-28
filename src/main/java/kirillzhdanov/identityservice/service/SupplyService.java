@@ -25,6 +25,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.math.BigDecimal;
 import java.util.stream.Collectors;
 import java.time.Instant;
+import java.math.RoundingMode;
 
 @Service
 @RequiredArgsConstructor
@@ -57,19 +58,25 @@ public class SupplyService {
         supply = supplyRepository.save(supply);
         // Items
         for (CreateSupplyRequest.Item it : req.getItems()) {
-            if (it.getQty() == null || it.getQty() <= 0) {
+            if (it.getQty() == null || it.getQty().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new BadRequestException("qty must be > 0");
+            }
+            if (it.getUnitCost() != null && it.getUnitCost().compareTo(BigDecimal.ZERO) < 0) {
+                throw new BadRequestException("unitCost must be >= 0");
             }
             Ingredient ing = ingredientRepository.findByIdAndMaster_Id(it.getIngredientId(), masterId)
                     .orElseThrow(() -> new ResourceNotFoundException("Ingredient not found"));
             SupplyItem si = SupplyItem.builder()
                     .supply(supply)
                     .ingredient(ing)
-                    .qty(BigDecimal.valueOf(it.getQty()))
+                    .qty(it.getQty().setScale(6, RoundingMode.HALF_UP))
+                    .unitCost(it.getUnitCost() == null ? null : it.getUnitCost().setScale(6, RoundingMode.HALF_UP))
                     .expiresAt(it.getExpiresAt())
                     .build();
             supply.getItems().add(si);
         }
+        // compute total cost if any unitCost provided
+        supply.setTotalCost(computeTotalCostOrNull(supply));
         return supplyRepository.save(supply);
     }
 
@@ -80,6 +87,9 @@ public class SupplyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Supply not found"));
         if (!"DRAFT".equalsIgnoreCase(supply.getStatus())) {
             throw new BadRequestException("Only DRAFT supplies can be posted");
+        }
+        if (supply.getItems() == null || supply.getItems().isEmpty()) {
+            throw new BadRequestException("Supply must contain at least one item");
         }
         MasterAccount master = em.getReference(MasterAccount.class, masterId);
         for (SupplyItem item : supply.getItems()) {
@@ -112,6 +122,13 @@ public class SupplyService {
         if (!"DRAFT".equalsIgnoreCase(supply.getStatus())) {
             throw new BadRequestException("Only DRAFT supplies can be approved");
         }
+        if (supply.getItems() == null || supply.getItems().isEmpty()) {
+            throw new BadRequestException("Supply must contain at least one item");
+        }
+        // lock total cost at approval if not set
+        if (supply.getTotalCost() == null) {
+            supply.setTotalCost(computeTotalCostOrNull(supply));
+        }
         supply.setStatus("APPROVED");
         return supplyRepository.save(supply);
     }
@@ -130,6 +147,9 @@ public class SupplyService {
         if (!"APPROVED".equalsIgnoreCase(supply.getStatus()) && !"DRAFT".equalsIgnoreCase(supply.getStatus())) {
             throw new BadRequestException("Invalid status for receive");
         }
+        if (supply.getItems() == null || supply.getItems().isEmpty()) {
+            throw new BadRequestException("Supply must contain at least one item");
+        }
         // If called from legacy /post on DRAFT, allow single-step DRAFT->RECEIVED for backward compatibility
         boolean singleStep = "DRAFT".equalsIgnoreCase(supply.getStatus());
 
@@ -144,7 +164,7 @@ public class SupplyService {
                     .ingredient(item.getIngredient())
                     .warehouse(supply.getWarehouse())
                     .qtyReceived(item.getQty())
-                    .unitCost(null) // unit cost optional for now
+                    .unitCost(item.getUnitCost())
                     .receivedAt(Instant.now())
                     .expiresAt(item.getExpiresAt())
                     .build();
@@ -188,20 +208,26 @@ public class SupplyService {
         if (req.getNotes() != null) supply.setNotes(req.getNotes());
         // Replace items if provided
         if (req.getItems() != null) {
+            if (req.getItems().isEmpty()) {
+                throw new BadRequestException("items must not be empty");
+            }
             supply.getItems().clear();
             for (UpdateSupplyRequest.Item it : req.getItems()) {
-                if (it.getQty() == null || it.getQty() <= 0) throw new BadRequestException("qty must be > 0");
+                if (it.getQty() == null || it.getQty().compareTo(BigDecimal.ZERO) <= 0) throw new BadRequestException("qty must be > 0");
+                if (it.getUnitCost() != null && it.getUnitCost().compareTo(BigDecimal.ZERO) < 0) throw new BadRequestException("unitCost must be >= 0");
                 Ingredient ing = ingredientRepository.findByIdAndMaster_Id(it.getIngredientId(), masterId)
                         .orElseThrow(() -> new ResourceNotFoundException("Ingredient not found"));
                 SupplyItem si = SupplyItem.builder()
                         .supply(supply)
                         .ingredient(ing)
-                        .qty(BigDecimal.valueOf(it.getQty()))
+                        .qty(it.getQty().setScale(6, RoundingMode.HALF_UP))
+                        .unitCost(it.getUnitCost() == null ? null : it.getUnitCost().setScale(6, RoundingMode.HALF_UP))
                         .expiresAt(it.getExpiresAt())
                         .build();
                 supply.getItems().add(si);
             }
         }
+        supply.setTotalCost(computeTotalCostOrNull(supply));
         return supplyRepository.save(supply);
     }
 
@@ -210,6 +236,14 @@ public class SupplyService {
         Long masterId = ContextAccess.getMasterIdOrThrow();
         return supplyRepository.findByIdAndMaster_Id(id, masterId)
                 .orElseThrow(() -> new ResourceNotFoundException("Supply not found"));
+    }
+
+    @Transactional
+    public SupplyDto getDto(Long id) {
+        Long masterId = ContextAccess.getMasterIdOrThrow();
+        Supply supply = supplyRepository.findDetailedByIdAndMaster(id, masterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Supply not found"));
+        return toDto(supply);
     }
 
     @Transactional
@@ -236,14 +270,29 @@ public class SupplyService {
         dto.setDate(s.getDate());
         dto.setNotes(s.getNotes());
         dto.setStatus(s.getStatus());
+        dto.setTotalCost(s.getTotalCost());
         dto.setItems(s.getItems() == null ? java.util.List.of() : s.getItems().stream().map(it -> {
             SupplyDto.Item d = new SupplyDto.Item();
             d.setIngredientId(it.getIngredient() != null ? it.getIngredient().getId() : null);
             d.setIngredientName(it.getIngredient() != null ? it.getIngredient().getName() : null);
             d.setQty(it.getQty() != null ? it.getQty().doubleValue() : null);
+            d.setUnitCost(it.getUnitCost());
             d.setExpiresAt(it.getExpiresAt());
             return d;
         }).collect(Collectors.toList()));
         return dto;
+    }
+
+    private BigDecimal computeTotalCostOrNull(Supply s) {
+        if (s.getItems() == null || s.getItems().isEmpty()) return null;
+        boolean anyCost = false;
+        BigDecimal sum = BigDecimal.ZERO;
+        for (SupplyItem it : s.getItems()) {
+            if (it.getUnitCost() != null) {
+                anyCost = true;
+                sum = sum.add(it.getQty().multiply(it.getUnitCost()));
+            }
+        }
+        return anyCost ? sum.setScale(6, RoundingMode.HALF_UP) : null;
     }
 }

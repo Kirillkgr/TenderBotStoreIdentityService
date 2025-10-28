@@ -18,6 +18,7 @@ import kirillzhdanov.identityservice.repository.inventory.IngredientRepository;
 import kirillzhdanov.identityservice.repository.inventory.UnitRepository;
 import kirillzhdanov.identityservice.repository.inventory.WarehouseRepository;
 import kirillzhdanov.identityservice.tenant.ContextAccess;
+import kirillzhdanov.identityservice.util.TextUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -174,7 +175,7 @@ public class IngredientService {
 
                 CreateSupplyRequest.Item item = new CreateSupplyRequest.Item();
                 item.setIngredientId(saved.getId());
-                item.setQty(req.getInitialQty().doubleValue());
+                item.setQty(req.getInitialQty());
                 item.setExpiresAt(null);
                 sreq.setItems(java.util.List.of(item));
 
@@ -182,7 +183,6 @@ public class IngredientService {
                 supplyService.post(supply.getId());
             }
         }
-
         return toDto(saved);
     }
 
@@ -248,9 +248,7 @@ public class IngredientService {
     }
 
     private String trimOrNull(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-        return t.isEmpty() ? null : t;
+        return TextUtils.trimToNull(s);
     }
 
     private IngredientDto toDto(Ingredient e) {

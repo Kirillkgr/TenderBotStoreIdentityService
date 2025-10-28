@@ -5,6 +5,7 @@ import lombok.Data;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Data
 public class SupplyDto {
@@ -15,6 +16,7 @@ public class SupplyDto {
     private OffsetDateTime date;
     private String notes;
     private String status;
+    private BigDecimal totalCost; // nullable
     private List<Item> items;
 
     @Data
@@ -22,6 +24,7 @@ public class SupplyDto {
         private Long ingredientId;
         private String ingredientName;
         private Double qty;
+        private BigDecimal unitCost; // nullable
         private LocalDate expiresAt;
     }
 }
