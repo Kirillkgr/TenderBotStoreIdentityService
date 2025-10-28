@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Component
 public class TestFixtures {
@@ -79,7 +80,7 @@ public class TestFixtures {
         req.setNotes("test supply");
         CreateSupplyRequest.Item it = new CreateSupplyRequest.Item();
         it.setIngredientId(ingredientId);
-        it.setQty(qty);
+        it.setQty(BigDecimal.valueOf(qty));
         it.setExpiresAt(expiresAt);
         req.setItems(List.of(it));
         var supply = supplyService.create(req);
