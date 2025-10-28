@@ -12,6 +12,7 @@ import kirillzhdanov.identityservice.repository.inventory.IngredientRepository;
 import kirillzhdanov.identityservice.repository.inventory.StockRepository;
 import kirillzhdanov.identityservice.repository.inventory.SupplyRepository;
 import kirillzhdanov.identityservice.repository.inventory.WarehouseRepository;
+import kirillzhdanov.identityservice.repository.inventory.StockBatchRepository;
 import kirillzhdanov.identityservice.tenant.ContextAccess;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.stream.Collectors;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,7 @@ public class SupplyService {
     private final WarehouseRepository warehouseRepository;
     private final IngredientRepository ingredientRepository;
     private final StockRepository stockRepository;
+    private final StockBatchRepository stockBatchRepository;
     private final jakarta.persistence.EntityManager em;
 
     @Transactional
@@ -95,6 +98,74 @@ public class SupplyService {
             stockRepository.save(stock);
         }
         supply.setStatus("POSTED");
+        return supplyRepository.save(supply);
+    }
+
+    /**
+     * Approve supply: allowed only from DRAFT.
+     */
+    @Transactional
+    public Supply approve(Long id) {
+        Long masterId = ContextAccess.getMasterIdOrThrow();
+        Supply supply = supplyRepository.findByIdAndMaster_Id(id, masterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Supply not found"));
+        if (!"DRAFT".equalsIgnoreCase(supply.getStatus())) {
+            throw new BadRequestException("Only DRAFT supplies can be approved");
+        }
+        supply.setStatus("APPROVED");
+        return supplyRepository.save(supply);
+    }
+
+    /**
+     * Receive supply: allowed only from APPROVED. Creates StockBatch per item and increments stock.
+     */
+    @Transactional
+    public Supply receive(Long id) {
+        Long masterId = ContextAccess.getMasterIdOrThrow();
+        Supply supply = supplyRepository.findByIdAndMaster_Id(id, masterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Supply not found"));
+        if ("RECEIVED".equalsIgnoreCase(supply.getStatus())) {
+            throw new BadRequestException("Supply already received");
+        }
+        if (!"APPROVED".equalsIgnoreCase(supply.getStatus()) && !"DRAFT".equalsIgnoreCase(supply.getStatus())) {
+            throw new BadRequestException("Invalid status for receive");
+        }
+        // If called from legacy /post on DRAFT, allow single-step DRAFT->RECEIVED for backward compatibility
+        boolean singleStep = "DRAFT".equalsIgnoreCase(supply.getStatus());
+
+        MasterAccount master = em.getReference(MasterAccount.class, masterId);
+        for (SupplyItem item : supply.getItems()) {
+            if (item.getQty() == null || item.getQty().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BadRequestException("Item qty must be > 0");
+            }
+            // Create StockBatch
+            StockBatch batch = StockBatch.builder()
+                    .master(master)
+                    .ingredient(item.getIngredient())
+                    .warehouse(supply.getWarehouse())
+                    .qtyReceived(item.getQty())
+                    .unitCost(null) // unit cost optional for now
+                    .receivedAt(Instant.now())
+                    .expiresAt(item.getExpiresAt())
+                    .build();
+            stockBatchRepository.save(batch);
+
+            // Upsert/increment stock
+            Long ingredientId = item.getIngredient().getId();
+            Long warehouseId = supply.getWarehouse().getId();
+            Stock stock = stockRepository.findByMaster_IdAndWarehouse_IdAndIngredient_Id(masterId, warehouseId, ingredientId)
+                    .orElse(null);
+            if (stock == null) {
+                stock = new Stock();
+                stock.setMaster(master);
+                stock.setIngredient(item.getIngredient());
+                stock.setWarehouse(supply.getWarehouse());
+                stock.setQty(BigDecimal.ZERO);
+            }
+            stock.setQty(stock.getQty().add(item.getQty()));
+            stockRepository.save(stock);
+        }
+        supply.setStatus("RECEIVED");
         return supplyRepository.save(supply);
     }
 

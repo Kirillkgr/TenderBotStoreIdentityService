@@ -23,7 +23,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="unit_cost" type="DECIMAL(18, 6)"/>
-            <column name="received_at" type="DATETIME">
+            <column name="received_at" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
             <column name="expires_at" type="DATE"/>
@@ -53,6 +53,25 @@
         <addForeignKeyConstraint baseColumnNames="warehouse_id" baseTableName="stock_batches"
                                  constraintName="FK_STOCK_BATCHES_ON_WAREHOUSE" referencedColumnNames="id"
                                  referencedTableName="warehouses"/>
+    </changeSet>
+    <changeSet id="1761651693323-7" author="RillGd">
+        <createIndex indexName="idx_stock_batches_master" tableName="stock_batches">
+            <column name="master_id"/>
+        </createIndex>
+        <createIndex indexName="idx_stock_batches_ing_wh" tableName="stock_batches">
+            <column name="ingredient_id"/>
+            <column name="warehouse_id"/>
+        </createIndex>
+        <createIndex indexName="idx_stock_batches_received_at" tableName="stock_batches">
+            <column name="received_at"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1761651693323-rollback" author="RillGd">
+        <rollback>
+            <dropTable tableName="stock_batches"/>
+            <dropColumn tableName="supplies" columnName="total_cost"/>
+            <dropColumn tableName="supply_items" columnName="unit_cost"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>
