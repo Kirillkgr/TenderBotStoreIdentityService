@@ -61,6 +61,16 @@ public class RbacGuard {
         }
     }
 
+     /**
+     * Разрешает OWNER/ADMIN/CASHIER (для операций receive в закупках по согласованной матрице).
+     */
+    public void requireOwnerAdminOrCashier() {
+        RoleMembership r = roleOrThrow();
+        if (!(r == RoleMembership.OWNER || r == RoleMembership.ADMIN || r == RoleMembership.CASHIER)) {
+            throw new AccessDeniedException("Недостаточно прав: требуется OWNER/ADMIN/CASHIER");
+        }
+    }
+
     /**
      * Требует, чтобы пользователь был аутентифицирован.
      */

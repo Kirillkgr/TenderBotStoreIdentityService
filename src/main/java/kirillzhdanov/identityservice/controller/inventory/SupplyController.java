@@ -103,4 +103,34 @@ public class SupplyController {
         Supply s = supplyService.post(id);
         return ResponseEntity.ok(java.util.Map.of("id", s.getId(), "status", s.getStatus()));
     }
+
+    @PostMapping("/{id}/approve")
+    @Operation(summary = "Одобрить поставку (DRAFT→APPROVED)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Одобрено"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
+    })
+    public ResponseEntity<?> approve(@Parameter(description = "ID поставки") @PathVariable Long id) {
+        rbacGuard.requireOwnerOrAdmin();
+        Supply s = supplyService.approve(id);
+        return ResponseEntity.ok(java.util.Map.of("id", s.getId(), "status", s.getStatus()));
+    }
+
+    @PostMapping("/{id}/receive")
+    @Operation(summary = "Приёмка поставки (APPROVED→RECEIVED): создаёт партии и увеличивает остатки")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Принято"),
+            @ApiResponse(responseCode = "400", description = "Неверный запрос", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "401", description = "Неавторизован", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class))),
+            @ApiResponse(responseCode = "404", description = "Не найдено", content = @Content(mediaType = "application/json", schema = @Schema(implementation = java.util.Map.class)))
+    })
+    public ResponseEntity<?> receive(@Parameter(description = "ID поставки") @PathVariable Long id) {
+        rbacGuard.requireOwnerAdminOrCashier();
+        Supply s = supplyService.receive(id);
+        return ResponseEntity.ok(java.util.Map.of("id", s.getId(), "status", s.getStatus()));
+    }
 }
