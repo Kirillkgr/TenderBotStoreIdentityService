@@ -7,6 +7,7 @@ import lombok.*;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "supplies")
@@ -39,6 +40,9 @@ public class Supply {
 
     @Column(name = "status", nullable = false, length = 16)
     private String status; // DRAFT|POSTED|CANCELED
+
+    @Column(name = "total_cost", precision = 18, scale = 6)
+    private BigDecimal totalCost;
 
     @OneToMany(mappedBy = "supply", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
