@@ -72,8 +72,7 @@ public class ProductController {
             @Valid @RequestBody ProductUpdateRequest request
     ) {
         rbacGuard.requireOwnerOrAdmin();
-        ProductResponse response = productService.update(productId, request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(productService.update(productId, request));
     }
 
     /**
