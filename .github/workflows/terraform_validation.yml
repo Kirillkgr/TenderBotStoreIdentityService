@@ -1,0 +1,80 @@
+name: Terraform Validation
+
+on:
+  pull_request:
+    paths:
+      - '../../terraform/dashboard/**'
+      - '../../terraform/tbs_kuber/**'
+  push:
+    paths:
+      - '../../terraform/dashboard/**'
+      - '../../terraform/tbs_kuber/**'
+
+jobs:
+  validate-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if dashboard changed
+        id: dashboard_changed
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- infra/terraform/dashboard; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Terraform
+        if: steps.dashboard_changed.outputs.changed == 'true'
+        uses: hashicorp/setup-terraform@v3
+
+#      - name: Terraform Fmt (dashboard)
+#        if: steps.dashboard_changed.outputs.changed == 'true'
+#        working-directory: infra/terraform/dashboard
+#        run: terraform fmt -check -recursive
+
+      - name: Terraform Init (dashboard)
+        if: steps.dashboard_changed.outputs.changed == 'true'
+        working-directory: infra/terraform/dashboard
+        run: terraform init -backend=false
+
+      - name: Terraform Validate (dashboard)
+        if: steps.dashboard_changed.outputs.changed == 'true'
+        working-directory: infra/terraform/dashboard
+        run: terraform validate
+
+  validate-tbs-kuber:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if tbs_kuber changed
+        id: tbs_changed
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- infra/terraform/tbs_kuber; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Terraform
+        if: steps.tbs_changed.outputs.changed == 'true'
+        uses: hashicorp/setup-terraform@v3
+
+#      - name: Terraform Fmt (tbs_kuber)
+#        if: steps.tbs_changed.outputs.changed == 'true'
+#        working-directory: infra/terraform/tbs_kuber
+#        run: terraform fmt -check -recursive
+
+      - name: Terraform Init (tbs_kuber)
+        if: steps.tbs_changed.outputs.changed == 'true'
+        working-directory: infra/terraform/tbs_kuber
+        run: terraform init -backend=false
+
+      - name: Terraform Validate (tbs_kuber)
+        if: steps.tbs_changed.outputs.changed == 'true'
+        working-directory: infra/terraform/tbs_kuber
+        run: terraform validate
