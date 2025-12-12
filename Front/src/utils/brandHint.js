@@ -1,5 +1,5 @@
 // Utility to parse brand hint from subdomain safely (client-side only)
-// - Supports local dev like brand-xxx.localhost and prod like brand-xxx.kirillkgr.ru
+// - Supports local dev like brand-xxx.localhost and prod like brand-xxx.tbspro.ru
 // - Lowercases result
 // - Returns empty string if no subdomain brand is present
 // - Does not perform any network operations
@@ -21,7 +21,7 @@ export function getBrandHint(hostname = window.location.hostname) {
 
         // Prod/root domain from Vite env or fallback
         const envRoot = (import.meta?.env?.VITE_MAIN_DOMAIN || '').toString().trim().toLowerCase();
-        const root = envRoot || 'kirillkgr.ru';
+        const root = envRoot || 'tbspro.ru';
 
         // If host equals root (no subdomain), no hint
         if (host === root) return '';
@@ -29,7 +29,7 @@ export function getBrandHint(hostname = window.location.hostname) {
         // If the host ends with the root domain, extract the first label
         if (host.endsWith('.' + root)) {
             const labels = host.split('.');
-            // e.g., brand.kirillkgr.ru -> ['brand','kirillkgr','ru']
+            // e.g., brand.tbspro.ru -> ['brand','kirillkgr','ru']
             if (labels.length >= 3) {
                 const sub = labels[0];
                 if (sub === 'www' || sub === '') return '';
@@ -51,10 +51,9 @@ export function getBrandHint(hostname = window.location.hostname) {
 // - trim leading/trailing dashes
 export function toSlug(input) {
     const base = String(input || '');
-    const s = base
+    return base
         .toLowerCase()
         .replace(/[^\p{L}\p{Nd}-]+/gu, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$|/g, '');
-    return s;
 }

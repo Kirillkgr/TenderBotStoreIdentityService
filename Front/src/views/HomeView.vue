@@ -22,7 +22,9 @@
       <button class="crumb" :class="{ active: currentParentId === 0 }" @click="navigateToCrumb(0, -1)">Корень</button>
       <template v-for="(node, idx) in currentPath" :key="'crumb-'+node.id">
         <span class="sep">/</span>
-        <button class="crumb" :class="{ active: idx === currentPath.length - 1 }" @click="navigateToCrumb(node.id, idx)">{{ node.name }}</button>
+        <button class="crumb" :class="{ active: idx === currentPath.length - 1 }"
+                @click="navigateToCrumb(node.id, idx)">{{ node.name }}
+        </button>
       </template>
     </div>
 
@@ -72,16 +74,16 @@
 </template>
 
 <script setup>
-import {onMounted, onUnmounted, ref} from 'vue';
 import {useAuthStore} from '@/store/auth';
-import {useProductStore} from '../store/product';
-import ProductCard from '../components/ProductCard.vue';
-import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
-import GroupCard from '../components/cards/GroupCard.vue';
-import {getPublicBrands, getPublicBrandsMin} from '../services/brandService';
-import tagService from '../services/tagService';
 import {useTagStore} from '@/store/tag';
 import {getBrandHint, toSlug} from '@/utils/brandHint';
+import {onMounted, onUnmounted, ref} from 'vue';
+import ProductCard from '../components/ProductCard.vue';
+import GroupCard from '../components/cards/GroupCard.vue';
+import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
+import {getPublicBrands, getPublicBrandsMin} from '../services/brandService';
+import tagService from '../services/tagService';
+import {useProductStore} from '../store/product';
 
 const productStore = useProductStore();
 const tagStore = useTagStore();
@@ -101,6 +103,7 @@ const currentPath = ref([]); // массив объектов {id, name}
 // Стек предпросмотров товаров (несколько модалок одновременно)
 const openPreviews = ref([]);
 const zCounter = ref(10000);
+
 function openProductPreview(p) {
   // Если модалка для этого товара уже открыта — просто поднимем её наверх
   const idx = openPreviews.value.findIndex(item => item.product?.id === p?.id);
@@ -150,7 +153,7 @@ onMounted(async () => {
   try {
     const host = window.location.hostname.toLowerCase();
     const envRoot = (import.meta?.env?.VITE_MAIN_DOMAIN || '').toString().trim().toLowerCase();
-    const root = envRoot || 'kirillkgr.ru';
+    const root = envRoot || 'tbspro.ru';
     const isLocalSubdomain = host !== 'localhost' && host.includes('.localhost');
     const isProdSubdomain = host.endsWith('.' + root) && host !== root;
     if (isLocalSubdomain || isProdSubdomain) {
@@ -176,7 +179,8 @@ onMounted(async () => {
         }
       }
     }
-  } catch (_) {}
+  } catch (_) {
+  }
 
   await loadBrands();
 
@@ -270,7 +274,7 @@ const selectBrand = async (brandId) => {
     const protocol = window.location.protocol || 'http:';
     const port = window.location.port ? `:${window.location.port}` : '';
     const envRoot = (import.meta?.env?.VITE_MAIN_DOMAIN || '').toString().trim().toLowerCase();
-    const root = envRoot || 'kirillkgr.ru';
+    const root = envRoot || 'tbspro.ru';
 
     const isLocalSubdomain = host !== 'localhost' && host.includes('.localhost');
     const isProdSubdomain = host.endsWith('.' + root) && host !== root;
@@ -288,7 +292,8 @@ const selectBrand = async (brandId) => {
         }
       }
     }
-  } catch (_) {}
+  } catch (_) {
+  }
 
   selectedBrandId.value = nextId;
   try {
@@ -340,7 +345,7 @@ const openGroup = async (group) => {
   if (idx >= 0) {
     currentPath.value = currentPath.value.slice(0, idx + 1);
   } else {
-    currentPath.value.push({ id: group.id, name: group.name });
+    currentPath.value.push({id: group.id, name: group.name});
   }
   await loadGroups(group.id);
 };
@@ -360,7 +365,7 @@ const navigateToCrumb = async (parentId, index) => {
 .home-container {
   padding: 2rem;
   max-width: 1280px; /* контентная ширина как у популярных магазинов */
-  margin: 0 auto;    /* центрируем весь контент */
+  margin: 0 auto; /* центрируем весь контент */
 }
 
 /* Чипы брендов */
@@ -371,6 +376,7 @@ const navigateToCrumb = async (parentId, index) => {
   flex-wrap: wrap;
   margin-bottom: 1.25rem;
 }
+
 .brand-chip {
   padding: 8px 14px;
   border-radius: var(--brand-button-radius, 20px);
@@ -381,12 +387,19 @@ const navigateToCrumb = async (parentId, index) => {
   transition: all .18s ease;
   backdrop-filter: blur(6px);
 }
-.brand-chip:hover { background: var(--input-bg-hover); }
+
+.brand-chip:hover {
+  background: var(--input-bg-hover);
+}
+
 .brand-chip.owner {
   background: var(--brand-accent, var(--primary));
   color: var(--brand-accent-contrast, #fff);
 }
-.brand-chip.active { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent, var(--primary)) 35%, transparent); }
+
+.brand-chip.active {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent, var(--primary)) 35%, transparent);
+}
 
 /* Крошки пути по группам */
 .group-breadcrumbs {
@@ -398,7 +411,12 @@ const navigateToCrumb = async (parentId, index) => {
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
-.group-breadcrumbs .sep { color: var(--muted); opacity: .7; }
+
+.group-breadcrumbs .sep {
+  color: var(--muted);
+  opacity: .7;
+}
+
 .crumb {
   background: transparent;
   color: var(--text);
@@ -408,15 +426,23 @@ const navigateToCrumb = async (parentId, index) => {
   font-weight: 600;
   transition: all .18s ease;
 }
-.crumb:hover { background: var(--input-bg-hover); }
-.crumb.active { background: color-mix(in srgb, var(--brand-accent, var(--primary)) 18%, transparent); color: var(--text); border-color: var(--brand-accent, var(--primary)); }
+
+.crumb:hover {
+  background: var(--input-bg-hover);
+}
+
+.crumb.active {
+  background: color-mix(in srgb, var(--brand-accent, var(--primary)) 18%, transparent);
+  color: var(--text);
+  border-color: var(--brand-accent, var(--primary));
+}
 
 /* Группы (теги) квадратными карточками */
 .group-grid {
   display: grid;
   /* Центрированные ряды с фиксированной шириной карточек */
   grid-template-columns: repeat(auto-fit, minmax(170px, 200px));
-  justify-content: center;  /* центрируем последнюю строку */
+  justify-content: center; /* центрируем последнюю строку */
   gap: 18px;
   margin-bottom: 2rem;
 }
@@ -432,13 +458,19 @@ const navigateToCrumb = async (parentId, index) => {
   display: grid;
   /* Чётные столбцы карточек 260–280px, центрирование как у витрин */
   grid-template-columns: repeat(auto-fit, minmax(260px, 280px));
-  justify-content: center;  /* центрируем последнюю строку */
+  justify-content: center; /* центрируем последнюю строку */
   gap: 24px;
 }
 
-.info-text { color: var(--muted); margin: 10px 0 18px; text-align: center; }
+.info-text {
+  color: var(--muted);
+  margin: 10px 0 18px;
+  text-align: center;
+}
 
 @media (max-width: 480px) {
-  .home-container { padding: 1rem; }
+  .home-container {
+    padding: 1rem;
+  }
 }
 </style>

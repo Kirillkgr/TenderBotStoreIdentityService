@@ -1,5 +1,10 @@
 package kirillzhdanov.identityservice.config;
 
+import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.models.GroupedOpenApi;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.ExternalDocumentation;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -9,10 +14,6 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.customizers.OpenApiCustomizer;
-import org.springdoc.core.models.GroupedOpenApi;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
@@ -29,7 +30,7 @@ public class OpenApiConfig {
                 .components(new Components().addSecuritySchemes("bearer-jwt", bearerScheme))
                 .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"))
                 .addServersItem(new Server().url("http://localhost:8080").description("Dev"))
-                .addServersItem(new Server().url("https://kirillkgr.ru").description("Prod"))
+                .addServersItem(new Server().url("https://tbspro.ru").description("Prod"))
                 .info(new Info()
                         .title("TenderBotStore Identity Service API")
                         .description("Auth, users, brands, group tags, products and archives")

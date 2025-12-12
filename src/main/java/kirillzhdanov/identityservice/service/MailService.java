@@ -1,17 +1,18 @@
 package kirillzhdanov.identityservice.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class MailService {
     private final ThreadLocal<JavaMailSender> mailSender = new ThreadLocal<>();
 
-    @Value("${app.mail.from:no-reply@kirillkgr.ru}")
+    @Value("${app.mail.from:no-reply@tbspro.ru}")
     private String fromAddress;
 
     public void sendEmailVerificationCode(String toEmail, String code) {
