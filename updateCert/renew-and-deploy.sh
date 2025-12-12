@@ -17,7 +17,7 @@ set -euo pipefail
 
 WORK_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_CONTAINER_NAME=${FRONTEND_CONTAINER_NAME:-frontend}
-DOMAIN=${DOMAIN}
+DOMAIN=${DOMAIN_ACTUAL}
 NGINX_CERT_DIR=${NGINX_CERT_DIR:-/home/user/certs/ssl}
 
 # detect docker compose command (v2 vs v1)
