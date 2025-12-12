@@ -13,4 +13,4 @@ services:
     command: >
       certonly --standalone --non-interactive --agree-tos --no-eff-email
       --email ${CERT_EMAIL}
-      -d kirillkgr.ru
+      -d tbspro.ru
