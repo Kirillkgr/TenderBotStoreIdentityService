@@ -3,12 +3,20 @@ name: Terraform Validation
 on:
   pull_request:
     paths:
-      - '../../terraform/dashboard/**'
-      - '../../terraform/tbs_kuber/**'
+      - 'infra/terraform/dashboard/**/*.tf'
+      - 'infra/terraform/dashboard/**/*.tfvars'
+      - 'infra/terraform/dashboard/**/*.hcl'
+      - 'infra/terraform/tbs_kuber/**/*.tf'
+      - 'infra/terraform/tbs_kuber/**/*.tfvars'
+      - 'infra/terraform/tbs_kuber/**/*.hcl'
   push:
     paths:
-      - '../../terraform/dashboard/**'
-      - '../../terraform/tbs_kuber/**'
+      - 'infra/terraform/dashboard/**/*.tf'
+      - 'infra/terraform/dashboard/**/*.tfvars'
+      - 'infra/terraform/dashboard/**/*.hcl'
+      - 'infra/terraform/tbs_kuber/**/*.tf'
+      - 'infra/terraform/tbs_kuber/**/*.tfvars'
+      - 'infra/terraform/tbs_kuber/**/*.hcl'
 
 jobs:
   validate-dashboard:
@@ -16,15 +24,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Check if dashboard changed
+      - name: Check if dashboard Terraform files changed
         id: dashboard_changed
-        run: |
-          if git diff --quiet HEAD~1 HEAD -- infra/terraform/dashboard; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            changed:
+              - 'infra/terraform/dashboard/**/*.tf'
+              - 'infra/terraform/dashboard/**/*.tfvars'
+              - 'infra/terraform/dashboard/**/*.hcl'
 
       - name: Setup Terraform
         if: steps.dashboard_changed.outputs.changed == 'true'
@@ -45,15 +56,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Check if tbs_kuber changed
+      - name: Check if tbs_kuber Terraform files changed
         id: tbs_changed
-        run: |
-          if git diff --quiet HEAD~1 HEAD -- infra/terraform/tbs_kuber; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            changed:
+              - 'infra/terraform/tbs_kuber/**/*.tf'
+              - 'infra/terraform/tbs_kuber/**/*.tfvars'
+              - 'infra/terraform/tbs_kuber/**/*.hcl'
 
       - name: Setup Terraform
         if: steps.tbs_changed.outputs.changed == 'true'
