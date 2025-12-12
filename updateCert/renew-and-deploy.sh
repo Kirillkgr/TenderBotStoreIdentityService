@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Required envs (export before run or pass inline):
 #   CERT_EMAIL       - email for Let's Encrypt (required)
-#   DOMAIN           - primary domain (default: kirillkgr.ru)
+#   DOMAIN           - primary domain (default: none)
 #   NGINX_CERT_DIR   - host dir mounted into nginx as /etc/ssl (default: /home/user/certs/ssl)
 #   COMPOSE_FILE_PATH- absolute path to docker-compose.yml (optional, for restarting frontend)
 # Optional:
@@ -17,7 +17,7 @@ set -euo pipefail
 
 WORK_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_CONTAINER_NAME=${FRONTEND_CONTAINER_NAME:-frontend}
-DOMAIN=${DOMAIN:-kirillkgr.ru}
+DOMAIN=${DOMAIN}
 NGINX_CERT_DIR=${NGINX_CERT_DIR:-/home/user/certs/ssl}
 
 # detect docker compose command (v2 vs v1)
