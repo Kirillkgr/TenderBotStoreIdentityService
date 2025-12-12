@@ -54,7 +54,7 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID:}
             client-secret: ${GOOGLE_CLIENT_SECRET:}
             scope: openid,profile,email
-            redirect-uri: ${GOOGLE_REDIRECT_URI:https://kirillkgr.ru/login/oauth2/code/google}
+            redirect-uri: ${GOOGLE_REDIRECT_URI:https://tbspro.ru/login/oauth2/code/google}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
         provider:
@@ -99,8 +99,8 @@ app:
     secure: ${Cookie_Secure:true}
 
   front:
-    success-redirect: "https://kirillkgr.ru"
-    failure-redirect: "https://kirillkgr.ru"
+    success-redirect: "https://tbspro.ru"
+    failure-redirect: "https://tbspro.ru"
 
 
 # JWT Configuration
@@ -116,8 +116,8 @@ address:
   service:
     front-service-cors:
       list:
-        - "https://kirillkgr.ru"
-        - "http://kirillkgr.ru"
+        - "https://tbspro.ru"
+        - "http://tbspro.ru"
         - "http://localhost:5173"
         - "http://localhost:8080"
         - "http://localhost:5173/"

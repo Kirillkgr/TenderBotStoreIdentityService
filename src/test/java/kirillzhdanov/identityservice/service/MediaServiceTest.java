@@ -1,15 +1,15 @@
 package kirillzhdanov.identityservice.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class MediaServiceTest {
 
@@ -23,7 +23,7 @@ public class MediaServiceTest {
         mediaService = new MediaService(imageProcessingService, s3);
 
         // For public URL composition, return base + key
-        when(s3.buildPublicUrl(anyString())).thenAnswer(inv -> Optional.of("https://storage.yandexcloud.net/kirillkgr.ru/" + inv.getArgument(0)));
+        when(s3.buildPublicUrl(anyString())).thenAnswer(inv -> Optional.of("https://storage.yandexcloud.net/tbspro.ru/" + inv.getArgument(0)));
     }
 
     @Test
@@ -61,7 +61,7 @@ public class MediaServiceTest {
         byte[] png = TestImages.redPng(100, 100);
         var res = mediaService.overwriteProduct(png, "image/png", "prod1", "img1", true);
         // URLs are clean (no version param)
-        assertTrue(res.urls().values().stream().allMatch(u -> !u.contains("?v=")));
+        assertTrue(res.urls().values().stream().noneMatch(u -> u.contains("?v=")));
     }
 
     @Test
@@ -75,7 +75,7 @@ public class MediaServiceTest {
         var res = mediaService.regenerateProductFromOriginal("prodX", "imgX", true);
 
         // Assert: urls are clean (no version param)
-        assertTrue(res.urls().values().stream().allMatch(u -> !u.contains("?v=")));
+        assertTrue(res.urls().values().stream().noneMatch(u -> u.contains("?v=")));
         verify(s3, atLeast(3)).upload(startsWith(base), any(), anyString(), eq(true));
     }
 
