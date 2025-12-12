@@ -1,6 +1,5 @@
 package kirillzhdanov.identityservice.config;
 
-import kirillzhdanov.identityservice.tenant.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +11,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+
+import kirillzhdanov.identityservice.tenant.TenantContext;
 // Контейнеры поднимает TestEnvironment один раз на JVM
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -31,10 +32,13 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.username", () -> "postgres");
         registry.add("spring.datasource.password", () -> "postgres");
 
-        String kafkaHost = TestEnvironment.getKafkaHost();
-        Integer kafkaPort = TestEnvironment.getKafkaPort();
-
-        registry.add("spring.kafka.bootstrap-servers", () -> String.format("%s:%d", kafkaHost, kafkaPort));
+        registry.add(
+                "spring.autoconfigure.exclude",
+                () -> String.join(
+                        ",",
+                        "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"
+                )
+        );
 
         // Ускоряем выключение пула и уменьшаем шум логов
         registry.add("spring.datasource.hikari.maximum-pool-size", () -> "10");
