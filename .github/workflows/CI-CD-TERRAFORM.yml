@@ -1,0 +1,206 @@
+name: CI-CD TERRAFORM
+
+#on:
+#  push:
+#    branches: [ "master" ]
+#  workflow_dispatch:
+#    inputs:
+#      bootstrap_kubeadm:
+#        description: 'Install and init kubeadm on the target server if missing (DANGEROUS on existing server)'
+#        required: false
+#        default: 'false'
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Terraform changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          list-files: shell
+          filters: |
+            common:
+              - 'terraform/init-all.sh'
+              - 'terraform/destroy-all.sh'
+              - 'terraform/**/*.tf'
+              - 'terraform/**/*.tfvars'
+              - 'terraform/**/*.hcl'
+            dashboard:
+              - 'terraform/dashboard/**/*.tf'
+              - 'terraform/dashboard/**/*.tfvars'
+              - 'terraform/dashboard/**/*.hcl'
+            tbs_kuber:
+              - 'terraform/tbs_kuber/**/*.tf'
+              - 'terraform/tbs_kuber/**/*.tfvars'
+              - 'terraform/tbs_kuber/**/*.hcl'
+
+      - name: Stop if no Terraform changes
+        if: steps.changes.outputs.common != 'true'
+        run: |
+          echo "No Terraform changes detected. Skipping."
+
+      - name: Setup Terraform
+        if: steps.changes.outputs.common == 'true'
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Local Terraform Validate (dashboard)
+        if: steps.changes.outputs.dashboard == 'true'
+        working-directory: terraform/dashboard
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Local Terraform Validate (tbs_kuber)
+        if: steps.changes.outputs.tbs_kuber == 'true'
+        working-directory: terraform/tbs_kuber
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Ensure remote terraform directory
+        if: steps.changes.outputs.common == 'true'
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'mkdir -p /home/user/terraform'
+
+      - name: Remote Kubernetes preflight (kubeadm/kubectl)
+        if: steps.changes.outputs.common == 'true'
+        env:
+          BOOTSTRAP_KUBEADM: ${{ github.event.inputs.bootstrap_kubeadm || 'false' }}
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "\
+            set -euo pipefail; \
+            echo '== Kubernetes preflight =='; \
+            if command -v kubectl >/dev/null 2>&1 && kubectl version --client >/dev/null 2>&1; then \
+              echo 'kubectl: OK'; \
+            else \
+              echo 'kubectl: MISSING'; \
+            fi; \
+            if command -v kubeadm >/dev/null 2>&1; then \
+              echo 'kubeadm: OK'; \
+            else \
+              echo 'kubeadm: MISSING'; \
+            fi; \
+            if [ -f /etc/kubernetes/admin.conf ]; then \
+              echo 'kubeadm init: already done (/etc/kubernetes/admin.conf exists)'; \
+            else \
+              echo 'kubeadm init: NOT initialized'; \
+            fi; \
+            if command -v kubectl >/dev/null 2>&1 && [ -f /etc/kubernetes/admin.conf ]; then \
+              export KUBECONFIG=/etc/kubernetes/admin.conf; \
+              if kubectl cluster-info >/dev/null 2>&1; then \
+                echo 'cluster-info: OK'; \
+                exit 0; \
+              fi; \
+              echo 'cluster-info: FAILED'; \
+            fi; \
+            if [ '${BOOTSTRAP_KUBEADM}' != 'true' ]; then \
+              echo 'Bootstrap is disabled. Re-run workflow with workflow_dispatch input bootstrap_kubeadm=true to install/init kubeadm on a new server.'; \
+              exit 1; \
+            fi; \
+            echo '== Bootstrapping kubeadm (new server) =='; \
+            export DEBIAN_FRONTEND=noninteractive; \
+            swapoff -a || true; \
+            sed -i.bak '/\sswap\s/s/^/#/' /etc/fstab || true; \
+            apt-get update -y; \
+            apt-get install -y ca-certificates curl apt-transport-https gnupg lsb-release; \
+            mkdir -p /etc/apt/keyrings; \
+            curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg; \
+            echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' > /etc/apt/sources.list.d/kubernetes.list; \
+            apt-get update -y; \
+            apt-get install -y kubelet kubeadm kubectl; \
+            apt-mark hold kubelet kubeadm kubectl; \
+            systemctl enable --now kubelet; \
+            if ! command -v containerd >/dev/null 2>&1; then \
+              apt-get install -y containerd; \
+              mkdir -p /etc/containerd; \
+              containerd config default > /etc/containerd/config.toml; \
+              systemctl enable --now containerd; \
+            fi; \
+            if [ ! -f /etc/kubernetes/admin.conf ]; then \
+              kubeadm init --pod-network-cidr=10.244.0.0/16; \
+            fi; \
+            export KUBECONFIG=/etc/kubernetes/admin.conf; \
+            kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml; \
+            kubectl cluster-info"
+
+      - name: Bootstrap terraform directory on server (first run)
+        if: steps.changes.outputs.common == 'true'
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'test -d /home/user/terraform/terraform || echo "MISSING"' | grep -q "MISSING" && \
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no -r ./terraform root@${{ vars.IP_ADDRESS }}:/home/user/terraform/
+
+      - name: Copy changed Terraform files to server
+        if: steps.changes.outputs.common == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          copy_file() {
+            local f="$1"
+            local remote_dir
+            remote_dir="/home/user/terraform/$(dirname "$f")"
+
+            sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "mkdir -p '$remote_dir'"
+            sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -o StrictHostKeyChecking=no "$f" root@${{ vars.IP_ADDRESS }}:"$remote_dir/"
+          }
+
+          if [ "${{ steps.changes.outputs.common }}" = "true" ]; then
+            while IFS= read -r f; do
+              [ -z "$f" ] && continue
+              copy_file "$f"
+            done <<< "${{ steps.changes.outputs.common_files }}"
+          fi
+
+      - name: Remote Terraform Validate (dashboard)
+        if: steps.changes.outputs.dashboard == 'true'
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'set -e; cd /home/user/terraform/terraform/dashboard && terraform init -backend=false && terraform validate'
+
+      - name: Remote Terraform Validate (tbs_kuber)
+        if: steps.changes.outputs.tbs_kuber == 'true'
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} 'set -e; cd /home/user/terraform/terraform/tbs_kuber && terraform init -backend=false && terraform validate'
+
+      - name: Remote Terraform Apply (dashboard)
+        if: steps.changes.outputs.dashboard == 'true'
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "\
+            BUCKET_INFRA_NAME='${{ secrets.BUCKET_INFRA_NAME }}' \
+            ACCESS_KEY_INFRA_ID='${{ secrets.ACCESS_KEY_INFRA_ID }}' \
+            SECRET_KEY_INFRA='${{ secrets.SECRET_KEY_INFRA }}' \
+            TF_VAR_google_redirect_uri='${{ secrets.GOOGLE_REDIRECT_URI }}' \
+            TF_VAR_google_client_id='${{ secrets.GOOGLE_CLIENT_ID }}' \
+            TF_VAR_google_client_secret='${{ secrets.GOOGLE_CLIENT_SECRET }}' \
+            TF_VAR_s3_access_key='${{ secrets.S3_ACCESS_KEY }}' \
+            TF_VAR_s3_secret_key='${{ secrets.S3_SECRET_KEY }}' \
+            TF_VAR_postgres_password='${{ secrets.POSTGRES_PASSWORD }}' \
+            TF_VAR_yandex_dockerconfigjson_b64='${{ secrets.YC_CR_DOCKERCONFIGJSON_B64 }}' \
+            TF_VAR_yc_sa_key_json_b64='${{ secrets.YC_SA_KEY_JSON_B64 }}' \
+            TF_VAR_host='${{ vars.DOMAIN_ACTUAL }}' \
+            TF_VAR_app_cookie_domain='${{ vars.DOMAIN_ACTUAL }}' \
+            /home/user/terraform/terraform/init-all.sh -d --apply"
+
+      - name: Remote Terraform Apply (tbs_kuber)
+        if: steps.changes.outputs.tbs_kuber == 'true'
+        run: |
+          sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ vars.IP_ADDRESS }} "\
+            BUCKET_INFRA_NAME='${{ secrets.BUCKET_INFRA_NAME }}' \
+            ACCESS_KEY_INFRA_ID='${{ secrets.ACCESS_KEY_INFRA_ID }}' \
+            SECRET_KEY_INFRA='${{ secrets.SECRET_KEY_INFRA }}' \
+            TF_VAR_google_redirect_uri='${{ secrets.GOOGLE_REDIRECT_URI }}' \
+            TF_VAR_google_client_id='${{ secrets.GOOGLE_CLIENT_ID }}' \
+            TF_VAR_google_client_secret='${{ secrets.GOOGLE_CLIENT_SECRET }}' \
+            TF_VAR_s3_access_key='${{ secrets.S3_ACCESS_KEY }}' \
+            TF_VAR_s3_secret_key='${{ secrets.S3_SECRET_KEY }}' \
+            TF_VAR_postgres_password='${{ secrets.POSTGRES_PASSWORD }}' \
+            TF_VAR_yandex_dockerconfigjson_b64='${{ secrets.YC_CR_DOCKERCONFIGJSON_B64 }}' \
+            TF_VAR_yc_sa_key_json_b64='${{ secrets.YC_SA_KEY_JSON_B64 }}' \
+            TF_VAR_host='${{ vars.DOMAIN_ACTUAL }}' \
+            TF_VAR_app_cookie_domain='${{ vars.DOMAIN_ACTUAL }}' \
+            /home/user/terraform/terraform/init-all.sh -t --apply"

@@ -13,11 +13,11 @@ resource "kubernetes_resource_quota" "app" {
   spec {
     hard = {
       # Ограничиваем общее использование в namespace
-      "limits.cpu" = "3500m"    # 3.5 ядра из 4
-      "limits.memory" = "1800Mi"   # 1.8 ГБ из 2
-      "requests.cpu"    = "2000m"
-      "requests.memory" = "1200Mi"
-      "pods"            = "10"       # Максимум 10 подов
+      "limits.cpu" = "2000m"       # позволяет surge/обновления и дополнительные сервисы
+      "limits.memory" = "2Gi"     # хватает для rolling update (+1 pod) и базовых сервисов
+      "requests.cpu"    = "1500m"
+      "requests.memory" = "1.5Gi"
+      "pods"            = "20"       # запас по количеству pod'ов
     }
   }
 

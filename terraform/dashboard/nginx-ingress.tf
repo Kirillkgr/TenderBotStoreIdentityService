@@ -2,17 +2,17 @@
 resource "kubernetes_ingress_v1" "nginx" {
   metadata {
     name      = "nginx-ingress"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
     annotations = {
-      "kubernetes.io/ingress.class"                    = "nginx"
+      "kubernetes.io/ingress.class"                    = "diagnostik-nginx"
       "nginx.ingress.kubernetes.io/ssl-redirect"       = "false"
       "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
     }
   }
   spec {
-    ingress_class_name = "nginx"
+    ingress_class_name = "diagnostik-nginx"
     rule {
-      host = "nginx.localdev.me"
+      host = "diagnostik-nginx.localdev.me"
       http {
         path {
           path      = "/"

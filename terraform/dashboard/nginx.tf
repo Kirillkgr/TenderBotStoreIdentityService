@@ -2,7 +2,7 @@
 resource "kubernetes_deployment" "nginx" {
   metadata {
     name      = "nginx"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
     labels = {
       app = "nginx"
     }
@@ -64,7 +64,7 @@ resource "kubernetes_deployment" "nginx" {
 resource "kubernetes_service" "nginx_nodeport" {
   metadata {
     name      = "nginx-nodeport"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
     labels = {
       app = "nginx"
     }
@@ -78,7 +78,7 @@ resource "kubernetes_service" "nginx_nodeport" {
       name        = "http"
       port        = 80
       target_port = 80
-      node_port   = 30081
+      node_port   = 32081
     }
   }
 
@@ -89,7 +89,7 @@ resource "kubernetes_service" "nginx_nodeport" {
 resource "kubernetes_service" "nginx_clusterip" {
   metadata {
     name      = "nginx"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
     labels = {
       app = "nginx"
     }
