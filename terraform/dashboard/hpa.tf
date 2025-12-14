@@ -1,7 +1,7 @@
 resource "kubernetes_horizontal_pod_autoscaler_v2" "nginx" {
   metadata {
-    name      = "nginx-hpa"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    name      = "diagnostik-nginx-hpa"
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
   }
 
   spec {

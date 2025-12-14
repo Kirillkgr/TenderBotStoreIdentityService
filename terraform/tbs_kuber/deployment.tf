@@ -8,7 +8,17 @@ resource "kubernetes_deployment" "app" {
     }
   }
   spec {
+    strategy {
+      type = "RollingUpdate"
+      rolling_update {
+        max_surge       = "1"
+        max_unavailable = "0"
+      }
+    }
+
     replicas = 1
+    min_ready_seconds         = 10
+    progress_deadline_seconds = 600
     selector {
       match_labels = {
         app = "tbs-kuber"

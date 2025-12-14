@@ -23,3 +23,8 @@ provider "helm" {
     config_context = "docker-desktop"
   }
 }
+
+variable "enable_metrics_server" {
+  type    = bool
+  default = false
+}

@@ -1,14 +1,14 @@
 # Пространство имен дашбоард
-resource "kubernetes_namespace" "dashboard" {
+resource "kubernetes_namespace" "diagnostik" {
   metadata {
-    name = "kubernetes-dashboard"
+    name = "diagnostik-tbspro-service"
   }
 }
 
 # Grant the Dashboard's own ServiceAccount full access (DEV ONLY, skip-login)
 resource "kubernetes_cluster_role_binding" "dashboard_sa_admin" {
   metadata {
-    name = "kubernetes-dashboard-sa-admin"
+    name = "diagnostik-kubernetes-dashboard-sa-admin"
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
@@ -18,17 +18,17 @@ resource "kubernetes_cluster_role_binding" "dashboard_sa_admin" {
   subject {
     kind      = "ServiceAccount"
     name      = "kubernetes-dashboard"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
   }
 
   depends_on = [helm_release.kubernetes_dashboard]
 }
 # Install Kubernetes Dashboard via Helm
 resource "helm_release" "kubernetes_dashboard" {
-  name             = "kubernetes-dashboard"
+  name             = "diagnostik-kubernetes-dashboard"
   repository       = "https://kubernetes.github.io/dashboard/"
   chart            = "kubernetes-dashboard"
-  namespace        = kubernetes_namespace.dashboard.metadata[0].name
+  namespace        = kubernetes_namespace.diagnostik.metadata[0].name
   version          = "6.0.8"
   create_namespace = false
 
@@ -52,13 +52,13 @@ resource "helm_release" "kubernetes_dashboard" {
 resource "kubernetes_service_account" "admin_user" {
   metadata {
     name      = "admin-user"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
   }
 }
 
 resource "kubernetes_cluster_role_binding" "admin_user_binding" {
   metadata {
-    name = "admin-user-binding"
+    name = "diagnostik-admin-user-binding"
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
@@ -76,7 +76,7 @@ resource "kubernetes_cluster_role_binding" "admin_user_binding" {
 resource "kubernetes_service" "dashboard_nodeport" {
   metadata {
     name      = "kubernetes-dashboard-nodeport"
-    namespace = kubernetes_namespace.dashboard.metadata[0].name
+    namespace = kubernetes_namespace.diagnostik.metadata[0].name
     labels = {
       app = "kubernetes-dashboard"
     }
@@ -94,7 +94,7 @@ resource "kubernetes_service" "dashboard_nodeport" {
       name        = "http"
       port        = 333
       target_port = 9090
-      node_port   = 30100
+      node_port   = 32100
       protocol    = "TCP"
     }
   }
