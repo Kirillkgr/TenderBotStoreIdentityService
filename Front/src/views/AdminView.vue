@@ -103,42 +103,7 @@
         + Создать товар
       </button>
       <template v-if="canSeeAdminLinks">
-        <router-link
-            :to="{ name: 'AdminOrders' }"
-            class="admin-action-btn tertiary"
-        >
-          ➜ Заказы
-        </router-link>
-        <router-link
-            :to="{ name: 'AdminClients' }"
-            class="admin-action-btn tertiary"
-        >
-          ➜ Клиенты
-        </router-link>
-        <router-link
-            :to="{ name: 'Warehouses' }"
-            class="admin-action-btn tertiary"
-        >
-          ➜ Склады
-        </router-link>
-        <router-link
-            :to="{ name: 'Ingredients' }"
-            class="admin-action-btn tertiary"
-        >
-          ➜ Ингредиенты
-        </router-link>
-        <router-link
-            :to="{ name: 'Units' }"
-            class="admin-action-btn tertiary"
-        >
-          ➜ Единицы
-        </router-link>
-        <router-link
-            :to="{ name: 'Suppliers' }"
-            class="admin-action-btn tertiary"
-        >
-          ➜ Поставщики
-        </router-link>
+        
       </template>
     </div>
 
