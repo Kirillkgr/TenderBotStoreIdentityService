@@ -24,13 +24,19 @@
       @saved="handleTagCreated"
   />
 
-  <CreateProductModal
+  <!-- Единая модалка для создания и редактирования товара: режим создания -->
+  <EditProductModal
       v-if="showCreateProductModal"
+      :model-value="showCreateProductModal"
+      @update:modelValue="(v) => showCreateProductModal = v"
+      :product="createProductDraft"
       :brands="brands"
-      :selectedBrand="selectedBrand"
-      :parentId="selectedTag ? selectedTag.id : currentParentId"
+      :groupOptions="groupOptions"
+      :tagOptions="tags"
+      :theme="computedTheme"
+      :current-root-tag-id="currentParentId"
       @close="showCreateProductModal = false"
-      @saved="handleProductCreated"
+      @save="onProductSave"
   />
 
   <EditBrandModal
@@ -59,6 +65,7 @@
       :groupOptions="groupOptions"
       :tagOptions="tags"
       :theme="computedTheme"
+      :current-root-tag-id="currentParentId"
       @close="showEditProductModal = false"
       @save="onProductSave"
       @delete="onProductDelete"
@@ -480,7 +487,6 @@ import CreateBrandModal from '../components/modals/CreateBrandModal.vue';
 import EditBrandModal from '../components/modals/EditBrandModal.vue';
 import CreateGroupModal from '../components/modals/CreateGroupModal.vue';
 import EditGroupModal from '../components/modals/EditGroupModal.vue';
-import CreateProductModal from '../components/modals/CreateProductModal.vue';
 import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import EditProductModal from '../components/modals/EditProductModal.vue';
 import ProductionSvg from '@/assets/production.svg';
@@ -512,6 +518,19 @@ const showProductPreview = ref(false);
 const previewProduct = ref(null);
 const showEditProductModal = ref(false);
 const editProduct = ref(null);
+// Черновик для создания товара — используется той же модалкой, что и редактирование
+const createProductDraft = computed(() => ({
+  id: null,
+  name: '',
+  price: 1,
+  promoPrice: null,
+  description: '',
+  brandId: selectedBrand.value ? Number(selectedBrand.value) : null,
+  groupTagId: selectedTag.value ? Number(selectedTag.value.id) : (currentParentId.value ?? 0),
+  tagIds: [],
+  visible: true,
+  imageUrl: null,
+}));
 
 // Brand edit modal state
 const showEditBrandModal = ref(false);
@@ -644,17 +663,7 @@ onMounted(() => {
 });
 
 // Авто-открытие модалки создания бренда для нового владельца без членств (один раз)
-onMounted(() => {
-  try {
-    const guardKey = 'auto_open_create_brand_once';
-    const already = localStorage.getItem(guardKey) === '1';
-    if (!already && isFirstOwnerWithoutMembership.value) {
-      showCreateBrandModal.value = true;
-      localStorage.setItem(guardKey, '1');
-    }
-  } catch (_) {
-  }
-});
+// Убираем раннее авт-открытие: теперь решаем после загрузки брендов
 
 watch(themeMode, (v) => {
   localStorage.setItem(THEME_KEY, v);
@@ -1091,6 +1100,15 @@ onMounted(async () => {
     console.log('Загрузка брендов...');
     const loadedBrands = await fetchBrands();
     console.log('Бренды успешно загружены:', loadedBrands);
+    // После загрузки брендов: если это первый OWNER без членств и брендов нет — открыть создание бренда один раз
+    try {
+      const guardKey = 'auto_open_create_brand_once';
+      const already = localStorage.getItem(guardKey) === '1';
+      if (!already && isFirstOwnerWithoutMembership.value && Array.isArray(brands.value) && brands.value.length === 0) {
+        showCreateBrandModal.value = true;
+        localStorage.setItem(guardKey, '1');
+      }
+    } catch (_) {}
     // Больше НЕ выбираем первый бренд по умолчанию, чтобы не грузить чужие данные.
     // Пытаемся восстановить ранее выбранный бренд из localStorage, если он доступен.
     try {
@@ -1166,37 +1184,46 @@ const handleCreateProduct = async (productData) => {
   }
 };
 
-// Сохранение из модалки редактирования
+// Сохранение из единой модалки (создание или редактирование)
 const onProductSave = async (payload) => {
   try {
-    if (!editProduct.value?.id) return;
-    const id = editProduct.value.id;
-
-    // Смена бренда при необходимости
-    if (payload.brandId && payload.brandId !== editProduct.value.brandId) {
-      await productStore.changeBrand(id, Number(payload.brandId));
+    if (payload?.id) {
+      // Редактирование
+      const id = payload.id;
+      if (payload.brandId && payload.brandId !== editProduct.value?.brandId) {
+        await productStore.changeBrand(id, Number(payload.brandId));
+      }
+      const newGroup = payload.groupTagId ?? 0;
+      const oldGroup = editProduct.value?.groupTagId ?? 0;
+      if (newGroup !== oldGroup) {
+        await productStore.move(id, Number(newGroup));
+      }
+      await productStore.update(id, {
+        name: payload.name,
+        description: payload.description,
+        price: payload.price,
+        promoPrice: payload.promoPrice,
+        visible: payload.visible ?? true,
+      });
+      toast.success('Товар обновлён');
+      showEditProductModal.value = false;
+      editProduct.value = null;
+      await loadProductsForCurrentLevel();
+    } else {
+      // Создание
+      const created = await productStore.create({
+        name: payload.name,
+        description: payload.description || '',
+        price: payload.price ?? 0,
+        promoPrice: payload.promoPrice ?? (payload.price ?? 0),
+        brandId: Number(payload.brandId),
+        groupTagId: payload.groupTagId ? Number(payload.groupTagId) : 0,
+        visible: payload.visible ?? true,
+      });
+      toast.success('Товар создан');
+      showCreateProductModal.value = false;
+      await loadProductsForCurrentLevel();
     }
-
-    // Перемещение между группами при необходимости
-    const newGroup = payload.groupTagId ?? 0;
-    const oldGroup = editProduct.value.groupTagId ?? 0;
-    if (newGroup !== oldGroup) {
-      await productStore.move(id, Number(newGroup));
-    }
-
-    // Обновление полей товара
-    await productStore.update(id, {
-      name: payload.name,
-      description: payload.description,
-      price: payload.price,
-      promoPrice: payload.promoPrice,
-      visible: payload.visible ?? true,
-    });
-
-    toast.success('Товар обновлён');
-    showEditProductModal.value = false;
-    editProduct.value = null;
-    await loadProductsForCurrentLevel();
   } catch (e) {
     console.error('Ошибка при сохранении товара:', e);
     toast.error(e?.message || 'Не удалось сохранить изменения');

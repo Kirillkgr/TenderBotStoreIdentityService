@@ -200,6 +200,19 @@ router.beforeEach(async (to, from, next) => {
         return next('/login');
     }
 
+        // Редирект владельца сразу в админку после авторизации или при заходе на главную
+    try {
+        const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+        const isOwner = roles.includes('OWNER');
+        const goingHome = to.name === 'Home' || to.path === '/';
+        const comingFromAuth = from?.name === 'Login' || from?.name === 'Register' || !from?.name;
+        if (authStore.isAuthenticated && isOwner) {
+            if ((goingHome || comingFromAuth) && to.path !== '/admin') {
+                return next('/admin');
+            }
+        }
+    } catch (_) {}
+
     // Проверка на наличие требуемых ролей (используем роли из JWT в store)
     if (to.meta.roles) {
         const roles = Array.isArray(authStore.roles) ? authStore.roles : [];

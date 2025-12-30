@@ -2,7 +2,7 @@
   <div class="epm-overlay" @click.self="onClose">
     <div class="epm-card" role="dialog" aria-modal="true" :style="cardStyle">
       <header class="epm-header" @mousedown.prevent="onHeaderDown">
-        <h3 class="epm-title">Редактирование товара</h3>
+        <h3 class="epm-title">{{ modalTitle }}</h3>
         <button class="epm-close" aria-label="Закрыть" @click="onClose">×</button>
       </header>
 
@@ -70,7 +70,7 @@
               <label>Группа</label>
               <select class="select" v-model.number="form.groupTagId">
                 <option :value="0">Корень</option>
-                <option v-for="g in groupOptions" :key="g.id" :value="g.id">{{ g.label }}</option>
+                <option v-for="g in groupSelectOptions" :key="g.id" :value="g.id">{{ g.label }}</option>
               </select>
             </div>
           </div>
@@ -96,7 +96,7 @@
 
       <footer class="epm-footer">
         <button class="btn btn-secondary" type="button" @click="onClose">Отмена</button>
-        <button class="btn btn-secondary" type="button" @click="$emit('delete')" style="margin-right:auto;color:#b91c1c;border-color:#b91c1c;">Удалить</button>
+        <button v-if="!isCreate" class="btn btn-secondary" type="button" @click="$emit('delete')" style="margin-right:auto;color:#b91c1c;border-color:#b91c1c;">Удалить</button>
         <button class="btn btn-primary" type="button" :disabled="saving" @click="onSave">
           <span v-if="saving" class="loader"></span>
           Сохранить
@@ -108,14 +108,16 @@
 
 <script setup>
 import {computed, reactive, ref, watch} from 'vue';
+import tagService from '@/services/tagService';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   product: { type: Object, required: true },
   brands: { type: Array, default: () => [] },
-  groupOptions: { type: Array, default: () => [] }, // [{id, label}]
+  groupOptions: { type: Array, default: () => [] }, // legacy, not used when tree available
   tagOptions: { type: Array, default: () => [] },   // [{id, name}]
   theme: { type: String, default: 'auto' },         // 'light' | 'dark' | 'auto'
+  currentRootTagId: { type: [Number, String], default: 0 },
 });
 
 const emit = defineEmits(['update:modelValue', 'close', 'save', 'delete']);
@@ -123,6 +125,10 @@ const emit = defineEmits(['update:modelValue', 'close', 'save', 'delete']);
 const fileInput = ref(null);
 const isDragOver = ref(false);
 const saving = ref(false);
+
+// Режим модалки: создание или редактирование
+const isCreate = computed(() => !props.product || !props.product.id);
+const modalTitle = computed(() => (isCreate.value ? 'Создание товара' : 'Редактирование товара'));
 
 const form = reactive({
   id: props.product?.id,
@@ -153,6 +159,16 @@ watch(() => props.product, (p) => {
   form.visible = p.visible ?? true;
 }, { immediate: true });
 
+// Фолбэки по умолчанию, если не пришёл brandId/группа
+watch([() => form.brandId, () => props.brands], ([bid]) => {
+  if ((bid === null || bid === undefined) && Array.isArray(props.brands) && props.brands.length > 0) {
+    form.brandId = props.brands[0].id;
+  }
+}, { immediate: true });
+watch(() => form.groupTagId, (gid) => {
+  if (gid === null || gid === undefined) form.groupTagId = 0;
+}, { immediate: true });
+
 const errors = reactive({ name: '' });
 
 // Тема берётся из глобальных CSS-переменных (theme.css) через классы на html
@@ -161,6 +177,52 @@ const previewUrl = computed(() => {
   if (form.imageFile) return URL.createObjectURL(form.imageFile);
   return form.imageUrl;
 });
+
+// Загрузка дерева тегов бренда и построение иерархии для выбора группы
+const tagTree = ref([]);
+const loadingTree = ref(false);
+
+async function loadTagTree(brandId) {
+  if (!brandId) { tagTree.value = []; return; }
+  loadingTree.value = true;
+  try {
+    const tree = await tagService.getTagTree(Number(brandId));
+    tagTree.value = Array.isArray(tree) ? tree : [];
+  } catch (_) {
+    tagTree.value = [];
+  } finally {
+    loadingTree.value = false;
+  }
+}
+
+function findSubtree(items, rootId) {
+  if (!rootId || rootId === 0) return items;
+  const stack = [...(items || [])];
+  while (stack.length) {
+    const node = stack.shift();
+    if (!node) continue;
+    if (Number(node.id) === Number(rootId)) {
+      return [node];
+    }
+    if (node.children && node.children.length) stack.push(...node.children);
+  }
+  return [];
+}
+
+function flatten(items, depth = 0) {
+  return (items || []).flatMap(it => [
+    { id: it.id, label: `${'— '.repeat(depth)}${it.name}` },
+    ...(it.children?.length ? flatten(it.children, depth + 1) : [])
+  ]);
+}
+
+const groupSelectOptions = computed(() => {
+  const rootId = Number(props.currentRootTagId || 0);
+  const base = findSubtree(tagTree.value, rootId);
+  return flatten(base, rootId && rootId !== 0 ? 0 : 0);
+});
+
+watch(() => form.brandId, async (bid) => { await loadTagTree(bid); }, { immediate: true });
 
 function toggleTag(id) {
   const idx = form.tagIds.indexOf(id);

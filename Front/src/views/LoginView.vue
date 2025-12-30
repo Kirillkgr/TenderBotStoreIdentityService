@@ -51,6 +51,7 @@ import {onMounted, ref} from 'vue';
 import {Field, Form} from 'vee-validate';
 import {useAuthStore} from '../store/auth';
 import {useToast} from 'vue-toastification';
+import router from '../router';
 
 const emit = defineEmits(['success', 'close']);
 
@@ -102,6 +103,12 @@ async function onSubmit(values) {
   try {
     await authStore.login({ username: values.login, password: values.password });
     toast.success('Вы успешно вошли!');
+    try {
+      const roles = Array.isArray(authStore.roles) ? authStore.roles : [];
+      if (roles.includes('OWNER')) {
+        await router.replace('/admin').catch(() => {});
+      }
+    } catch (_) {}
     emit('success');
     emit('close');
   } catch (error) {
