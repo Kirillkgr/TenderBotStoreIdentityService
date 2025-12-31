@@ -94,3 +94,11 @@ export const getAdminProductsByBrandAndGroup = (brandId, groupTagId = 0, visible
         }
     });
 };
+// Загрузить изображение товара (перезаписывает предыдущую)
+export const uploadProductImage = (productId, file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient.post(`/auth/v1/products/${productId}/image`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};

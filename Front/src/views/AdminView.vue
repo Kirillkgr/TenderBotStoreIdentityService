@@ -110,7 +110,7 @@
         + Создать товар
       </button>
       <template v-if="canSeeAdminLinks">
-        
+
       </template>
     </div>
 
@@ -269,7 +269,7 @@
                 title="Изменить тег"
                 aria-label="Изменить тег"
             >
-              <img src="@/assets/pencil.svg" alt="Изменить" style="width: 16px; height: 16px;" />
+              <img src="@/assets/pencil.svg" alt="Изменить" style="width: 16px; height: 16px;"/>
             </button>
 
             <div class="btn-group btn-group-sm">
@@ -318,7 +318,8 @@
       <div class="products-section mt-4">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <!--          <h5 class="mb-0">Товары в этом разделе</h5>-->
-          <button class="btn btn-sm btn-outline-secondary" :disabled="productsLoading" @click="loadProductsForCurrentLevel()" title="Обновить товары">
+          <button class="btn btn-sm btn-outline-secondary" :disabled="productsLoading"
+                  @click="loadProductsForCurrentLevel()" title="Обновить товары">
             <i class="bi bi-arrow-repeat"></i>
           </button>
         </div>
@@ -357,7 +358,7 @@
             <button v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" aria-label="Редактировать товар"
                     class="pc-edit-fab"
                     title="Редактировать товар" @click.stop="openEdit(p)">
-              <img src="@/assets/pencil.svg" alt="Редактировать" style="width: 16px; height: 16px;" />
+              <img src="@/assets/pencil.svg" alt="Редактировать" style="width: 16px; height: 16px;"/>
             </button>
 
             <!-- Компактная сетка карточки: превью слева, ID сверху, затем название и цена -->
@@ -382,7 +383,8 @@
                     class="cur"> ₽</span></span>
               </div>
               <div v-if="p.promoPrice && p.promoPrice < p.price" class="pc-price-promo">
-                <span class="new promo"><span class="value">{{ formatPrice(p.promoPrice) }}</span><span class="cur"> ₽</span></span>
+                <span class="new promo"><span class="value">{{ formatPrice(p.promoPrice) }}</span><span
+                    class="cur"> ₽</span></span>
               </div>
             </div>
 
@@ -491,6 +493,7 @@ import ProductPreviewModal from '../components/modals/ProductPreviewModal.vue';
 import EditProductModal from '../components/modals/EditProductModal.vue';
 import ProductionSvg from '@/assets/production.svg';
 import {formatDateShortRU, formatLocalDateTime, timeAgoShort} from '@/utils/datetime';
+import {uploadProductImage} from '../services/productService';
 
 // Refs
 const brands = ref([]);
@@ -583,7 +586,7 @@ const truncate = (text, len = 127) => {
 // Опции групп для модалки (текущий уровень + корень)
 const groupOptions = computed(() => {
   // Текущие теги (tags) — список на активном уровне. Отображаем их как кандидаты
-  return (tags.value || []).map(t => ({ id: t.id, label: t.name }));
+  return (tags.value || []).map(t => ({id: t.id, label: t.name}));
 });
 
 // ===== Темы: авто / светлая / тёмная =====
@@ -641,7 +644,9 @@ onMounted(() => {
   if (saved === 'light' || saved === 'dark' || saved === 'auto') themeMode.value = saved;
   // слушаем смену системной темы, если режим авто
   if (media && media.addEventListener) {
-    media.addEventListener('change', () => { if (themeMode.value === 'auto') applyTheme(); });
+    media.addEventListener('change', () => {
+      if (themeMode.value === 'auto') applyTheme();
+    });
   }
   applyTheme();
 
@@ -657,7 +662,7 @@ onMounted(() => {
           visibleCount.value += pageStep;
         }
       }
-    }, { root: null, rootMargin: '200px 0px 200px 0px', threshold: 0.1 });
+    }, {root: null, rootMargin: '200px 0px 200px 0px', threshold: 0.1});
     if (productsSentry.value) observer.observe(productsSentry.value);
   }
 });
@@ -683,7 +688,7 @@ function handleGlobalKeys(e) {
     e.preventDefault();
     // перейти к родителю, если есть
     if (currentTagPath.value && currentTagPath.value.length > 0) {
-      const parent = currentTagPath.value[currentTagPath.value.length - 2] || { id: 0 };
+      const parent = currentTagPath.value[currentTagPath.value.length - 2] || {id: 0};
       const pid = parent ? parent.id : 0;
       fetchTags(Number(selectedBrand.value), pid || 0);
       currentParentId.value = pid || 0;
@@ -713,7 +718,10 @@ watch(products, (list) => {
   // переинициализируем наблюдение (на случай, если ref пересоздан)
   if (observer) {
     if (productsSentry.value) {
-      try { observer.unobserve(productsSentry.value); } catch (e) {}
+      try {
+        observer.unobserve(productsSentry.value);
+      } catch (e) {
+      }
       observer.observe(productsSentry.value);
     }
   }
@@ -850,7 +858,7 @@ const brandsError = computed(() => error.value);
 
 // Получение хлебных крошек для текущего пути тегов
 const breadcrumbs = computed(() => {
-  const result = [{ id: 0, name: 'Корень', isRoot: true }];
+  const result = [{id: 0, name: 'Корень', isRoot: true}];
   if (currentTagPath.value && currentTagPath.value.length > 0) {
     return [...result, ...currentTagPath.value];
   }
@@ -907,7 +915,7 @@ const fetchBrands = async () => {
 };
 
 const fetchTags = async (brandId, parentId = null) => {
-  console.log('Fetching tags for:', { brandId, parentId });
+  console.log('Fetching tags for:', {brandId, parentId});
 
   if (!brandId) {
     console.log('No brand ID provided, clearing tags');
@@ -1108,7 +1116,8 @@ onMounted(async () => {
         showCreateBrandModal.value = true;
         localStorage.setItem(guardKey, '1');
       }
-    } catch (_) {}
+    } catch (_) {
+    }
     // Больше НЕ выбираем первый бренд по умолчанию, чтобы не грузить чужие данные.
     // Пытаемся восстановить ранее выбранный бренд из localStorage, если он доступен.
     try {
@@ -1116,7 +1125,8 @@ onMounted(async () => {
       if (storedId && Array.isArray(loadedBrands) && loadedBrands.some(b => Number(b.id) === storedId)) {
         await selectBrand(storedId);
       }
-    } catch (_) {}
+    } catch (_) {
+    }
   } catch (error) {
     console.error('Ошибка при инициализации:', error);
     const errorMsg = error.response?.data?.message || error.message || 'Неизвестная ошибка';
@@ -1138,7 +1148,7 @@ const handleCreateBrand = async (formData) => {
     }
 
     // Create the brand
-    const newBrand = await createBrand({ name: brandName });
+    const newBrand = await createBrand({name: brandName});
     console.log('Бренд успешно создан:', newBrand);
 
     // Refresh the brands list
@@ -1205,6 +1215,15 @@ const onProductSave = async (payload) => {
         promoPrice: payload.promoPrice,
         visible: payload.visible ?? true,
       });
+      // Загрузка изображения при наличии файла
+      if (payload.imageFile) {
+        try {
+          await uploadProductImage(id, payload.imageFile);
+        } catch (e) {
+          console.warn('Не удалось загрузить изображение товара:', e);
+          toast.error('Не удалось загрузить изображение');
+        }
+      }
       toast.success('Товар обновлён');
       showEditProductModal.value = false;
       editProduct.value = null;
@@ -1220,6 +1239,15 @@ const onProductSave = async (payload) => {
         groupTagId: payload.groupTagId ? Number(payload.groupTagId) : 0,
         visible: payload.visible ?? true,
       });
+      // Если есть файл — загрузим изображение для созданного товара
+      if (created?.id && payload.imageFile) {
+        try {
+          await uploadProductImage(created.id, payload.imageFile);
+        } catch (e) {
+          console.warn('Не удалось загрузить изображение для нового товара:', e);
+          toast.error('Товар создан, но изображение не загружено');
+        }
+      }
       toast.success('Товар создан');
       showCreateProductModal.value = false;
       await loadProductsForCurrentLevel();
@@ -1233,7 +1261,7 @@ const onProductSave = async (payload) => {
 const selectBrand = async (brandId) => {
   const nextId = Number(brandId);
   const prevId = selectedBrand.value != null ? Number(selectedBrand.value) : null;
-  console.log('Selecting brand:', { nextId, prevId });
+  console.log('Selecting brand:', {nextId, prevId});
 
   loading.value = true;
   tagLoading.value = true;
@@ -1330,12 +1358,12 @@ const deleteTag = async () => {
 // Отладочный лог при изменении брендов
 watch(brands, (newVal) => {
   console.log('Бренды обновлены:', newVal);
-}, { deep: true });
+}, {deep: true});
 
 // Управляем загрузкой тегов исключительно через selectBrand(),
 // чтобы избежать дублирующих запросов и гонок состояний.
 watch(selectedBrand, (newBrandId, oldBrandId) => {
-  console.log('selectedBrand changed:', { from: oldBrandId, to: newBrandId });
+  console.log('selectedBrand changed:', {from: oldBrandId, to: newBrandId});
 });
 
 const handleBrandCreated = async (formData) => {
@@ -1507,13 +1535,30 @@ function goArchive() {
   color: var(--text) !important;
   border-color: var(--border) !important;
 }
+
 .tag-manager-container :deep(.tag-row.active) {
   background: var(--input-bg-hover) !important;
 }
-.tag-manager-container :deep(.badge.bg-secondary) { background: var(--input-bg); color: var(--text); }
-.tag-manager-container :deep(.btn.btn-outline-secondary) { color: var(--text); border-color: var(--border); }
-.tag-manager-container :deep(.btn.btn-outline-primary) { color: var(--primary); border-color: var(--primary); }
-.tag-manager-container :deep(.btn.btn-outline-danger) { color: var(--danger); border-color: var(--danger); }
+
+.tag-manager-container :deep(.badge.bg-secondary) {
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.tag-manager-container :deep(.btn.btn-outline-secondary) {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.tag-manager-container :deep(.btn.btn-outline-primary) {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.tag-manager-container :deep(.btn.btn-outline-danger) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
 
 /* Theme alerts inside */
 .tag-manager-container :deep(.alert),
@@ -1617,8 +1662,14 @@ function goArchive() {
   border-radius: 12px;
   box-shadow: 0 6px 16px var(--shadow-color);
 }
-.pc-price .old { color: var(--muted); }
-.pc-desc { color: var(--text); }
+
+.pc-price .old {
+  color: var(--muted);
+}
+
+.pc-desc {
+  color: var(--text);
+}
 
 .brand-chip:hover {
   opacity: 0.9;
@@ -1657,7 +1708,10 @@ function goArchive() {
 }
 
 /* Текущий путь под списком брендов */
-.current-path { color: #94a3b8; font-size: 14px; }
+.current-path {
+  color: #94a3b8;
+  font-size: 14px;
+}
 
 /* Кнопки-крошки под брендами */
 .path-chip {
@@ -1668,18 +1722,35 @@ function goArchive() {
   padding: 4px 8px;
   border-radius: 8px;
 }
-.path-chip:hover { text-decoration: underline; }
+
+.path-chip:hover {
+  text-decoration: underline;
+}
+
 .path-chip.active {
   background: #e0e7ff;
   color: #1e40af; /* более тёмный синий для активной */
 }
-.path-sep { color: #64748b; padding: 0 2px; }
+
+.path-sep {
+  color: #64748b;
+  padding: 0 2px;
+}
 
 /* Контент списка тегов — белый фон, чёрный текст */
-.tag-manager-content { background: #ffffff; color: #111827; border-radius: 8px; }
+.tag-manager-content {
+  background: #ffffff;
+  color: #111827;
+  border-radius: 8px;
+}
 
 /* Список тегов и строки */
-.list-group { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }
+.list-group {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
 .list-group-item.tag-row {
   background: #ffffff;
   color: #111827; /* основной текст — чёрный */
@@ -1687,19 +1758,57 @@ function goArchive() {
   border-bottom: 1px solid #e5e7eb;
   padding: 10px 14px;
 }
-.list-group-item.tag-row:last-child { border-bottom: 0; }
-.tag-row:hover { background: #f8fafc; }
-.tag-row.active { background: #eef2ff; border-left: 4px solid #4a6cf7; }
-.tag-title { color: #111827; font-weight: 600; }
-.tag-row i { color: #475569; }
+
+.list-group-item.tag-row:last-child {
+  border-bottom: 0;
+}
+
+.tag-row:hover {
+  background: #f8fafc;
+}
+
+.tag-row.active {
+  background: #eef2ff;
+  border-left: 4px solid #4a6cf7;
+}
+
+.tag-title {
+  color: #111827;
+  font-weight: 600;
+}
+
+.tag-row i {
+  color: #475569;
+}
 
 /* Кнопки внутри строки */
-.tag-row .btn-outline-primary { border-color: #4a6cf7; color: #4a6cf7; }
-.tag-row .btn-outline-primary:hover { background: #e0e7ff; }
-.tag-row .btn-outline-success { border-color: #22c55e; color: #16a34a; }
-.tag-row .btn-outline-success:hover { background: #dcfce7; }
-.tag-row .btn-outline-secondary { border-color: #94a3b8; color: #475569; }
-.tag-row .btn-outline-danger { border-color: #ef4444; color: #dc2626; }
+.tag-row .btn-outline-primary {
+  border-color: #4a6cf7;
+  color: #4a6cf7;
+}
+
+.tag-row .btn-outline-primary:hover {
+  background: #e0e7ff;
+}
+
+.tag-row .btn-outline-success {
+  border-color: #22c55e;
+  color: #16a34a;
+}
+
+.tag-row .btn-outline-success:hover {
+  background: #dcfce7;
+}
+
+.tag-row .btn-outline-secondary {
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+.tag-row .btn-outline-danger {
+  border-color: #ef4444;
+  color: #dc2626;
+}
 
 .edit-fab,
 .pc-edit-btn {
@@ -1851,12 +1960,17 @@ function goArchive() {
 }
 
 /* Товары: читаемый тёмный текст на белом фоне */
-.products-section h5 { color: #111827; font-weight: 700; }
+.products-section h5 {
+  color: #111827;
+  font-weight: 700;
+}
+
 .product-grid-admin {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
+
 .product-card-admin {
   /* Центральные настройки карточки — правятся здесь и прокидываются вниз */
   --pc-bg: var(--card);
@@ -1865,8 +1979,8 @@ function goArchive() {
   --pc-muted: var(--muted, #6b7280);
   --pc-border: var(--border, #e5e7eb);
   --pc-radius: 10px;
-  --pc-shadow: 0 1px 2px rgba(0,0,0,0.12);
-  --pc-shadow-hover: 0 4px 14px rgba(0,0,0,0.18);
+  --pc-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --pc-shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.18);
   --pc-title-size: 16px;
   --pc-title-weight: 800;
   --pc-price-size: 18px;
@@ -1883,6 +1997,7 @@ function goArchive() {
   overflow: hidden; /* лишнее не вылезает за границы */
   text-align: left; /* базово весь текст слева */
 }
+
 .product-card-admin:hover {
   box-shadow: var(--pc-shadow-hover);
   border-color: color-mix(in srgb, var(--primary) 35%, var(--pc-border));
@@ -2051,17 +2166,19 @@ function goArchive() {
   background: #e5e7eb;
   border-radius: 12px;
 }
+
 .product-card-admin .pc-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
   padding-right: 40px; /* место под кнопку редактирования */
-  padding-left: 22px;  /* резерв под индикатор статуса слева */
+  padding-left: 22px; /* резерв под индикатор статуса слева */
   position: relative;
-  z-index: 2;          /* текст шапки над индикатором */
-  min-height: 44px;    /* фиксированная высота заголовка (2 строки) */
+  z-index: 2; /* текст шапки над индикатором */
+  min-height: 44px; /* фиксированная высота заголовка (2 строки) */
 }
+
 .product-card-admin .pc-title {
   color: var(--pc-text-strong) !important;
   font-weight: var(--pc-title-weight);
@@ -2074,8 +2191,9 @@ function goArchive() {
   word-break: break-word;
   margin-bottom: 4px;
   /* лёгкая тень на тёмной теме для читаемости */
-  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
+
 .product-card-admin .pc-price {
   margin-top: 1px;
   display: flex;
@@ -2087,13 +2205,30 @@ function goArchive() {
   min-height: 26px;
 }
 
-.product-card-admin .pc-price .old { color: var(--pc-muted); text-decoration: line-through; font-weight: 600; order: 1; }
-.product-card-admin .pc-price .new { color: var(--pc-text-strong); font-weight: var(--pc-price-weight); font-size: var(--pc-price-size); order: 2; }
+.product-card-admin .pc-price .old {
+  color: var(--pc-muted);
+  text-decoration: line-through;
+  font-weight: 600;
+  order: 1;
+}
+
+.product-card-admin .pc-price .new {
+  color: var(--pc-text-strong);
+  font-weight: var(--pc-price-weight);
+  font-size: var(--pc-price-size);
+  order: 2;
+}
 
 .product-card-admin .pc-price .new.promo {
   text-decoration: none;
 }
-.product-card-admin .pc-price .cur { color: var(--pc-muted); margin-left: 4px; font-weight: 600; }
+
+.product-card-admin .pc-price .cur {
+  color: var(--pc-muted);
+  margin-left: 4px;
+  font-weight: 600;
+}
+
 /* Чип промо удалён по требованию — визуальная логика читается по старой/новой цене */
 .product-card-admin .pc-desc {
   margin-top: 8px; /* немного воздуха после цены для симметрии */
@@ -2115,6 +2250,7 @@ function goArchive() {
     aspect-ratio: 1 / 1;
   }
 }
+
 .product-card-admin .pc-updated {
   position: absolute;
   left: 12px;
@@ -2127,7 +2263,15 @@ function goArchive() {
   justify-content: space-between; /* дата слева, прошло времени справа */
   min-height: 16px;
 }
-.product-card-admin .btn-link-more { background: transparent; border: 0; color: #4a6cf7; font-weight: 700; cursor: pointer; padding: 0; }
+
+.product-card-admin .btn-link-more {
+  background: transparent;
+  border: 0;
+  color: #4a6cf7;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
 
 .product-card-admin .pc-status-dot {
   position: absolute;
@@ -2139,8 +2283,17 @@ function goArchive() {
   box-shadow: 0 0 0 2px var(--pc-bg); /* адаптивная обводка под тему */
   z-index: 1; /* индикатор под текстом шапки */
 }
-.product-card-admin .pc-status-dot.on { background: #16a34a; } /* зелёный */
-.product-card-admin .pc-status-dot.off { background: #ef4444; } /* красный */
+
+.product-card-admin .pc-status-dot.on {
+  background: #16a34a;
+}
+
+/* зелёный */
+.product-card-admin .pc-status-dot.off {
+  background: #ef4444;
+}
+
+/* красный */
 
 .pc-edit-fab {
   all: unset;
@@ -2163,9 +2316,21 @@ function goArchive() {
   transform: translateY(-2px);
   transition: opacity .18s ease, transform .18s ease;
 }
-.pc-edit-fab:hover { background-color: var(--primary-dark, var(--primary-600, #3a5bd9)); }
-.pc-edit-fab:focus-visible { outline: 2px solid var(--primary, #4a6cf7); outline-offset: 2px; }
-.pc-edit-fab img { width: 16px; height: 16px; display: block; }
+
+.pc-edit-fab:hover {
+  background-color: var(--primary-dark, var(--primary-600, #3a5bd9));
+}
+
+.pc-edit-fab:focus-visible {
+  outline: 2px solid var(--primary, #4a6cf7);
+  outline-offset: 2px;
+}
+
+.pc-edit-fab img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
 
 /* показываем FAB на hover/focus карточки */
 .product-card-admin:hover .pc-edit-fab,

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
@@ -36,11 +37,12 @@ public class ImageProcessingServiceTest {
 
         // Verify dimensions are exact and square
         for (var entry : map.entrySet()) {
-            BufferedImage img = ImageIO.read(new java.io.ByteArrayInputStream(entry.getValue()));
+            BufferedImage img = ImageIO.read(new ByteArrayInputStream(entry.getValue()));
             int expected = switch (entry.getKey()) {
                 case S512 -> 512;
                 case S256 -> 256;
                 case S125 -> 125;
+                default -> throw new IllegalStateException("Unexpected value: " + entry.getKey());
             };
             assertEquals(expected, img.getWidth());
             assertEquals(expected, img.getHeight());

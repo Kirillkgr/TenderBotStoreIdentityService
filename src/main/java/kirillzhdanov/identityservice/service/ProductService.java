@@ -11,6 +11,7 @@ import kirillzhdanov.identityservice.model.product.Product;
 import kirillzhdanov.identityservice.model.product.ProductArchive;
 import kirillzhdanov.identityservice.model.tags.GroupTag;
 import kirillzhdanov.identityservice.repository.*;
+import kirillzhdanov.identityservice.model.StorageFile;
 import kirillzhdanov.identityservice.tenant.ContextGuards;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,9 @@ public class ProductService {
     private final GroupTagRepository groupTagRepository;
     private final ProductArchiveRepository productArchiveRepository;
     private final GroupTagArchiveRepository groupTagArchiveRepository;
+    private final StorageFileRepository storageFileRepository;
+    private final S3StorageService s3StorageService;
+    private final MediaService mediaService;
 
     // ===== Context guards: use centralized helpers =====
 
@@ -173,10 +177,11 @@ public class ProductService {
             products = productRepository.findByBrandAndGroupTagIdAndVisibleIsTrue(brand, groupTagId);
         }
 
-        return products.stream().map(this::toResponse).collect(Collectors.toList());
+        return products.stream().map(this::toResponsePublic).collect(Collectors.toList());
     }
 
     private ProductResponse toResponse(Product product) {
+        String imageUrl = buildProductImageUrl(product);
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -188,7 +193,84 @@ public class ProductService {
                 .visible(product.isVisible())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
+                .imageUrl(imageUrl)
                 .build();
+    }
+
+    // Публичная версия ответа: используем H256 (16:9 высота 256)
+    private ProductResponse toResponsePublic(Product product) {
+        String imageUrl = buildProductImageUrl(product, "H256");
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .promoPrice(product.getPromoPrice())
+                .brandId(product.getBrand().getId())
+                .groupTagId(product.getGroupTag() != null ? product.getGroupTag().getId() : null)
+                .visible(product.isVisible())
+                .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
+                .imageUrl(imageUrl)
+                .build();
+    }
+
+    private String buildProductImageUrl(Product product) {
+        // По умолчанию для внутренних ответов используем H512
+        return buildProductImageUrl(product, "H512");
+    }
+
+    private String buildProductImageUrl(Product product, String variant) {
+        try {
+            java.util.List<StorageFile> files = storageFileRepository.findByOwnerTypeAndOwnerId("PRODUCT", product.getId());
+            String useVariant = (variant == null || variant.isBlank()) ? "H512" : variant;
+            java.util.Optional<StorageFile> img = files.stream()
+                    .filter(f -> "PRODUCT_IMAGE".equals(f.getPurpose()) && useVariant.equals(f.getUsageType()))
+                    .findFirst();
+            return img.map(storageFile -> s3StorageService.buildPresignedGetUrl(storageFile.getPath(), java.time.Duration.ofDays(7))
+                    .orElse(null)).orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Transactional
+    public ProductResponse uploadImage(Long productId, org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Пустой файл изображения");
+        }
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Товар не найден: " + productId));
+        // Ограничение по контексту бренда
+        ContextGuards.requireEntityBrandMatchesContextOr404(product.getBrand());
+
+        String pid = String.valueOf(product.getId());
+        var res = mediaService.uploadProductImage(pid, file.getBytes(), file.getContentType());
+
+        // upsert по вариантам ORIGINAL/H256/H512
+        upsertProductImageFile(product, "ORIGINAL", res.get("ORIGINAL"));
+        upsertProductImageFile(product, "H256", res.get("H256"));
+        upsertProductImageFile(product, "H512", res.get("H512"));
+
+        return toResponse(product);
+    }
+
+    private void upsertProductImageFile(Product product, String usage, String path) {
+        if (path == null) return;
+        java.util.List<StorageFile> files = storageFileRepository.findByOwnerTypeAndOwnerId("PRODUCT", product.getId());
+        java.util.Optional<StorageFile> existing = files.stream()
+                .filter(f -> "PRODUCT_IMAGE".equals(f.getPurpose()) && usage.equals(f.getUsageType()))
+                .findFirst();
+        StorageFile sf = existing.orElseGet(() -> StorageFile.builder()
+                .ownerType("PRODUCT")
+                .ownerId(product.getId())
+                .purpose("PRODUCT_IMAGE")
+                .usageType(usage)
+                .createdAt(LocalDateTime.now())
+                .build());
+        sf.setPath(path);
+        sf.setUpdatedAt(LocalDateTime.now());
+        storageFileRepository.save(sf);
     }
 
     @Transactional

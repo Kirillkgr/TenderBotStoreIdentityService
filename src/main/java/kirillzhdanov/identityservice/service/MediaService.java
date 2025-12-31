@@ -191,6 +191,46 @@ public class MediaService {
         return resp;
     }
 
+    // ================= Product Image ==================
+    public String getProductImageKey(String productId) {
+        return "product-images/" + sanitize(productId) + "/image.png";
+    }
+
+    public Map<String, String> uploadProductImage(String productId, byte[] bytes, String contentType) throws IOException {
+        // Save original as-is
+        String ext = detectExtension(contentType);
+        String base = "product-images/" + sanitize(productId) + "/";
+        String originalKey = base + "original" + (ext != null ? ("." + ext) : "");
+        s3.upload(originalKey, bytes, contentType != null ? contentType : "application/octet-stream", false);
+
+        // Process to 16:9 JPEG with heights 256 and 512 (no transparency needed)
+        ImageProcessingService.ProcessedResult processed169 = imageService.processToPng16x9(bytes);
+        byte[] h256 = processed169.getImagesBySize().get(ImageProcessingService.SizeKey.H256);
+        byte[] h512 = processed169.getImagesBySize().get(ImageProcessingService.SizeKey.H512);
+        String key256 = base + "h256.jpg";
+        String key512 = base + "h512.jpg";
+        String variantContentType = processed169.getContentType() != null ? processed169.getContentType() : "image/jpeg";
+        s3.upload(key256, h256, variantContentType, false);
+        s3.upload(key512, h512, variantContentType, false);
+
+        Map<String, String> resp = new HashMap<>();
+        resp.put("ORIGINAL", originalKey);
+        resp.put("H256", key256);
+        resp.put("H512", key512);
+        return resp;
+    }
+
+    private String detectExtension(String contentType) {
+        if (contentType == null) return null;
+        String ct = contentType.toLowerCase();
+        if (ct.contains("png")) return "png";
+        if (ct.contains("jpeg")) return "jpeg";
+        if (ct.contains("jpg")) return "jpg";
+        if (ct.contains("gif")) return "gif";
+        if (ct.contains("webp")) return "webp";
+        return null;
+    }
+
     public record UploadResult(String productId, String imageId, String format,
                                Map<String, String> keys, Map<String, String> urls) {
     }

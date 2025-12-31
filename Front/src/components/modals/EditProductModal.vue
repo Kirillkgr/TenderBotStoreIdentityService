@@ -16,8 +16,8 @@
             @drop.prevent="onDrop"
           >
             <img v-if="previewUrl" :src="previewUrl" :alt="form.name" />
-            <div v-else class="epm-placeholder">
-              <span>Нет изображения</span>
+            <div v-else class="epm-placeholder" aria-label="Нет изображения">
+              <img :src="PRODUCTION_SVG_DATA" alt="Нет изображения" class="epm-fallback-img" />
             </div>
             <div class="epm-dropzone-actions">
               <input ref="fileInput" type="file" accept="image/*" @change="onFileChange" hidden />
@@ -177,6 +177,19 @@ const previewUrl = computed(() => {
   if (form.imageFile) return URL.createObjectURL(form.imageFile);
   return form.imageUrl;
 });
+
+// Встроенный production.svg как data:URI
+const PRODUCTION_SVG_DATA = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <style>.cls-1{fill:#231f20;}</style>
+  </defs>
+  <title>Wondicon - UI (Free)</title>
+  <path class="cls-1" d="M100,175.69a5,5,0,0,1-2.23-.53L27.08,139.89a5,5,0,0,1-2.77-4.48V64.86a5,5,0,0,1,2.77-4.47L97.77,25.11a5,5,0,0,1,4.46,0l70.69,35.28a5,5,0,0,1,2.77,4.47v70.55a5,5,0,0,1-2.77,4.48l-70.69,35.27A5,5,0,0,1,100,175.69ZM34.31,132.32,100,165.1l65.69-32.78V68L100,35.17,34.31,68Zm136.38,3.09h0Z"/>
+  <path class="cls-1" d="M100,105a5,5,0,0,1-2.23-.52L27.09,69.34a5,5,0,1,1,4.45-9l68.46,34,68.46-34a5,5,0,1,1,4.45,9l-70.68,35.14A5,5,0,0,1,100,105Z"/>
+  <path class="cls-1" d="M135.34,87.43a5,5,0,0,1-2.22-.52L62.43,51.77a5,5,0,1,1,4.45-9L137.57,78a5,5,0,0,1-2.23,9.48Z"/>
+  <path class="cls-1" d="M100,175.69a5,5,0,0,1-5-5V100a5,5,0,0,1,10,0v70.69A5,5,0,0,1,100,175.69Z"/>
+</svg>`);
 
 // Загрузка дерева тегов бренда и построение иерархии для выбора группы
 const tagTree = ref([]);
@@ -351,7 +364,7 @@ const cardStyle = computed(() => ({
   position: relative;
   border: 1px dashed var(--border);
   border-radius: 14px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 16 / 9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -359,7 +372,8 @@ const cardStyle = computed(() => ({
 }
 .epm-dropzone.is-dragover { background: var(--input-bg-hover); }
 .epm-dropzone img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
-.epm-placeholder { color: var(--muted); font-size: .9rem; }
+.epm-placeholder { color: var(--muted); font-size: .9rem; display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+.epm-fallback-img { width: 60%; height: 60%; object-fit: contain; }
 .epm-dropzone-actions { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; }
 
 /* Right: form */

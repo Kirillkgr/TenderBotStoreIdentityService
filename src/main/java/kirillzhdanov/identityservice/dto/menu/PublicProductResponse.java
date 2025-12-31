@@ -16,4 +16,5 @@ public class PublicProductResponse {
     private BigDecimal price;
     private BigDecimal promoPrice;
     private boolean visible;
+    private String imageUrl;
 }
