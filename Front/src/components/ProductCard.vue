@@ -6,11 +6,13 @@
   >
     <div class="image-container">
       <img
-        :src="product.imageUrl || FALLBACK_IMG"
+        v-if="product.imageUrl"
+        :src="product.imageUrl"
         :alt="product.name"
         class="product-image"
         @error="handleImageError"
       />
+      <img v-else :src="PRODUCT_SVG_DATA" :alt="product.name" class="product-image" />
       <div v-if="product.promoPrice && product.promoPrice < product.price" class="promo-flag">
         <span>Акция</span>
       </div>
@@ -76,7 +78,17 @@ const props = defineProps({
 
 const emit = defineEmits(['preview']);
 
-const FALLBACK_IMG = 'https://img1.reactor.cc/pics/post/mlp-neuroart-mlp-art-my-little-pony-Lyra-Heartstrings-9077295.jpeg';
+const PRODUCT_SVG_DATA = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <style>.cls-1{fill:#231f20;}</style>
+  </defs>
+  <title>Wondicon - UI (Free)</title>
+  <path class="cls-1" d="M100,175.69a5,5,0,0,1-2.23-.53L27.08,139.89a5,5,0,0,1-2.77-4.48V64.86a5,5,0,0,1,2.77-4.47L97.77,25.11a5,5,0,0,1,4.46,0l70.69,35.28a5,5,0,0,1,2.77,4.47v70.55a5,5,0,0,1-2.77,4.48l-70.69,35.27A5,5,0,0,1,100,175.69ZM34.31,132.32,100,165.1l65.69-32.78V68L100,35.17,34.31,68Zm136.38,3.09h0Z"/>
+  <path class="cls-1" d="M100,105a5,5,0,0,1-2.23-.52L27.09,69.34a5,5,0,1,1,4.45-9l68.46,34,68.46-34a5,5,0,1,1,4.45,9l-70.68,35.14A5,5,0,0,1,100,105Z"/>
+  <path class="cls-1" d="M135.34,87.43a5,5,0,0,1-2.22-.52L62.43,51.77a5,5,0,1,1,4.45-9L137.57,78a5,5,0,0,1-2.23,9.48Z"/>
+  <path class="cls-1" d="M100,175.69a5,5,0,0,1-5-5V100a5,5,0,0,1,10,0v70.69A5,5,0,0,1,100,175.69Z"/>
+</svg>`);
 
 const router = useRouter();
 const cartStore = useCartStore();
@@ -92,8 +104,12 @@ function handleClick() {
   }
 }
 
-function handleImageError() {
-  // handle image error
+function handleImageError(e) {
+  if (!e || !e.target) return;
+  const img = e.target;
+  if (img.dataset._fallbackApplied === '1') return;
+  img.dataset._fallbackApplied = '1';
+  img.src = PRODUCT_SVG_DATA;
 }
 
 async function addToCart() {
@@ -179,7 +195,7 @@ function formatFull(val) {
 .image-container {
   position: relative;
   width: 100%;
-  aspect-ratio: 1/1;
+  aspect-ratio: 16/9;
   overflow: hidden;
   background-color: var(--input-bg);
   border-radius: 14px 14px 0 0;
@@ -208,6 +224,8 @@ function formatFull(val) {
   object-position: center;
   transition: transform 0.5s ease;
 }
+
+/* fallback no longer needs container-specific styles; we reuse product-image class */
 
 .product-card:hover .product-image {
   transform: scale(1.05);

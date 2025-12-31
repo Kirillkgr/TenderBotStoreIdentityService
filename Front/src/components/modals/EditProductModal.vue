@@ -2,7 +2,7 @@
   <div class="epm-overlay" @click.self="onClose">
     <div class="epm-card" role="dialog" aria-modal="true" :style="cardStyle">
       <header class="epm-header" @mousedown.prevent="onHeaderDown">
-        <h3 class="epm-title">Редактирование товара</h3>
+        <h3 class="epm-title">{{ modalTitle }}</h3>
         <button class="epm-close" aria-label="Закрыть" @click="onClose">×</button>
       </header>
 
@@ -16,8 +16,8 @@
             @drop.prevent="onDrop"
           >
             <img v-if="previewUrl" :src="previewUrl" :alt="form.name" />
-            <div v-else class="epm-placeholder">
-              <span>Нет изображения</span>
+            <div v-else class="epm-placeholder" aria-label="Нет изображения">
+              <img :src="PRODUCTION_SVG_DATA" alt="Нет изображения" class="epm-fallback-img" />
             </div>
             <div class="epm-dropzone-actions">
               <input ref="fileInput" type="file" accept="image/*" @change="onFileChange" hidden />
@@ -70,7 +70,7 @@
               <label>Группа</label>
               <select class="select" v-model.number="form.groupTagId">
                 <option :value="0">Корень</option>
-                <option v-for="g in groupOptions" :key="g.id" :value="g.id">{{ g.label }}</option>
+                <option v-for="g in groupSelectOptions" :key="g.id" :value="g.id">{{ g.label }}</option>
               </select>
             </div>
           </div>
@@ -96,7 +96,7 @@
 
       <footer class="epm-footer">
         <button class="btn btn-secondary" type="button" @click="onClose">Отмена</button>
-        <button class="btn btn-secondary" type="button" @click="$emit('delete')" style="margin-right:auto;color:#b91c1c;border-color:#b91c1c;">Удалить</button>
+        <button v-if="!isCreate" class="btn btn-secondary" type="button" @click="$emit('delete')" style="margin-right:auto;color:#b91c1c;border-color:#b91c1c;">Удалить</button>
         <button class="btn btn-primary" type="button" :disabled="saving" @click="onSave">
           <span v-if="saving" class="loader"></span>
           Сохранить
@@ -108,14 +108,16 @@
 
 <script setup>
 import {computed, reactive, ref, watch} from 'vue';
+import tagService from '@/services/tagService';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   product: { type: Object, required: true },
   brands: { type: Array, default: () => [] },
-  groupOptions: { type: Array, default: () => [] }, // [{id, label}]
+  groupOptions: { type: Array, default: () => [] }, // legacy, not used when tree available
   tagOptions: { type: Array, default: () => [] },   // [{id, name}]
   theme: { type: String, default: 'auto' },         // 'light' | 'dark' | 'auto'
+  currentRootTagId: { type: [Number, String], default: 0 },
 });
 
 const emit = defineEmits(['update:modelValue', 'close', 'save', 'delete']);
@@ -123,6 +125,10 @@ const emit = defineEmits(['update:modelValue', 'close', 'save', 'delete']);
 const fileInput = ref(null);
 const isDragOver = ref(false);
 const saving = ref(false);
+
+// Режим модалки: создание или редактирование
+const isCreate = computed(() => !props.product || !props.product.id);
+const modalTitle = computed(() => (isCreate.value ? 'Создание товара' : 'Редактирование товара'));
 
 const form = reactive({
   id: props.product?.id,
@@ -153,6 +159,16 @@ watch(() => props.product, (p) => {
   form.visible = p.visible ?? true;
 }, { immediate: true });
 
+// Фолбэки по умолчанию, если не пришёл brandId/группа
+watch([() => form.brandId, () => props.brands], ([bid]) => {
+  if ((bid === null || bid === undefined) && Array.isArray(props.brands) && props.brands.length > 0) {
+    form.brandId = props.brands[0].id;
+  }
+}, { immediate: true });
+watch(() => form.groupTagId, (gid) => {
+  if (gid === null || gid === undefined) form.groupTagId = 0;
+}, { immediate: true });
+
 const errors = reactive({ name: '' });
 
 // Тема берётся из глобальных CSS-переменных (theme.css) через классы на html
@@ -161,6 +177,65 @@ const previewUrl = computed(() => {
   if (form.imageFile) return URL.createObjectURL(form.imageFile);
   return form.imageUrl;
 });
+
+// Встроенный production.svg как data:URI
+const PRODUCTION_SVG_DATA = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <style>.cls-1{fill:#231f20;}</style>
+  </defs>
+  <title>Wondicon - UI (Free)</title>
+  <path class="cls-1" d="M100,175.69a5,5,0,0,1-2.23-.53L27.08,139.89a5,5,0,0,1-2.77-4.48V64.86a5,5,0,0,1,2.77-4.47L97.77,25.11a5,5,0,0,1,4.46,0l70.69,35.28a5,5,0,0,1,2.77,4.47v70.55a5,5,0,0,1-2.77,4.48l-70.69,35.27A5,5,0,0,1,100,175.69ZM34.31,132.32,100,165.1l65.69-32.78V68L100,35.17,34.31,68Zm136.38,3.09h0Z"/>
+  <path class="cls-1" d="M100,105a5,5,0,0,1-2.23-.52L27.09,69.34a5,5,0,1,1,4.45-9l68.46,34,68.46-34a5,5,0,1,1,4.45,9l-70.68,35.14A5,5,0,0,1,100,105Z"/>
+  <path class="cls-1" d="M135.34,87.43a5,5,0,0,1-2.22-.52L62.43,51.77a5,5,0,1,1,4.45-9L137.57,78a5,5,0,0,1-2.23,9.48Z"/>
+  <path class="cls-1" d="M100,175.69a5,5,0,0,1-5-5V100a5,5,0,0,1,10,0v70.69A5,5,0,0,1,100,175.69Z"/>
+</svg>`);
+
+// Загрузка дерева тегов бренда и построение иерархии для выбора группы
+const tagTree = ref([]);
+const loadingTree = ref(false);
+
+async function loadTagTree(brandId) {
+  if (!brandId) { tagTree.value = []; return; }
+  loadingTree.value = true;
+  try {
+    const tree = await tagService.getTagTree(Number(brandId));
+    tagTree.value = Array.isArray(tree) ? tree : [];
+  } catch (_) {
+    tagTree.value = [];
+  } finally {
+    loadingTree.value = false;
+  }
+}
+
+function findSubtree(items, rootId) {
+  if (!rootId || rootId === 0) return items;
+  const stack = [...(items || [])];
+  while (stack.length) {
+    const node = stack.shift();
+    if (!node) continue;
+    if (Number(node.id) === Number(rootId)) {
+      return [node];
+    }
+    if (node.children && node.children.length) stack.push(...node.children);
+  }
+  return [];
+}
+
+function flatten(items, depth = 0) {
+  return (items || []).flatMap(it => [
+    { id: it.id, label: `${'— '.repeat(depth)}${it.name}` },
+    ...(it.children?.length ? flatten(it.children, depth + 1) : [])
+  ]);
+}
+
+const groupSelectOptions = computed(() => {
+  const rootId = Number(props.currentRootTagId || 0);
+  const base = findSubtree(tagTree.value, rootId);
+  return flatten(base, rootId && rootId !== 0 ? 0 : 0);
+});
+
+watch(() => form.brandId, async (bid) => { await loadTagTree(bid); }, { immediate: true });
 
 function toggleTag(id) {
   const idx = form.tagIds.indexOf(id);
@@ -289,7 +364,7 @@ const cardStyle = computed(() => ({
   position: relative;
   border: 1px dashed var(--border);
   border-radius: 14px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 16 / 9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -297,7 +372,8 @@ const cardStyle = computed(() => ({
 }
 .epm-dropzone.is-dragover { background: var(--input-bg-hover); }
 .epm-dropzone img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
-.epm-placeholder { color: var(--muted); font-size: .9rem; }
+.epm-placeholder { color: var(--muted); font-size: .9rem; display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+.epm-fallback-img { width: 60%; height: 60%; object-fit: contain; }
 .epm-dropzone-actions { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; }
 
 /* Right: form */

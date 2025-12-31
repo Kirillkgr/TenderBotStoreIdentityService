@@ -107,6 +107,14 @@ export const useAuthStore = defineStore('auth', {
             this.setUser(userData);
             // unreadCount обновляется через long-poll
 
+            // Немедленный редирект владельца в админку — до дополнительных запросов
+            try {
+                const roles = Array.isArray(this.roles) ? this.roles : [];
+                if (roles.includes('OWNER')) {
+                    await router.replace('/admin').catch(() => {});
+                }
+            } catch (_) {}
+
             // После логина получаем доступные memberships
             try {
                 const res = await authService.getMemberships();
@@ -153,6 +161,14 @@ export const useAuthStore = defineStore('auth', {
             try { window.dispatchEvent(new Event('open-sidebar')); } catch (_) {}
             // Закрыть модалку регистрации, если она управлялась событиями
             try { window.dispatchEvent(new Event('close-register-modal')); } catch (_) {}
+
+            // Редирект владельца сразу в админку после регистрации
+            try {
+                const roles = Array.isArray(this.roles) ? this.roles : [];
+                if (roles.includes('OWNER')) {
+                    await router.replace('/admin').catch(() => {});
+                }
+            } catch (_) {}
         },
 
         async checkUsername(username) {

@@ -50,8 +50,27 @@
             </li>
             <li class="subitem">
               <router-link v-can="{ any: ['ADMIN','OWNER','COOK','CASHIER'], mode: 'hide' }"
-                           to="/admin/inventory/ingredients" @click.native="onNavigate"><span
-                  class="txt">Ингредиенты</span></router-link>
+                           to="/admin/inventory/ingredients" @click.native="onNavigate"><span class="txt">Ингредиенты</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER','COOK','CASHIER'], mode: 'hide' }"
+                           to="/admin/inventory/warehouses" @click.native="onNavigate"><span class="txt">Склады</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
+                           to="/admin/inventory/units" @click.native="onNavigate"><span class="txt">Единицы</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }"
+                           to="/admin/inventory/suppliers" @click.native="onNavigate"><span class="txt">Поставщики</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/clients"
+                           @click.native="onNavigate"><span class="txt">Клиенты</span></router-link>
+            </li>
+            <li class="subitem">
+              <router-link v-can="{ any: ['ADMIN','OWNER','CASHIER'], mode: 'hide' }" to="/admin/orders"
+                           @click.native="onNavigate"><span class="txt">Заказы</span></router-link>
             </li>
           </template>
 
@@ -80,24 +99,7 @@
             </li>
             <li class="subitem muted" title="Требует реализации"><a href="#" @click.prevent><span
                 class="txt">Списания</span></a></li>
-            <li class="subitem">
-              <router-link v-can="{ any: ['ADMIN','OWNER','COOK','CASHIER'], mode: 'hide' }"
-                           to="/admin/inventory/warehouses" @click.native="onNavigate">
-                <span class="txt">Склады</span></router-link>
-            </li>
-            <li class="subitem">
-              <router-link v-can="{ any: ['ADMIN','OWNER','COOK','CASHIER'], mode: 'hide' }"
-                           to="/admin/inventory/ingredients" @click.native="onNavigate">
-                <span class="txt">Ингредиенты</span></router-link>
-            </li>
-            <li class="subitem">
-              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/inventory/units"
-                           @click.native="onNavigate"><span class="txt">Единицы</span></router-link>
-            </li>
-            <li class="subitem">
-              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/inventory/suppliers"
-                           @click.native="onNavigate"><span class="txt">Поставщики</span></router-link>
-            </li>
+            <!-- Removed duplicated inventory links; now under Меню -->
           </template>
 
           <!-- Раздел: Маркетинг -->
@@ -109,14 +111,7 @@
             </button>
           </li>
           <template v-if="expanded.marketing">
-            <li class="subitem">
-              <router-link v-can="{ any: ['ADMIN','OWNER'], mode: 'hide' }" to="/admin/clients"
-                           @click.native="onNavigate"><span class="txt">Клиенты</span></router-link>
-            </li>
-            <li class="subitem">
-              <router-link v-can="{ any: ['ADMIN','OWNER','CASHIER'], mode: 'hide' }" to="/admin/orders"
-                           @click.native="onNavigate"><span class="txt">Заказы</span></router-link>
-            </li>
+            <!-- Removed Клиенты и Заказы; теперь под Меню -->
           </template>
 
           <!-- Раздел: Операции -->
@@ -211,7 +206,7 @@ const route = useRoute();
 const auth = useAuthStore();
 const isAuth = computed(() => auth.isAuthenticated);
 
-const expanded = reactive({sklad: false, marketing: false, ops: false, other: false});
+const expanded = reactive({menu: false, sklad: false, marketing: false, ops: false, other: false});
 
 function toggleGroup(key) {
   if (ui.isDesktop && ui.sidebarCollapsed) {
@@ -236,6 +231,7 @@ function restoreExpanded() {
     const raw = localStorage.getItem('ui_sidebar_expanded');
     if (raw) {
       const obj = JSON.parse(raw);
+      expanded.menu = !!obj.menu;
       expanded.sklad = !!obj.sklad;
       expanded.marketing = !!obj.marketing;
       expanded.ops = !!obj.ops;
@@ -246,12 +242,20 @@ function restoreExpanded() {
 }
 
 function autoExpandByRoute(path) {
-  // inventory -> склад
-  if (/^\/admin\/(inventory|orders)?/.test(path)) {
-    // inventory definitely склад; orders относится к маркетингу, обработаем ниже
-    if (/^\/admin\/inventory\//.test(path)) expanded.sklad = true;
+  // Меню раздел: бренды, теги, создание, перенесённые страницы инвентаря, клиенты, заказы
+  if (
+    /^\/?$/.test(path) ||
+    /^\/admin(\?.*)?$/.test(path) ||
+    /^\/admin\/brands/.test(path) ||
+    /^\/brands\/\d+\/tags/.test(path) ||
+    /^\/admin\?create=(tag|product)/.test(path) ||
+    /^\/admin\/inventory\/(ingredients|warehouses|units|suppliers)/.test(path) ||
+    /^\/admin\/(clients|orders)/.test(path)
+  ) {
+    expanded.menu = true;
   }
-  if (/^\/admin\/(clients|orders)/.test(path)) expanded.marketing = true;
+  // inventory stock/supplies остаются в разделе Склад
+  if (/^\/admin\/inventory\/(stock|supplies)/.test(path)) expanded.sklad = true;
   if (/^\/(kitchen|cashier)/.test(path)) expanded.ops = true;
   if (/^\/(profile(\/edit)?|my-orders|cart|checkout|staff|admin\/archive|brands\/[^/]+\/tags)/.test(path)) expanded.other = true;
 }

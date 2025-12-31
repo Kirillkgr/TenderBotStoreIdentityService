@@ -80,7 +80,7 @@ public class MenuController {
         // ВАЖНО: используем публичный метод без проверок tenant-контекста
         List<ProductResponse> products = productService.getPublicByBrandAndGroup(brandId, groupTagId);
         List<PublicProductResponse> response = products.stream()
-                .map(p -> new PublicProductResponse(p.getId(), p.getName(), p.getDescription(), p.getPrice(), p.getPromoPrice(), p.isVisible()))
+                .map(p -> new PublicProductResponse(p.getId(), p.getName(), p.getDescription(), p.getPrice(), p.getPromoPrice(), p.isVisible(), p.getImageUrl()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }

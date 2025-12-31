@@ -118,15 +118,14 @@ address:
         - "http://*.amd:8080"
 
 s3:
-  endpoint: https://storage.yandexcloud.net
-  region: ru-central1
-  bucket: kirillkgr.ru
+  endpoint: ${S3_ENDPOINT:https://storage.yandexcloud.net}
+  region: ${S3_REGION:ru-central1}
+  bucket: ${S3_BUCKET:kirillkgr.ru}
   accessKey: ${S3_ACCESS_KEY:change-me}
   secretKey: ${S3_SECRET_KEY:change-me}
-  publicBaseUrl: https://storage.yandexcloud.net/kirillkgr.ru
+  publicBaseUrl: ${S3_PUBLIC_BASE_URL:https://storage.yandexcloud.net/kirillkgr.ru}
   cache:
-    maxAgeSeconds: 2592000
-
+    maxAgeSeconds: ${S3_CACHE_MAX_AGE_SECONDS:2592000}
 
 springdoc:
   api-docs:

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -125,6 +126,20 @@ public class ProductController {
     ) {
         rbacGuard.requireOwnerOrAdmin();
         ProductResponse response = productService.move(productId, targetGroupTagId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Загрузить картинку товара и привязать к товару (перезаписывает предыдущую)
+     */
+    @PostMapping(path = "/{productId}/image")
+    @Operation(summary = "Загрузить изображение товара", description = "Требования: роль OWNER или ADMIN активного membership. Перезаписывает предыдущую картинку.")
+    public ResponseEntity<ProductResponse> uploadImage(
+            @PathVariable Long productId,
+            @RequestParam("file") MultipartFile file
+    ) throws java.io.IOException {
+        rbacGuard.requireOwnerOrAdmin();
+        ProductResponse response = productService.uploadImage(productId, file);
         return ResponseEntity.ok(response);
     }
 
