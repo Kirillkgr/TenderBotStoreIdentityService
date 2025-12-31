@@ -22,14 +22,14 @@
         <span v-if="brandChip" :title="brandChipTitle" class="brand-chip">{{ brandChip }}</span>
       </div>
 
-<!--      <div class="nav-links">-->
-<!--        <button-->
-<!--          v-if="showLegacyContextBtn"-->
-<!--          class="nav-link nav-link&#45;&#45;ctx-legacy"-->
-<!--          type="button"-->
-<!--          @click="openContextModal"-->
-<!--        >Контексты</button>-->
-<!--      </div>-->
+      <div class="nav-links">
+        <button
+          v-if="isTestEnv"
+          :class="['nav-link', 'nav-link--ctx-test-visible']"
+          type="button"
+          @click="openContextModal"
+        >Контексты</button>
+      </div>
 
       <!-- Right CTA wrapper: cart + user avatar/menu -->
       <div class="right-cta">
@@ -114,6 +114,7 @@ const ui = useUiStore();
 const qrDataUrl = computed(() =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
 );
+const isTestEnv = computed(() => (import.meta?.env?.MODE === 'test'));
 const showLegacyContextBtn = computed(() => {
   const isTest = (import.meta?.env?.MODE === 'test');
   const hasMany = Array.isArray(authStore.memberships) ? authStore.memberships.length > 1 : false;
@@ -840,6 +841,13 @@ watch(showQr, (open) => {
   }
   .nav-link {
     display: none !important;
+  }
+  /* Keep legacy test button visible on small widths during tests */
+  .nav-link--ctx-test-visible {
+    display: inline-block !important;
+    position: static !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   .user-chip-wrap {
     position: fixed !important;

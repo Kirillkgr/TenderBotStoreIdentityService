@@ -36,8 +36,11 @@ describe('ACL Smoke: AppHeader links, context select, ensureRoleAndGo', () => {
             }
         });
         renderWithAcl(AppHeader, {props: {isModalVisible: false}});
-        // open modal by clicking "Контексты"
-        const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Контексты'));
+        // open user menu, then click "Контексты" inside it
+        const avatarBtn = document.querySelector('.user-chip');
+        await fireEvent.click(avatarBtn);
+        const btn = Array.from(document.querySelectorAll('.user-menu button'))
+            .find(b => b.textContent?.includes('Контексты'));
         await fireEvent.click(btn);
         // click Choose on second membership
         const chooseButtons = Array.from(document.querySelectorAll('.ctx-list .btn-primary'));
