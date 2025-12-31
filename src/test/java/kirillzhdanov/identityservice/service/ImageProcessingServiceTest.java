@@ -29,8 +29,8 @@ public class ImageProcessingServiceTest {
         byte[] bytes = baos.toByteArray();
 
         ImageProcessingService.ProcessedResult result = service.processToPngSquare(bytes);
-        assertEquals("image/png", result.getContentType());
-        Map<ImageProcessingService.SizeKey, byte[]> map = result.getImagesBySize();
+        assertEquals("image/png", result.contentType());
+        Map<ImageProcessingService.SizeKey, byte[]> map = result.imagesBySize();
         assertTrue(map.containsKey(ImageProcessingService.SizeKey.S512));
         assertTrue(map.containsKey(ImageProcessingService.SizeKey.S256));
         assertTrue(map.containsKey(ImageProcessingService.SizeKey.S125));

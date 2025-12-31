@@ -33,6 +33,7 @@ public class GroupTagService {
     private final GroupTagArchiveRepository groupTagArchiveRepository;
     private final ProductRepository productRepository;
     private final ProductService productService;
+    private final PathResolutionService pathResolutionService;
 
     // ===== Context guards (centralized in ContextGuards) =====
 
@@ -409,46 +410,7 @@ public class GroupTagService {
     // Проходит по родительским сегментам (без самого восстанавливаемого тега),
     // для каждого уровня пытается: 1) найти живую группу; 2) восстановить из архива по точному пути; 3) создать по имени.
     private GroupTag ensureParentsArchiveFirst(Brand brand, String path) {
-        if (path == null || path.isBlank()) return null;
-        String trimmed = path.trim();
-        if (trimmed.startsWith("/")) trimmed = trimmed.substring(1);
-        if (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
-        if (trimmed.isBlank()) return null;
-
-        String[] parts = trimmed.split("/");
-        if (parts.length < 2) return null; // нет даже бренда
-
-        GroupTag currentParent = null;
-        StringBuilder prefix = new StringBuilder("/");
-        prefix.append(parts[0]).append("/"); // бренд
-
-        for (int i = 1; i < parts.length - 1; i++) {
-            String name = parts[i];
-            if (name == null || name.isBlank()) continue;
-            // 1) живой узел
-            java.util.Optional<GroupTag> found = groupTagRepository.findByBrandAndNameAndParent(brand, name, currentParent);
-            if (found.isPresent()) {
-                currentParent = found.get();
-                prefix.append(name).append("/");
-                continue;
-            }
-            // 2) архивный узел по точному пути
-            prefix.append(name).append("/");
-            java.util.Optional<GroupTagArchive> archived = groupTagArchiveRepository.findByBrandIdAndPath(brand.getId(), prefix.toString());
-            if (archived.isPresent()) {
-                GroupTagArchive ga = archived.get();
-                GroupTag created = new GroupTag(ga.getName(), brand, currentParent);
-                created = groupTagRepository.save(created);
-                groupTagArchiveRepository.delete(ga);
-                currentParent = created;
-            } else {
-                // 3) создать по имени
-                GroupTag created = new GroupTag(name, brand, currentParent);
-                created = groupTagRepository.save(created);
-                currentParent = created;
-            }
-        }
-        return currentParent;
+        return pathResolutionService.ensureParentsArchiveForParentsOnly(brand, path);
     }
 
     @Transactional

@@ -121,13 +121,13 @@ public class MediaService {
         s3.buildPublicUrl(originalKey).ifPresent(u -> resultUrls.put("original", u));
 
         ImageProcessingService.ProcessedResult processed = imageService.processToPngSquare(bytes);
-        Map<ImageProcessingService.SizeKey, byte[]> map = processed.getImagesBySize();
+        Map<ImageProcessingService.SizeKey, byte[]> map = processed.imagesBySize();
         String[] ordered = {"512", "256", "125"};
         ImageProcessingService.SizeKey[] keys = {ImageProcessingService.SizeKey.S512, ImageProcessingService.SizeKey.S256, ImageProcessingService.SizeKey.S125};
         for (int i = 0; i < ordered.length; i++) {
             final String sizeName = ordered[i];
             String key = basePath + sizeName + ".png";
-            s3.upload(key, map.get(keys[i]), processed.getContentType(), publicForHomepage);
+            s3.upload(key, map.get(keys[i]), processed.contentType(), publicForHomepage);
             resultKeys.put(sizeName, key);
             s3.buildPublicUrl(key).ifPresent(u -> resultUrls.put(sizeName, u));
         }
@@ -182,7 +182,7 @@ public class MediaService {
     public Map<String, String> uploadUserAvatar(String userId, byte[] bytes, String contentType) throws IOException {
         // Always process to square 512 PNG, store privately
         ImageProcessingService.ProcessedResult processed = imageService.processToPngSquare(bytes);
-        byte[] png512 = processed.getImagesBySize().get(ImageProcessingService.SizeKey.S512);
+        byte[] png512 = processed.imagesBySize().get(ImageProcessingService.SizeKey.S512);
         String key = getUserAvatarKey(userId);
         s3.upload(key, png512, "image/png", false);
         Map<String, String> resp = new HashMap<>();
@@ -191,25 +191,26 @@ public class MediaService {
         return resp;
     }
 
-    // ================= Product Image ==================
-    public String getProductImageKey(String productId) {
-        return "product-images/" + sanitize(productId) + "/image.png";
-    }
-
     public Map<String, String> uploadProductImage(String productId, byte[] bytes, String contentType) throws IOException {
         // Save original as-is
         String ext = detectExtension(contentType);
         String base = "product-images/" + sanitize(productId) + "/";
         String originalKey = base + "original" + (ext != null ? ("." + ext) : "");
+        if (bytes == null || bytes.length == 0) {
+            throw new IOException("Empty image payload for original");
+        }
         s3.upload(originalKey, bytes, contentType != null ? contentType : "application/octet-stream", false);
 
         // Process to 16:9 JPEG with heights 256 and 512 (no transparency needed)
         ImageProcessingService.ProcessedResult processed169 = imageService.processToPng16x9(bytes);
-        byte[] h256 = processed169.getImagesBySize().get(ImageProcessingService.SizeKey.H256);
-        byte[] h512 = processed169.getImagesBySize().get(ImageProcessingService.SizeKey.H512);
+        byte[] h256 = processed169.imagesBySize().get(ImageProcessingService.SizeKey.H256);
+        byte[] h512 = processed169.imagesBySize().get(ImageProcessingService.SizeKey.H512);
+        if (h256 == null || h256.length == 0 || h512 == null || h512.length == 0) {
+            throw new IOException("Failed to generate resized images: H256=" + (h256 == null ? -1 : h256.length) + ", H512=" + (h512 == null ? -1 : h512.length));
+        }
         String key256 = base + "h256.jpg";
         String key512 = base + "h512.jpg";
-        String variantContentType = processed169.getContentType() != null ? processed169.getContentType() : "image/jpeg";
+        String variantContentType = processed169.contentType() != null ? processed169.contentType() : "image/jpeg";
         s3.upload(key256, h256, variantContentType, false);
         s3.upload(key512, h512, variantContentType, false);
 
