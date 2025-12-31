@@ -23,8 +23,7 @@
       </div>
 
       <div class="nav-links">
-        <button v-if="authStore.isAuthenticated" class="nav-link" type="button" @click="openContextModal">Контексты
-        </button>
+      
       </div>
 
       <!-- Right CTA wrapper: cart + user avatar/menu -->
@@ -52,6 +51,7 @@
           <transition name="fade-scale">
             <div v-if="chipHover" class="user-menu" @mouseenter="keepUserMenuOpen" @mouseleave="scheduleAutoClose">
               <template v-if="authStore.isAuthenticated">
+                <button v-if="(Array.isArray(authStore.memberships) ? authStore.memberships.length : 0) > 1" class="user-menu__item" type="button" @click="openContextModal">Контексты</button>
                 <button class="user-menu__item" type="button" @click="goProfile">Профиль</button>
                 <button class="user-menu__item user-menu__item--danger" type="button" @click="handleLogout">Выйти</button>
               </template>
