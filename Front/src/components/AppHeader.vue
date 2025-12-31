@@ -25,39 +25,43 @@
       <div class="nav-links">
         <button v-if="authStore.isAuthenticated" class="nav-link" type="button" @click="openContextModal">Контексты
         </button>
+      </div>
+
+      <!-- Right CTA wrapper: cart + user avatar/menu -->
+      <div class="right-cta">
         <button :aria-label="`Корзина, товаров: ${cartCountDisplay}, сумма: ${cartTotalDisplay}`" class="cart-btn" type="button"
                 @click="openMiniCart">
           <span class="cart-ico" v-html="cartSvg"></span>
           <span v-if="cartCount > 0" :class="{ pulse: badgePulse }" :title="`В корзине: ${cartCountDisplay}`"
                 class="cart-badge">{{ cartCountDisplay }}</span>
         </button>
-      </div>
 
-      <!-- User avatar/menu (visible for guests as well) -->
-      <div class="user-chip-wrap" @mouseenter="chipHover = true" @mouseleave="chipHover = false">
-        <button
-            :title="authStore.isAuthenticated ? (authStore.user?.username || 'Профиль') : 'Войти или зарегистрироваться'"
-            class="user-chip" type="button"
-            @click.stop="authStore.isAuthenticated ? goProfile() : (chipHover = !chipHover)">
-          <img v-if="authStore.user?.avatarUrl" :src="authStore.user.avatarUrl" alt="avatar" class="user-chip__img"
-               height="28" width="28"/>
-          <img v-else :src="userIcon" alt="user" class="user-chip__img user-chip__img--placeholder" height="28"
-               width="28"/>
-          <span v-if="authStore.isAuthenticated && (nStore.hasAnyUnread || nStore.hasClientNavDot)"
-                :title="`Есть новые события`" class="unread-dot"></span>
-        </button>
-        <transition name="fade-scale">
-          <div v-if="chipHover" class="user-menu" @mouseenter="chipHover = true" @mouseleave="chipHover = false">
-            <template v-if="authStore.isAuthenticated">
-              <button class="user-menu__item" type="button" @click="goProfile">Профиль</button>
-              <button class="user-menu__item user-menu__item--danger" type="button" @click="handleLogout">Выйти</button>
-            </template>
-            <template v-else>
-              <button class="user-menu__item" type="button" @click="openLogin">Войти</button>
-              <button class="user-menu__item" type="button" @click="openRegister">Зарегистрироваться</button>
-            </template>
-          </div>
-        </transition>
+        <!-- User avatar/menu (visible for guests as well) -->
+        <div class="user-chip-wrap" ref="userChipWrapRef" @mouseenter="keepUserMenuOpen" @mouseleave="scheduleAutoClose">
+          <button
+              :title="authStore.isAuthenticated ? (authStore.user?.username || 'Профиль') : 'Войти или зарегистрироваться'"
+              class="user-chip" type="button"
+              @click.stop="toggleUserMenu">
+            <img v-if="authStore.user?.avatarUrl" :src="authStore.user.avatarUrl" alt="avatar" class="user-chip__img"
+                 height="28" width="28"/>
+            <img v-else :src="userIcon" alt="user" class="user-chip__img user-chip__img--placeholder" height="28"
+                 width="28"/>
+            <span v-if="authStore.isAuthenticated && (nStore.hasAnyUnread || nStore.hasClientNavDot)"
+                  :title="`Есть новые события`" class="unread-dot"></span>
+          </button>
+          <transition name="fade-scale">
+            <div v-if="chipHover" class="user-menu" @mouseenter="keepUserMenuOpen" @mouseleave="scheduleAutoClose">
+              <template v-if="authStore.isAuthenticated">
+                <button class="user-menu__item" type="button" @click="goProfile">Профиль</button>
+                <button class="user-menu__item user-menu__item--danger" type="button" @click="handleLogout">Выйти</button>
+              </template>
+              <template v-else>
+                <button class="user-menu__item" type="button" @click="openLogin">Войти</button>
+                <button class="user-menu__item" type="button" @click="openRegister">Зарегистрироваться</button>
+              </template>
+            </div>
+          </transition>
+        </div>
       </div>
     </nav>
     <!-- Modal with enlarged QR for easy scanning (teleported to body) -->
@@ -98,7 +102,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['open-login-modal', 'open-register-modal', 'open-mini-cart']);
+const emit = defineEmits(['open-login-modal', 'open-register-modal', 'open-mini-cart', 'toggle-mini-cart']);
 const route = useRoute();
 const authStore = useAuthStore();
 const nStore = useNotificationsStore();
@@ -217,6 +221,61 @@ const isMenuOpen = ref(false);
 const showQr = ref(false);
 const showContext = ref(false);
 const chipHover = ref(false);
+const userChipWrapRef = ref(null);
+let userMenuCloseTimer = null;
+
+function openUserMenu() {
+  chipHover.value = true;
+  scheduleAutoClose();
+  addOutsideClickListener();
+}
+
+function closeUserMenu() {
+  chipHover.value = false;
+  clearAutoClose();
+  removeOutsideClickListener();
+}
+
+function toggleUserMenu() {
+  if (chipHover.value) closeUserMenu(); else openUserMenu();
+}
+
+function scheduleAutoClose() {
+  clearAutoClose();
+  userMenuCloseTimer = setTimeout(() => {
+    closeUserMenu();
+  }, 5000);
+}
+
+function keepUserMenuOpen() {
+  // Пока курсор в меню — не закрываем
+  clearAutoClose();
+}
+
+function clearAutoClose() {
+  if (userMenuCloseTimer) {
+    clearTimeout(userMenuCloseTimer);
+    userMenuCloseTimer = null;
+  }
+}
+
+function onDocumentClick(e) {
+  try {
+    const root = userChipWrapRef.value;
+    if (!root) return closeUserMenu();
+    if (!root.contains(e.target)) closeUserMenu();
+  } catch (_) {
+    closeUserMenu();
+  }
+}
+
+function addOutsideClickListener() {
+  document.addEventListener('click', onDocumentClick, { capture: true });
+}
+
+function removeOutsideClickListener() {
+  document.removeEventListener('click', onDocumentClick, { capture: true });
+}
 const isProfilePage = computed(() => route.name === 'Profile');
 const isHeaderVisible = ref(true);
 let lastScrollPosition = 0;
@@ -293,7 +352,7 @@ function openRegister() {
 }
 
 function openMiniCart() {
-  emit('open-mini-cart');
+  emit('toggle-mini-cart');
   isMenuOpen.value = false;
 }
 
@@ -418,6 +477,7 @@ onBeforeUnmount(() => {
   }
   window.removeEventListener('keydown', onKeydown);
   window.removeEventListener('open-context-modal', openContextModal);
+  removeOutsideClickListener();
 });
 
 watch(themeMode, (v) => {
@@ -512,18 +572,19 @@ watch(showQr, (open) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.06);
   padding: 0;
+  box-sizing: border-box;
   cursor: pointer;
 }
 
 .user-chip__img {
-  width: 28px;
-  height: 28px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -640,6 +701,8 @@ watch(showQr, (open) => {
   left: 0;
   right: 0;
   --header-height: 60px;
+  --icon-size: 28px;
+  --icon-inner: 22px;
   background: #2c2c2c;
   padding: 0.75rem 1.5rem;
   z-index: 1000;
@@ -648,7 +711,7 @@ watch(showQr, (open) => {
   align-items: center;
   transition: transform 0.3s ease-in-out;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  min-height: var(--header-height); /* стабильная высота шапки */
+  height: var(--header-height); /* стабильная высота шапки */
 }
 
 /* Header-specific tweaks for inline QR icon (small size like before) */
@@ -689,17 +752,26 @@ watch(showQr, (open) => {
   z-index: 1; /* ниже, чем overlay-элементы справа */
 }
 
-/* User compact avatar next to logo */
+/* Fixed right wrapper for cart + user to keep them aligned on all widths */
+.right-cta {
+  position: fixed;
+  right: 8px;
+  top: calc(var(--header-height) / 2 - var(--icon-size) / 2);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px; /* зазор между корзиной и аватаркой */
+  z-index: 10001;
+  pointer-events: auto;
+}
+
+/* User compact avatar */
 .user-chip-wrap {
-  position: relative;
-  z-index: 2; /* выше, чем логотип */
-  align-self: center; /* вертикально по центру навбара */
-  margin-left: 12px; /* небольшой отступ от ссылок справа */
+  position: static;
 }
 
 .user-chip {
-  width: 28px;
-  height: 28px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid rgba(180, 180, 180, 0.45); /* серая граница для лучшей видимости */
@@ -708,6 +780,7 @@ watch(showQr, (open) => {
   align-items: center;
   justify-content: center;
   padding: 0;
+  box-sizing: border-box;
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease;
 }
@@ -719,8 +792,8 @@ watch(showQr, (open) => {
 }
 
 .user-chip__img {
-  width: 28px;
-  height: 28px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   object-fit: cover;
   display: block;
 }
@@ -757,6 +830,38 @@ watch(showQr, (open) => {
 
 .user-menu__item--danger {
   color: #ff6b6b;
+}
+
+/* Hide logo and 'Контексты' button on narrow screens; pin avatar on top-left */
+@media (max-width: 650px) {
+  .logo {
+    display: none !important;
+  }
+  .nav-link {
+    display: none !important;
+  }
+  .user-chip-wrap {
+    position: fixed !important;
+    right: 8px !important;
+    top: calc(var(--header-height) / 2 - var(--icon-size) / 2) !important;
+    transform: none !important;
+    z-index: 10001 !important;
+    pointer-events: auto;
+  }
+  /* Cart pinned near avatar, consistent size and stacking */
+  .cart-btn {
+    position: fixed !important;
+    right: 48px !important; /* place cart left of avatar with 12px gap */
+    top: calc(var(--header-height) / 2 - var(--icon-size) / 2) !important;
+    width: var(--icon-size) !important;
+    height: var(--icon-size) !important;
+    z-index: 10001 !important;
+  }
+  .cart-ico { width: var(--icon-inner); height: var(--icon-inner); }
+  .cart-badge { left: -6px; bottom: -6px; }
+  .user-menu {
+    z-index: 10002 !important;
+  }
 }
 
 
@@ -842,21 +947,22 @@ watch(showQr, (open) => {
 
 /* Cart button aligned with avatar size and styling */
 .cart-btn {
-  position: relative;
-  width: 28px;
-  height: 28px;
+  position: static;
+  width: var(--icon-size);
+  height: var(--icon-size);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  box-sizing: border-box;
   background: transparent;
   border: none;
 }
 
 .cart-ico {
   display: inline-flex;
-  width: 22px;
-  height: 22px;
+  width: var(--icon-inner);
+  height: var(--icon-inner);
   color: var(--text);
   opacity: .85;
   filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, .5));
@@ -963,12 +1069,16 @@ watch(showQr, (open) => {
     pointer-events: auto;
   }
 
+  .context-brand-hint {
+    display: none; /* hide on very small screens */
+  }
+
   .user-chip-wrap {
-    position: absolute;
+    position: fixed;
     right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 6;
+    top: calc(var(--header-height) / 2 - var(--icon-size) / 2);
+    transform: none;
+    z-index: 10001;
     pointer-events: auto;
   }
 

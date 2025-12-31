@@ -5,7 +5,7 @@
         :is-modal-visible="isModalVisible"
         @open-login-modal="openModal('LoginView')"
         @open-register-modal="openModal('RegisterView')"
-        @open-mini-cart="showMiniCart = true"
+        @toggle-mini-cart="toggleMiniCart"
     />
     <main class="main-content">
       <!--      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>-->
@@ -102,6 +102,11 @@ function handleSuccess() {
 function openCheckout() {
   showMiniCart.value = false;
   openModal('CheckoutModal');
+}
+
+function toggleMiniCart() {
+  // Toggle visibility. If opening, center via ModalBase logic on watch()
+  showMiniCart.value = !showMiniCart.value;
 }
 
 watch(

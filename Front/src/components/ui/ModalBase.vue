@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import {onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
+import {nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -42,9 +42,37 @@ const windowRef = ref(null);
 const position = reactive({ top: 80, left: 0 });
 let drag = null;
 
-function center() {
+function clampToViewport(left, top) {
   const w = window.innerWidth;
-  position.left = Math.max(16, (w - (props.width || 800)) / 2);
+  const h = window.innerHeight;
+  const EDGE = 8; // небольшой постоянный отступ от краёв, чтобы не было "прилипания" и дрожания
+  const modalW = (windowRef.value?.offsetWidth) || Math.min(w * 0.96, props.width || 800);
+  const modalH = (windowRef.value?.offsetHeight) || 400;
+  const minLeft = EDGE;
+  const minTop = EDGE;
+  const maxLeft = Math.max(EDGE, w - modalW - EDGE);
+  const maxTop = Math.max(EDGE, h - modalH - EDGE);
+  return {
+    left: Math.min(Math.max(minLeft, left), maxLeft),
+    top: Math.min(Math.max(minTop, top), maxTop),
+  };
+}
+
+function center() {
+  try {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const modalW = (windowRef.value?.offsetWidth) || Math.min(w * 0.96, props.width || 800);
+    const modalH = (windowRef.value?.offsetHeight) || 400;
+    const left = (w - modalW) / 2;
+    const top = (h - modalH) / 2;
+    const p = clampToViewport(left, top);
+    position.left = p.left;
+    position.top = p.top;
+  } catch (_) {
+    position.left = 0;
+    position.top = 0;
+  }
 }
 
 function onDragStart(e) {
@@ -61,8 +89,11 @@ function onDragStart(e) {
 }
 function onDrag(e) {
   if (!drag) return;
-  position.top = Math.max(16, drag.startTop + (e.clientY - drag.startY));
-  position.left = Math.max(16, drag.startLeft + (e.clientX - drag.startX));
+  const rawTop = drag.startTop + (e.clientY - drag.startY);
+  const rawLeft = drag.startLeft + (e.clientX - drag.startX);
+  const p = clampToViewport(rawLeft, rawTop);
+  position.top = p.top;
+  position.left = p.left;
 }
 function onDragEnd() {
   document.removeEventListener('mousemove', onDrag);
@@ -78,8 +109,9 @@ function onOverlay() {
   if (props.closeOnOverlay) close();
 }
 
-watch(() => props.modelValue, (open) => {
+watch(() => props.modelValue, async (open) => {
   if (open) {
+    await nextTick();
     center();
     if (props.lockBodyScroll) document.body.style.overflow = 'hidden';
   } else {
@@ -87,9 +119,15 @@ watch(() => props.modelValue, (open) => {
   }
 });
 
-onMounted(() => {
+onMounted(async () => {
+  await nextTick();
   center();
-  window.addEventListener('resize', center);
+  window.addEventListener('resize', () => {
+    // При изменении размера окна просто зажимаем текущую позицию в границах
+    const p = clampToViewport(position.left, position.top);
+    position.left = p.left;
+    position.top = p.top;
+  });
 });
 
 onBeforeUnmount(() => {
@@ -114,7 +152,7 @@ onBeforeUnmount(() => {
 }
 .modal-window {
   position: absolute;
-  width: min(96vw, v-bind(width)px);
+  width: min(100vw, v-bind(width)px);
   max-width: 1000px;
   background: var(--card, #1e1e1e);
   color: var(--text, #fff);
@@ -142,9 +180,28 @@ onBeforeUnmount(() => {
 .modal-header.band-primary { background: var(--primary, #3498db); color: #fff; }
 .modal-header.square { border-top-left-radius: 0; border-top-right-radius: 0; }
 .modal-title { margin: 0; font-size: 1.1rem; line-height: 1.2; font-weight: 600; }
-.modal-close { background: transparent; border: none; color: #bbb; font-size: 20px; cursor: pointer; }
+.modal-close {
+  background: #ff5a5f;
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25);
+}
 .modal-header.band-primary .modal-close { color: #fff; }
-.modal-header.band-primary .modal-close:hover { color: var(--error, #ff5a5f); }
+.modal-close:hover { filter: brightness(1.05); }
+.modal-close:focus-visible {
+  outline: 2px solid rgba(255,90,95,.6);
+  outline-offset: 2px;
+}
 .modal-body { padding: 1rem; max-height: 80vh; overflow: auto; }
 .modal-footer { padding: .75rem 1rem; border-top: 1px solid var(--border, #333); display: flex; gap: 16px; justify-content: flex-end; }
 .modal-footer.square { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }

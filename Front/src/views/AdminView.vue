@@ -1276,6 +1276,20 @@ const selectBrand = async (brandId) => {
     // Устанавливаем выбранный бренд
     selectedBrand.value = nextId;
 
+    // Автопереключение контекста: если выбран другой бренд в админке,
+    // пробуем переключить membership на соответствующий бренд перед загрузкой данных
+    try {
+      if (nextId && Number(authStore.brandId || 0) !== nextId) {
+        const list = Array.isArray(authStore.memberships) ? authStore.memberships : [];
+        const m = list.find(x => Number(x.brandId || x.brand?.id) === nextId);
+        if (m) {
+          await authStore.selectMembership(m);
+        }
+      }
+    } catch (_) {
+      // игнорируем: если переключить контекст не удалось, просто продолжим загрузку
+    }
+
     if (nextId) {
       console.log('Loading tags for brand:', nextId);
       await fetchTags(nextId, 0); // корневой уровень
