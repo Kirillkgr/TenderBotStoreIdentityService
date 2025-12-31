@@ -83,7 +83,7 @@
 
 <script setup>
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
+import {useRouter} from 'vue-router';
 import {useAuthStore} from '../store/auth';
 import {useNotificationsStore} from '../store/notifications';
 import {useCartStore} from '../store/cart';
@@ -95,15 +95,7 @@ import qrInline from '../assets/qr-code.svg?raw';
 import userIcon from '../assets/user.svg';
 import cartSvg from '../assets/cart.svg?raw';
 
-const props = defineProps({
-  isModalVisible: {
-    type: Boolean,
-    required: true
-  }
-});
-
-const emit = defineEmits(['open-login-modal', 'open-register-modal', 'open-mini-cart', 'toggle-mini-cart']);
-const route = useRoute();
+const emit = defineEmits(['open-login-modal', 'open-register-modal', 'toggle-mini-cart']);
 const authStore = useAuthStore();
 const nStore = useNotificationsStore();
 const cartStore = useCartStore();
@@ -113,7 +105,7 @@ const ui = useUiStore();
 const qrDataUrl = computed(() =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
 );
-ref(cartSvg);
+// cartSvg is used in template via v-html
 const badgePulse = ref(false);
 
 function openContextModal() {
@@ -276,7 +268,6 @@ function addOutsideClickListener() {
 function removeOutsideClickListener() {
   document.removeEventListener('click', onDocumentClick, { capture: true });
 }
-const isProfilePage = computed(() => route.name === 'Profile');
 const isHeaderVisible = ref(true);
 let lastScrollPosition = 0;
 
