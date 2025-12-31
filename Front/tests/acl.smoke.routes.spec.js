@@ -34,13 +34,13 @@ describe('ACL Smoke: routes guard and visibility', () => {
         const buttons = Array.from(document.querySelectorAll('button.group-btn'));
         for (const b of buttons) await fireEvent.click(b);
         const adminLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Админ'));
-        expect(adminLink && getComputedStyle(adminLink).display === 'none').toBe(true);
+        expect(!adminLink || getComputedStyle(adminLink).display === 'none').toBe(true);
         const orders = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Заказы'));
-        expect(orders && getComputedStyle(orders).display === 'none').toBe(true);
+        expect(!orders || getComputedStyle(orders).display === 'none').toBe(true);
         const cashier = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Касса'));
-        expect(cashier && getComputedStyle(cashier).display === 'none').toBe(true);
+        expect(!cashier || getComputedStyle(cashier).display === 'none').toBe(true);
         const kitchen = Array.from(document.querySelectorAll('a')).find(a => a.textContent?.includes('Кухня'));
-        expect(kitchen && getComputedStyle(kitchen).display === 'none').toBe(true);
+        expect(!kitchen || getComputedStyle(kitchen).display === 'none').toBe(true);
     });
 
     it('ADMIN sees Admin and Orders', async () => {

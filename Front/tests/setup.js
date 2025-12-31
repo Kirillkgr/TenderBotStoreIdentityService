@@ -42,6 +42,17 @@ vi.mock('vue-router', async () => {
     };
 });
 
+// Globally stub router-link to avoid resolution warnings in shallow-mounted components
+try {
+    const {config} = await import('@vue/test-utils');
+    config.global.stubs = config.global.stubs || {};
+    if (!config.global.stubs['router-link']) {
+        config.global.stubs['router-link'] = { template: '<a><slot /></a>' };
+    }
+} catch (_) {}
+
+// Do not globally mock axios to preserve interceptor behavior in API tests.
+
 // Mock authService by default. refresh rejects to simulate no refresh cookie, so unauthenticated flows (router guards) behave predictably.
 vi.mock('@/services/authService', async () => {
     return {

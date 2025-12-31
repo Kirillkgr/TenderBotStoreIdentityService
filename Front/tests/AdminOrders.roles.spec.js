@@ -71,7 +71,7 @@ describe('AdminOrdersView role permissions', () => {
         expect(selects.length).toBeGreaterThan(0);
         const select = selects[0];
         // выберем статус PREPARING (он есть в статусах для QUEUED)
-        await fireEvent.change(select, {target: {value: 'PREPARING'}});
+        await fireEvent.update(select, 'PREPARING');
         await nextTick();
 
         // Теперь кнопка должна быть активной (если v-can не блокирует для CASHIER)

@@ -1,14 +1,14 @@
 name: CI-CD TERRAFORM
 
-#on:
-#  push:
-#    branches: [ "master" ]
-#  workflow_dispatch:
-#    inputs:
-#      bootstrap_kubeadm:
-#        description: 'Install and init kubeadm on the target server if missing (DANGEROUS on existing server)'
-#        required: false
-#        default: 'false'
+on:
+  push:
+    branches: [ "master-terraform" ]
+  workflow_dispatch:
+    inputs:
+      bootstrap_kubeadm:
+        description: 'Install and init kubeadm on the target server if missing (DANGEROUS on existing server)'
+        required: false
+        default: 'false'
 
 jobs:
   terraform:
