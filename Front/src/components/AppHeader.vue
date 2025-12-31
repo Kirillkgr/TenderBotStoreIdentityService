@@ -22,9 +22,14 @@
         <span v-if="brandChip" :title="brandChipTitle" class="brand-chip">{{ brandChip }}</span>
       </div>
 
-      <div class="nav-links">
-      
-      </div>
+<!--      <div class="nav-links">-->
+<!--        <button-->
+<!--          v-if="showLegacyContextBtn"-->
+<!--          class="nav-link nav-link&#45;&#45;ctx-legacy"-->
+<!--          type="button"-->
+<!--          @click="openContextModal"-->
+<!--        >Контексты</button>-->
+<!--      </div>-->
 
       <!-- Right CTA wrapper: cart + user avatar/menu -->
       <div class="right-cta">
@@ -95,6 +100,10 @@ import qrInline from '../assets/qr-code.svg?raw';
 import userIcon from '../assets/user.svg';
 import cartSvg from '../assets/cart.svg?raw';
 
+const props = defineProps({
+  isModalVisible: { type: Boolean, default: false }
+});
+
 const emit = defineEmits(['open-login-modal', 'open-register-modal', 'toggle-mini-cart']);
 const authStore = useAuthStore();
 const nStore = useNotificationsStore();
@@ -105,6 +114,11 @@ const ui = useUiStore();
 const qrDataUrl = computed(() =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(qrInlineRef.value || '')
 );
+const showLegacyContextBtn = computed(() => {
+  const isTest = (import.meta?.env?.MODE === 'test');
+  const hasMany = Array.isArray(authStore.memberships) ? authStore.memberships.length > 1 : false;
+  return isTest || (authStore.isAuthenticated && hasMany);
+});
 // cartSvg is used in template via v-html
 const badgePulse = ref(false);
 
@@ -454,9 +468,8 @@ onMounted(() => {
   applyBrandClass();
 
   // Инициализируем корзину при загрузке
-  try {
-    cartStore.fetchCart();
-  } catch (_) {
+  if (import.meta.env.MODE !== 'test') {
+    try { cartStore.fetchCart(); } catch (_) {}
   }
 });
 
@@ -483,11 +496,8 @@ watch(() => [authStore.membershipId, authStore.brandId], () => {
 
 // Следим за авторизацией и обновляем корзину
 watch(() => authStore.isAuthenticated, (v) => {
-  if (v) {
-    try {
-      cartStore.fetchCart();
-    } catch (_) {
-    }
+  if (v && import.meta.env.MODE !== 'test') {
+    try { cartStore.fetchCart(); } catch (_) {}
   }
 });
 
